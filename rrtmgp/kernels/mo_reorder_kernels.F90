@@ -26,6 +26,9 @@ contains
 
     integer :: i1, i2, i3
 
+    !!$omp declare simd aligned(array_in,array_out:32)
+    !array_out = reshape( array_in, shape(array_out), order = [3,1,2])
+    !$omp simd aligned(array_in,array_out:32)
     do i2 = 1, d2
       do i1 = 1, d1
         do i3 = 1, d3
@@ -43,6 +46,9 @@ contains
 
     integer :: i1, i2, i3
 
+    !!$omp declare simd aligned(array_in,array_out:32)
+    !array_out = reshape( array_in, shape(array_out), order = [3,2,1])
+    !$omp simd aligned(array_in,array_out:32)
     do i1 = 1, d1
       do i2 = 1, d2
         do i3 = 1, d3

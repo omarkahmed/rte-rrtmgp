@@ -748,20 +748,45 @@ contains
     integer  :: icol, ilay, igpt
     real(wp) :: t
     ! -----------------------
-    do icol = 1, ncol
+    !do icol = 1, ncol
+    !  do ilay = 1, nlay
+    !    do igpt = 1, ngpt
+    !       t = tau_abs(igpt,ilay,icol) + tau_rayleigh(igpt,ilay,icol)
+    !       tau(icol,ilay,igpt) = t
+    !       g  (icol,ilay,igpt) = 0._wp
+    !       if(t > 2._wp * tiny(t)) then
+    !         ssa(icol,ilay,igpt) = tau_rayleigh(igpt,ilay,icol) / t
+    !       else
+    !         ssa(icol,ilay,igpt) = 0._wp
+    !       end if
+    !    end do
+    !  end do
+    !end do
+
+    !tau = reshape( tau_abs + tau_rayleigh, shape(tau), order = [3,2,1])
+    !$omp simd aligned(tau_abs,tau_rayleigh,tau:32)
+    do igpt = 1, ngpt
       do ilay = 1, nlay
-        do igpt = 1, ngpt
-           t = tau_abs(igpt,ilay,icol) + tau_rayleigh(igpt,ilay,icol)
-           tau(icol,ilay,igpt) = t
-           g  (icol,ilay,igpt) = 0._wp
-           if(t > 2._wp * tiny(t)) then
-             ssa(icol,ilay,igpt) = tau_rayleigh(igpt,ilay,icol) / t
+        do icol = 1, ncol
+          tau(icol,ilay,igpt) = tau_abs(igpt,ilay,icol) + tau_rayleigh(igpt,ilay,icol)
+        end do
+      end do
+    end do
+
+    g(:,:,:) = 0._wp
+    !$omp simd aligned(tau_rayleigh,tau,ssa:32)
+    do igpt = 1, ngpt
+      do ilay = 1, nlay
+        do icol = 1, ncol
+           if(tau(icol,ilay,igpt) > 2._wp * tiny(tau(icol,ilay,igpt))) then
+             ssa(icol,ilay,igpt) = tau_rayleigh(igpt,ilay,icol) / tau(icol,ilay,igpt)
            else
              ssa(icol,ilay,igpt) = 0._wp
            end if
         end do
       end do
     end do
+
   end subroutine combine_and_reorder_2str
   ! ----------------------------------------------------------
   !
@@ -779,23 +804,41 @@ contains
     integer :: icol, ilay, igpt, imom
     real(wp) :: t
     ! -----------------------
-    do icol = 1, ncol
+    !do icol = 1, ncol
+    !  do ilay = 1, nlay
+    !    do igpt = 1, ngpt
+    !      t = tau_abs(igpt,ilay,icol) + tau_rayleigh(igpt,ilay,icol)
+    !      tau(icol,ilay,igpt) = t
+    !      if(t > 2._wp * tiny(t)) then
+    !        ssa(icol,ilay,igpt) = tau_rayleigh(igpt,ilay,icol) / t
+    !      else
+    !        ssa(icol,ilay,igpt) = 0._wp
+    !      end if
+    !      do imom = 1, nmom
+    !        p(imom,icol,ilay,igpt) = 0.0_wp
+    !      end do
+    !      if(nmom >= 2) p(2,icol,ilay,igpt) = 0.1_wp
+    !    end do
+    !  end do
+    !end do
+
+    tau = reshape( tau_abs + tau_rayleigh, shape(tau), order = [3,2,1])
+    !$omp simd aligned(tau_rayleigh,tau,ssa:32)
+    do igpt = 1, ngpt
       do ilay = 1, nlay
-        do igpt = 1, ngpt
-          t = tau_abs(igpt,ilay,icol) + tau_rayleigh(igpt,ilay,icol)
-          tau(icol,ilay,igpt) = t
-          if(t > 2._wp * tiny(t)) then
-            ssa(icol,ilay,igpt) = tau_rayleigh(igpt,ilay,icol) / t
-          else
-            ssa(icol,ilay,igpt) = 0._wp
-          end if
-          do imom = 1, nmom
-            p(imom,icol,ilay,igpt) = 0.0_wp
-          end do
-          if(nmom >= 2) p(2,icol,ilay,igpt) = 0.1_wp
+        do icol = 1, ncol
+           if(tau(icol,ilay,igpt) > 2._wp * tiny(tau(icol,ilay,igpt))) then
+             ssa(icol,ilay,igpt) = tau_rayleigh(igpt,ilay,icol) / tau(icol,ilay,igpt)
+           else
+             ssa(icol,ilay,igpt) = 0._wp
+           end if
         end do
       end do
     end do
+    p(:,:,:,:) = 0.0_wp
+    if (nmom >= 2) p(2,:,:,:) = 0.1_wp
+
+
   end subroutine combine_and_reorder_nstr
   ! ----------------------------------------------------------
   pure subroutine zero_array_3D(ni, nj, nk, array) bind(C, name="zero_array_3D")
@@ -804,13 +847,14 @@ contains
     ! -----------------------
     integer :: i,j,k
     ! -----------------------
-    do k = 1, nk
-      do j = 1, nj
-        do i = 1, ni
-          array(i,j,k) = 0.0_wp
-        end do
-      end do
-    end do
+    array(:,:,:) = 0.0_wp
+    !do k = 1, nk
+    !  do j = 1, nj
+    !    do i = 1, ni
+    !      array(i,j,k) = 0.0_wp
+    !    end do
+    !  end do
+    !end do
 
   end subroutine zero_array_3D
   ! ----------------------------------------------------------
@@ -820,15 +864,16 @@ contains
     ! -----------------------
     integer :: i,j,k,l
     ! -----------------------
-    do l = 1, nl
-      do k = 1, nk
-        do j = 1, nj
-          do i = 1, ni
-            array(i,j,k,l) = 0.0_wp
-          end do
-        end do
-      end do
-    end do
+    array(:,:,:,:) = 0.0_wp
+    !do l = 1, nl
+    !  do k = 1, nk
+    !    do j = 1, nj
+    !      do i = 1, ni
+    !        array(i,j,k,l) = 0.0_wp
+    !      end do
+    !    end do
+    !  end do
+    !end do
 
   end subroutine zero_array_4D
   ! ----------------------------------------------------------
