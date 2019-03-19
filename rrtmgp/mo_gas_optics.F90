@@ -532,6 +532,7 @@ contains
             col_mix,      &
             tropo,        &
             jeta,jpress)
+#if 1
 #ifdef USE_TIMING
     ret = gptlstop ('interpolation')
     ret = gptlstart('compute_tau_absorption')
@@ -588,6 +589,8 @@ contains
 
     ! Combine optical depths and reorder for radiative transfer solver.
     call combine_and_reorder(tau, tau_rayleigh, allocated(this%krayl), optical_props)
+#else
+#endif
 
   end function compute_gas_taus
   !------------------------------------------------------------------------------------------
@@ -671,15 +674,23 @@ contains
                 fmajor, jeta, tropo, jtemp, jpress,                    &
                 this%get_gpoint_bands(), this%get_band_lims_gpoint(), this%planck_frac, this%temp_ref_min,&
                 this%totplnk_delta, this%totplnk, this%gpoint_flavor,  &
+#if 0
                 sfc_source_t, lay_source_t, lev_source_inc_t, lev_source_dec_t)
+#else
+                sources%sfc_source, sources%lay_source, sources%lev_source_inc,&
+                   sources%lev_source_dec)
+#endif
+
 #ifdef USE_TIMING
     ilay = gptlstop("compute_Planck_source")
     ilay = gptlstart("Planck-reorder123x321")
 #endif
+#if 0
     sources%sfc_source     = transpose(sfc_source_t)
     sources%lay_source     = reorder123x321(lay_source_t)
     sources%lev_source_inc = reorder123x321(lev_source_inc_t)
     sources%lev_source_dec = reorder123x321(lev_source_dec_t)
+#endif
 #ifdef USE_TIMING
     ilay = gptlstop("Planck-reorder123x321")
 #endif

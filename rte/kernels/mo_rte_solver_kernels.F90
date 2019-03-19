@@ -254,7 +254,7 @@ contains
       !
       call lw_source_2str(ncol, nlay, top_at_1, &
                           sfc_emis(:,igpt), sfc_src(:,igpt), &
-                          lay_source(:,:,igpt), lev_source, &
+                          lev_source, &
                           gamma1, gamma2, Rdif, Tdif, tau(:,:,igpt), &
                           source_dn, source_up, source_sfc)
       !
@@ -581,14 +581,13 @@ contains
   ! ---------------------------------------------------------------
   subroutine lw_source_2str(ncol, nlay, top_at_1,   &
                             sfc_emis, sfc_src,      &
-                            lay_source, lev_source, &
+                            lev_source, &
                             gamma1, gamma2, rdif, tdif, tau, source_dn, source_up, source_sfc) &
                             bind (C, name="lw_source_2str")
     integer,                         intent(in) :: ncol, nlay
     logical(wl),                     intent(in) :: top_at_1
     real(wp), dimension(ncol      ), intent(in) :: sfc_emis, sfc_src
-    real(wp), dimension(ncol, nlay), intent(in) :: lay_source,    & ! Planck source at layer center
-                                                   tau,           & ! Optical depth (tau)
+    real(wp), dimension(ncol, nlay), intent(in) :: tau,           & ! Optical depth (tau)
                                                    gamma1, gamma2,& ! Coupling coefficients
                                                    rdif, tdif       ! Layer reflectance and transmittance
     real(wp), dimension(ncol, nlay+1), target, &

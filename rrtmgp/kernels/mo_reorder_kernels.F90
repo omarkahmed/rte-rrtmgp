@@ -18,44 +18,49 @@ module mo_reorder_kernels
   implicit none
 contains
   ! ----------------------------------------------------------------------------
-  subroutine reorder_123x312_kernel(d1, d2, d3, array_in, array_out) &
-      bind(C, name = "reorder_123x312_kernel")
-    integer,                         intent( in) :: d1, d2, d3
-    real(wp), dimension(d1, d2, d3), intent( in) :: array_in
-    real(wp), dimension(d3, d1, d2), intent(out) :: array_out
-
-    integer :: i1, i2, i3
-
-    !!$omp declare simd aligned(array_in,array_out:32)
-    !array_out = reshape( array_in, shape(array_out), order = [3,1,2])
-    !$omp simd aligned(array_in,array_out:32)
-    do i2 = 1, d2
-      do i1 = 1, d1
-        do i3 = 1, d3
-          array_out(i3,i1,i2) = array_in(i1,i2,i3)
-        end do
-      end do
-    end do
-  end subroutine reorder_123x312_kernel
-  ! ----------------------------------------------------------------------------
   subroutine reorder_123x321_kernel(d1, d2, d3, array_in, array_out) & 
       bind(C, name="reorder_123x321_kernel")
     integer,                         intent( in) :: d1, d2, d3
     real(wp), dimension(d1, d2, d3), intent( in) :: array_in
     real(wp), dimension(d3, d2, d1), intent(out) :: array_out
-
     integer :: i1, i2, i3
+    !dir$ assume aligned array_in: 64
+    !dir$ assume aligned array_out: 64
+
+    array_out = reshape( array_in, shape(array_out), order = [3,2,1])
+    
+    !!$omp simd aligned(array_in,array_out:32)
+    !do i1 = 1, d1
+    !  do i2 = 1, d2
+    !    do i3 = 1, d3
+    !      array_out(i3,i2,i1) = array_in(i1,i2,i3)
+    !    end do
+    !  end do
+    !end do
+  end subroutine reorder_123x321_kernel
+  ! ----------------------------------------------------------------------------
+
+  subroutine reorder_123x312_kernel(d1, d2, d3, array_in, array_out) &
+      bind(C, name = "reorder_123x312_kernel")
+    integer,                         intent( in) :: d1, d2, d3
+    real(wp), dimension(d1, d2, d3), intent( in) :: array_in
+    real(wp), dimension(d3, d1, d2), intent(out) :: array_out
+    integer :: i1, i2, i3
+    !dir$ assume aligned array_in: 64
+    !dir$ assume aligned array_out: 64
+
 
     !!$omp declare simd aligned(array_in,array_out:32)
-    !array_out = reshape( array_in, shape(array_out), order = [3,2,1])
-    !$omp simd aligned(array_in,array_out:32)
-    do i1 = 1, d1
-      do i2 = 1, d2
-        do i3 = 1, d3
-          array_out(i3,i2,i1) = array_in(i1,i2,i3)
-        end do
-      end do
-    end do
-  end subroutine reorder_123x321_kernel
+    array_out = reshape( array_in, shape(array_out), order = [3,1,2])
+
+    !!$omp simd aligned(array_in,array_out:32)
+    !do i2 = 1, d2
+    !  do i1 = 1, d1
+    !    do i3 = 1, d3
+    !      array_out(i3,i1,i2) = array_in(i1,i2,i3)
+    !    end do
+    !  end do
+    !end do
+  end subroutine reorder_123x312_kernel
   ! ----------------------------------------------------------------------------
 end module mo_reorder_kernels
