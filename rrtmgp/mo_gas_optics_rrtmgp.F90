@@ -127,11 +127,6 @@ module mo_gas_optics_rrtmgp
                                                                ! planck_frac(g-point, eta, pressure, temperature)
     real(wp), dimension(:,:),     allocatable :: totplnk       ! integrated Planck irradiance by band; (Planck temperatures,band)
     real(wp)                                  :: totplnk_delta ! temperature steps in totplnk
-    ! -----------------------------------------------------------------------------------
-    ! Solar source function spectral mapping
-    !   Allocated only when gas optics object is external-source
-    !
-    real(wp), dimension(:), allocatable :: solar_src ! incoming solar irradiance(g-point)
     !
     ! -----------------------------------------------------------------------------------
     ! Ancillary
@@ -139,6 +134,35 @@ module mo_gas_optics_rrtmgp
     ! Index into %gas_names -- is this a key species in any band?
     logical, dimension(:), allocatable :: is_key
     ! -----------------------------------------------------------------------------------
+    !
+    ! -----------------------------------------------------------------------------------
+    ! Solar source function spectral mapping with solar variability capability
+    !   Allocated only when gas optics object is external-source
+    !   n-solar-terms: quiet sun, facular brightening and sunspot dimming components
+    !
+    real(wp), dimension(:,:), allocatable, public :: solar_irr         ! incoming solar irradiance (n-solar-terns,g-point)
+    !
+    ! Mean facular brightening, sunspot dimming and quiet sun coefficient terms (NRLSSI2, 100-50000 cm-1)
+    ! spectrally integrated (from hi-resolution values after mapping to g-point space)
+    real(wp), dimension(:), allocatable, public   :: solar_irr_int     ! mean solar variability components, 
+                                                                       ! (facular, sunspot, quiet sun)
+    !
+    real(wp), dimension(:), allocatable, public   :: svar_offset       ! solar variability offset values, 
+                                                                       ! (facular brightening, sunspot dimming)
+    real(wp), dimension(:), allocatable, public   :: svar_avg          ! solar variabilty indices time-averaged over solar
+                                                                       ! cycles 13-24 and integrated over mean solar cycle
+                                                                       ! (NRLSSI2 facular "Bremen" index and sunspot "SPOT67" index)
+    real(wp), dimension(:), allocatable, public   :: solar_var_ind     ! Optional, user-defined indices for solar variability 
+                                                                       ! (facular, sunspot)
+                                                                       ! Allows user to specify the facular and sunspot index 
+                                                                       ! values directly. 
+    real(wp), dimension(:), allocatable, public   :: solar_var_ind_scl ! Optional, user-defined index scaling for solar variability 
+                                                                       ! (facular, sunspot)
+                                                                       ! Allows user to scale the indices interpolated from the mean 
+                                                                       ! solar cycle when the solar cycle fraction is provided. 
+                                                                       ! Scaling provided is applied at solar maximum while zero scaling 
+                                                                       ! is applied at solar minimum, and intermediate scaling is
+                                                                       ! applied at intervening periods in the solar cycle. 
 
   contains
     ! Type-bound procedures
@@ -301,7 +325,7 @@ contains
   function gas_optics_ext(this,                         &
                           play, plev, tlay, gas_desc,   & ! mandatory inputs
                           optical_props, toa_src,       & ! mandatory outputs
-                          col_dry) result(error_msg)      ! optional input
+                          scon, col_dry) result(error_msg)! optional input
 
     class(ty_gas_optics_rrtmgp), intent(in) :: this
     real(wp), dimension(:,:), intent(in   ) :: play, &   ! layer pressures [Pa, mb]; (ncol,nlay)
@@ -315,6 +339,9 @@ contains
     character(len=128)                      :: error_msg
 
     ! Optional inputs
+    real(wp),                 intent(in   ), &
+                           optional, target :: scon    ! Solar constant (to optionally scale 
+                                                       ! built-in solar constant
     real(wp), dimension(:,:), intent(in   ), &
                            optional, target :: col_dry ! Column dry amount; dim(ncol,nlay)
     ! ----------------------------------------------------------
@@ -326,6 +353,10 @@ contains
     integer,     dimension(2,    get_nflav(this),size(play,dim=1), size(play,dim=2)) :: jeta
 
     integer :: ncol, nlay, ngpt, nband, ngas, nflav
+
+    real(wp) :: svar_r, svar_cprime
+    real(wp) :: svar_irr, svar_fac, svar_spt
+
     ! ----------------------------------------------------------
     ncol  = size(play,dim=1)
     nlay  = size(play,dim=2)
@@ -348,11 +379,65 @@ contains
 
     ! ----------------------------------------------------------
     !
-    ! External source function is constant
+    ! Solar variability
+    !
+    ! External source function is a fixed solar constant by default (1360.85 Wm-2).
+    ! The user may optionally scale the fixed solar constant by providing scon.
+    ! Alternately, the user may activate solar variability by calling module
+    ! mo_solar_variability to specify indices for facular brightening and 
+    ! sunspot dimming directly or to derive the indices from the mean solar 
+    ! Cycle By providing the solar cycle fraction. 
+    !
+    ! Error checking
+    if(present(scon)) then
+      error_msg = check_range(scon, 0._wp, huge(scon), 'scon must be positive')
+      if(error_msg  /= '') return
+    end if
+
+    ! With solar constant scaling
+    if (present(scon)) then 
+
+       ! Solar variability from user specified facular and sunspot indices
+       if (allocated(this%solar_var_ind)) then 
+          error_msg = compute_solar_var(this,                         &
+                                        svar_irr, svar_fac, svar_spt, &
+                                        scon)
+          if(error_msg  /= '') return
+       ! No solar variability; scale solar constant to scon 
+       else
+          svar_cprime = this%solar_irr_int(1) + this%solar_irr_int(2) + &
+                        this%solar_irr_int(3)
+          svar_r = scon / svar_cprime
+          svar_fac = svar_r
+          svar_spt = svar_r
+          svar_irr = svar_r
+       endif
+
+    ! Without solar constant scaling
+    else
+
+       ! Solar variability from user specified facular and sunspot indices
+       if (allocated(this%solar_var_ind)) then 
+          error_msg = compute_solar_var(this,                        &
+                                        svar_irr, svar_fac, svar_spt)
+          if(error_msg  /= '') return
+     ! No solar variability, fixed solar constant of 1360.85 Wm-2
+       else
+          svar_fac = 1._wp 
+          svar_spt = 1._wp 
+          svar_irr = 1._wp 
+       endif
+
+    endif
+
+    ! Set final TOA solar source function
     !
     error_msg = check_extent(toa_src,     ncol,         ngpt, 'toa_src')
     if(error_msg  /= '') return
-    toa_src(:,:) = spread(this%solar_src(:), dim=1, ncopies=ncol)
+    toa_src(:,:) = spread((svar_fac * this%solar_irr(1,:) + &
+                           svar_spt * this%solar_irr(2,:) + &
+                           svar_irr * this%solar_irr(3,:)), &
+                           dim=1, ncopies=ncol)
 
   end function gas_optics_ext
   !------------------------------------------------------------------------------------------
@@ -574,6 +659,64 @@ contains
   end function compute_gas_taus
   !------------------------------------------------------------------------------------------
   !
+  ! Returns quiet sun, facular brightening and sunspot dimming solar variability
+  ! terms from user specified indices and optional index scaling.
+  ! Allows scaling of solar constant to user-specified value when scon is present.
+  !
+  function compute_solar_var(gas_opt,                      &
+                             svar_irr, svar_fac, svar_spt, &
+                             scon) result(error_msg)
+
+    class(ty_gas_optics_rrtmgp), intent(in   ) :: gas_opt
+    real(wp),                    intent(out  ) :: svar_irr, svar_fac, svar_spt
+    real(wp), optional,          intent(in   ) :: scon
+
+    character(len=128)                         :: error_msg
+
+    ! ----------------------------------------------------------
+    ! Local variables
+    real(wp) :: tsi
+    !
+    error_msg = ""
+    ! ----------------------------------------------------------
+    !
+    ! Derive the final form of the solar variability facular and sunspot indices 
+    ! needed to calculate the final total solar irradiance
+    !
+    svar_fac = (gas_opt%solar_var_ind(1) - gas_opt%svar_offset(1)) / &
+               (gas_opt%svar_avg(1) - gas_opt%svar_offset(1))
+    svar_spt = (gas_opt%solar_var_ind(2) - gas_opt%svar_offset(2)) / &
+               (gas_opt%svar_avg(2) - gas_opt%svar_offset(2))
+    !
+    ! Derive the final form of the quiet sun component index needed to 
+    ! calculate the final total solar irradiance. The derivation 
+    ! incorporates any solar constant scaling (if requested by the user).
+    !
+    if (present(scon)) then 
+
+       if (allocated(gas_opt%solar_var_ind_scl)) then 
+          tsi = scon - gas_opt%solar_var_ind_scl(1) * gas_opt%solar_irr_int(1) &
+                     - gas_opt%solar_var_ind_scl(2) * gas_opt%solar_irr_int(2) &
+                     + svar_fac * gas_opt%solar_irr_int(1) &
+                     + svar_spt * gas_opt%solar_irr_int(2)
+       else
+          tsi = scon - gas_opt%solar_irr_int(1) &
+                     - gas_opt%solar_irr_int(2) &
+                     + svar_fac * gas_opt%solar_irr_int(1) &
+                     + svar_spt * gas_opt%solar_irr_int(2)
+       endif
+       svar_irr = (tsi - svar_fac * gas_opt%solar_irr_int(1) &
+                       - svar_spt * gas_opt%solar_irr_int(2)) / &
+                                    gas_opt%solar_irr_int(3)
+
+    else
+       svar_irr = 1._wp
+
+    end if
+ 
+  end function compute_solar_var
+  !------------------------------------------------------------------------------------------
+  !
   ! Compute Planck source functions at layer centers and levels
   !
   function source(this,                               &
@@ -762,7 +905,9 @@ contains
                     scale_by_complement_upper, &
                     kminor_start_lower, &
                     kminor_start_upper, &
-                    solar_src, rayl_lower, rayl_upper)  result(err_message)
+                    solar_irr, solar_irr_int, &
+                    svar_offset, svar_avg, &
+                    rayl_lower, rayl_upper)  result(err_message)
     class(ty_gas_optics_rrtmgp), intent(inout) :: this
     class(ty_gas_concs),                intent(in   ) :: available_gases ! Which gases does the host model have available?
     character(len=*), &
@@ -796,7 +941,10 @@ contains
     integer,  dimension(:),       intent(in) :: &
                                                 kminor_start_lower, &
                                                 kminor_start_upper
-    real(wp), dimension(:),       intent(in), allocatable :: solar_src
+    real(wp), dimension(:,:),     intent(in), allocatable :: solar_irr
+    real(wp), dimension(:),       intent(in), allocatable :: solar_irr_int
+    real(wp), dimension(:),       intent(in), allocatable :: svar_offset
+    real(wp), dimension(:),       intent(in), allocatable :: svar_avg
                                                             ! allocatable status to change when solar source is present in file
     real(wp), dimension(:,:,:), intent(in), allocatable :: rayl_lower, rayl_upper
     character(len = 128) err_message
@@ -822,9 +970,15 @@ contains
                                   kminor_start_upper, &
                                   rayl_lower, rayl_upper)
     !
-    ! Solar source table init
+    ! Solar irradiance table init
     !
-    this%solar_src = solar_src
+    this%solar_irr = solar_irr
+    !
+    ! Solar variability data init
+    !
+    this%solar_irr_int = solar_irr_int
+    this%svar_offset = svar_offset
+    this%svar_avg = svar_avg
 
   end function load_ext
   !--------------------------------------------------------------------------------------------------------------------
@@ -1124,7 +1278,7 @@ contains
   pure function source_is_external(this)
     class(ty_gas_optics_rrtmgp), intent(in) :: this
     logical                          :: source_is_external
-    source_is_external = allocated(this%solar_src)
+    source_is_external = allocated(this%solar_irr)
   end function source_is_external
 
   !--------------------------------------------------------------------------------------------------------------------
@@ -1180,6 +1334,7 @@ contains
 
     get_temp_max = this%temp_ref_max
   end function get_temp_max
+
   !--------------------------------------------------------------------------------------------------------------------
   !
   ! Utility function, provided for user convenience
