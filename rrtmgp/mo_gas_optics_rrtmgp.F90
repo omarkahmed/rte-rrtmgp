@@ -140,29 +140,26 @@ module mo_gas_optics_rrtmgp
     !   Allocated only when gas optics object is external-source
     !   n-solar-terms: quiet sun, facular brightening and sunspot dimming components
     !
-    real(wp), dimension(:,:), allocatable, public :: solar_irr         ! incoming solar irradiance (n-solar-terns,g-point)
+    real(wp), dimension(:,:), allocatable, public :: solar_irr         ! incoming solar irradiance (n-solar-terms,g-point)
     !
     ! Mean facular brightening, sunspot dimming and quiet sun coefficient terms (NRLSSI2, 100-50000 cm-1)
     ! spectrally integrated (from hi-resolution values after mapping to g-point space)
-    real(wp), dimension(:), allocatable, public   :: solar_irr_int     ! mean solar variability components, 
+    real(wp), dimension(:), allocatable, public   :: solar_irr_int     ! solar cycle mean total solar irradiance components 
                                                                        ! (facular, sunspot, quiet sun)
     !
-    real(wp), dimension(:), allocatable, public   :: svar_offset       ! solar variability offset values, 
+    real(wp), dimension(:), allocatable, public   :: svar_offset       ! solar variability offset values
                                                                        ! (facular brightening, sunspot dimming)
-    real(wp), dimension(:), allocatable, public   :: svar_avg          ! solar variabilty indices time-averaged over solar
+    real(wp), dimension(:), allocatable, public   :: svar_avg          ! solar variability indices time-averaged over solar
                                                                        ! cycles 13-24 and integrated over mean solar cycle
                                                                        ! (NRLSSI2 facular "Bremen" index and sunspot "SPOT67" index)
     real(wp), dimension(:), allocatable, public   :: solar_var_ind     ! Optional, user-defined indices for solar variability 
-                                                                       ! (facular, sunspot)
-                                                                       ! Allows user to specify the facular and sunspot index 
-                                                                       ! values directly. 
+                                                                       ! (NRLSSI2 facular "Bremen" index, NRLSSI2 sunspot "SPOT67" index)
+                                                                       ! Allows user to specify the facular and sunspot index values
+                                                                       ! directly through external module 'mo_solarvariability'
     real(wp), dimension(:), allocatable, public   :: solar_var_ind_scl ! Optional, user-defined index scaling for solar variability 
                                                                        ! (facular, sunspot)
-                                                                       ! Allows user to scale the indices interpolated from the mean 
-                                                                       ! solar cycle when the solar cycle fraction is provided. 
-                                                                       ! Scaling provided is applied at solar maximum while zero scaling 
-                                                                       ! is applied at solar minimum, and intermediate scaling is
-                                                                       ! applied at intervening periods in the solar cycle. 
+                                                                       ! Allows user to scale the amplitudes of the facular and 
+                                                                       ! sunspot cycles. 
 
   contains
     ! Type-bound procedures
@@ -198,7 +195,7 @@ module mo_gas_optics_rrtmgp
   public :: get_col_dry ! Utility function, not type-bound
 
   interface check_range
-    module procedure check_range_1D, check_range_2D, check_range_3D
+    module procedure check_range_scalar, check_range_1D, check_range_2D, check_range_3D
   end interface check_range
 
   interface check_extent
@@ -325,9 +322,9 @@ contains
   function gas_optics_ext(this,                         &
                           play, plev, tlay, gas_desc,   & ! mandatory inputs
                           optical_props, toa_src,       & ! mandatory outputs
-                          scon, col_dry) result(error_msg)! optional input
+                          scon_or_tsi, col_dry) result(error_msg) ! optional input
 
-    class(ty_gas_optics_rrtmgp), intent(in) :: this
+    class(ty_gas_optics_rrtmgp), intent(inout) :: this
     real(wp), dimension(:,:), intent(in   ) :: play, &   ! layer pressures [Pa, mb]; (ncol,nlay)
                                                plev, &   ! level pressures [Pa, mb]; (ncol,nlay+1)
                                                tlay      ! layer temperatures [K]; (ncol,nlay)
@@ -335,13 +332,19 @@ contains
     ! output
     class(ty_optical_props_arry),  &
                               intent(inout) :: optical_props
-    real(wp), dimension(:,:), intent(  out) :: toa_src     ! Incoming solar irradiance(ncol,ngpt)
+    real(wp), dimension(:,:), intent(  out) :: toa_src   ! Incoming solar irradiance(ncol,ngpt)
     character(len=128)                      :: error_msg
 
     ! Optional inputs
     real(wp),                 intent(in   ), &
-                           optional, target :: scon    ! Solar constant (to optionally scale 
-                                                       ! built-in solar constant
+                           optional, target :: scon_or_tsi ! Solar constant over the cycle if solar
+                                                           ! variability is activated
+                                                           ! (i.e. this%solar_var_ind is allocated), or
+                                                           ! Total solar irradiance if solar
+                                                           ! variability is not activated
+                                                           ! (i.e. this%solar_var_ind is not allocated)
+                                                           ! Units: W m-2
+                                                            
     real(wp), dimension(:,:), intent(in   ), &
                            optional, target :: col_dry ! Column dry amount; dim(ncol,nlay)
     ! ----------------------------------------------------------
@@ -354,6 +357,8 @@ contains
 
     integer :: ncol, nlay, ngpt, nband, ngas, nflav
 
+    real(wp) :: scon                                       ! Solar constant (W m-2)
+    real(wp) :: tsi                                        ! Total solar irradiance (W m-2)
     real(wp) :: svar_r, svar_cprime
     real(wp) :: svar_irr, svar_fac, svar_spt
 
@@ -381,33 +386,37 @@ contains
     !
     ! Solar variability
     !
-    ! External source function is a fixed solar constant by default (1360.85 Wm-2).
-    ! The user may optionally scale the fixed solar constant by providing scon.
-    ! Alternately, the user may activate solar variability by calling module
-    ! mo_solar_variability to specify indices for facular brightening and 
-    ! sunspot dimming directly or to derive the indices from the mean solar 
-    ! Cycle By providing the solar cycle fraction. 
+    ! External source function is a fixed irradiance by default (1360.85 Wm-2).
+    ! The user may optionally scale the fixed total irradiance by providing scon_or_tsi.
+    ! Alternately, the facular brightening and sunspot dimming indices may be specified
+    ! directly by the user or through evaluation of the solar variability cycle by 
+    ! calling external module mo_solar_variability. Both of these options allow the 
+    ! specification of a) amplitude scale factors for the cycles of each index, and 
+    ! b) the overal integral of the total irradiance over the cycle (solar constant,
+    ! given by scon_or_tsi). 
     !
     ! Error checking
-    if(present(scon)) then
-      error_msg = check_range(scon, 0._wp, huge(scon), 'scon must be positive')
+    if(present(scon_or_tsi)) then
+      error_msg = check_range(scon_or_tsi, 0._wp, huge(scon_or_tsi), 'scon_or_tsi must be positive')
       if(error_msg  /= '') return
     end if
 
     ! With solar constant scaling
-    if (present(scon)) then 
+    if (present(scon_or_tsi)) then 
 
        ! Solar variability from user specified facular and sunspot indices
        if (allocated(this%solar_var_ind)) then 
+          scon = scon_or_tsi
           error_msg = compute_solar_var(this,                         &
                                         svar_irr, svar_fac, svar_spt, &
                                         scon)
           if(error_msg  /= '') return
-       ! No solar variability; scale solar constant to scon 
+       ! No solar variability; total solar irradiance is scon_or_tsi, so scale quiet term appropriately
        else
+          tsi = scon_or_tsi
           svar_cprime = this%solar_irr_int(1) + this%solar_irr_int(2) + &
                         this%solar_irr_int(3)
-          svar_r = scon / svar_cprime
+          svar_r = tsi / svar_cprime
           svar_fac = svar_r
           svar_spt = svar_r
           svar_irr = svar_r
@@ -421,7 +430,7 @@ contains
           error_msg = compute_solar_var(this,                        &
                                         svar_irr, svar_fac, svar_spt)
           if(error_msg  /= '') return
-     ! No solar variability, fixed solar constant of 1360.85 Wm-2
+     ! No solar variability, fixed total irradiance of 1360.85 Wm-2
        else
           svar_fac = 1._wp 
           svar_spt = 1._wp 
@@ -667,7 +676,7 @@ contains
                              svar_irr, svar_fac, svar_spt, &
                              scon) result(error_msg)
 
-    class(ty_gas_optics_rrtmgp), intent(in   ) :: gas_opt
+    class(ty_gas_optics_rrtmgp), intent(inout) :: gas_opt
     real(wp),                    intent(out  ) :: svar_irr, svar_fac, svar_spt
     real(wp), optional,          intent(in   ) :: scon
 
@@ -695,21 +704,17 @@ contains
     if (present(scon)) then 
 
        if (allocated(gas_opt%solar_var_ind_scl)) then 
-          tsi = scon - gas_opt%solar_var_ind_scl(1) * gas_opt%solar_irr_int(1) &
-                     - gas_opt%solar_var_ind_scl(2) * gas_opt%solar_irr_int(2) &
-                     + svar_fac * gas_opt%solar_irr_int(1) &
-                     + svar_spt * gas_opt%solar_irr_int(2)
-       else
-          tsi = scon - gas_opt%solar_irr_int(1) &
-                     - gas_opt%solar_irr_int(2) &
-                     + svar_fac * gas_opt%solar_irr_int(1) &
-                     + svar_spt * gas_opt%solar_irr_int(2)
+          gas_opt%solar_irr_int(1) = gas_opt%solar_var_ind_scl(1) * gas_opt%solar_irr_int(1)
+          gas_opt%solar_irr_int(2) = gas_opt%solar_var_ind_scl(2) * gas_opt%solar_irr_int(2)
        endif
-       svar_irr = (tsi - svar_fac * gas_opt%solar_irr_int(1) &
-                       - svar_spt * gas_opt%solar_irr_int(2)) / &
-                                    gas_opt%solar_irr_int(3)
+       tsi = scon - gas_opt%solar_irr_int(1) - gas_opt%solar_irr_int(2)
+       svar_irr = tsi / gas_opt%solar_irr_int(3)
 
     else
+       !
+       ! Keep quiet term as is; total solar irradiance is the sum of the quiet term
+       ! and user-specified facular and sunspot terms
+       !
        svar_irr = 1._wp
 
     end if
@@ -1861,6 +1866,17 @@ contains
   !
   ! Values
   !
+  ! --------------------------------------------------------------------------------------
+  function check_range_scalar(val, minV, maxV, label)
+    real(wp),                   intent(in) :: val
+    real(wp),                   intent(in) :: minV, maxV
+    character(len=*),           intent(in) :: label
+    character(len=128)                     :: check_range_scalar
+
+    check_range_scalar = ""
+    if(val < minV .or. val > maxV) &
+      check_range_scalar = trim(label) // ' value out of range.'
+  end function check_range_scalar
   ! --------------------------------------------------------------------------------------
   function check_range_1D(val, minV, maxV, label)
     real(wp), dimension(:),     intent(in) :: val
