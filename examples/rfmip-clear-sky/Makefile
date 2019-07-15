@@ -49,7 +49,7 @@ VPATH = ../
 #
 # Ancillary codes
 #
-ADDITIONS = mo_simple_netcdf.o mo_rfmip_io.o mo_load_coefficients.o mo_solar_variability.o
+ADDITIONS = mo_simple_netcdf.o mo_rfmip_io.o mo_load_coefficients.o
 
 all: rrtmgp_rfmip_lw rrtmgp_rfmip_sw
 
@@ -64,8 +64,6 @@ rrtmgp_rfmip_sw.o: rrtmgp_rfmip_sw.F90 $(ADDITIONS)
 mo_rfmip_io.o:          mo_rfmip_io.F90          mo_simple_netcdf.o
 
 mo_load_coefficients.o: mo_load_coefficients.F90 mo_simple_netcdf.o
-
-mo_solar_variability.o: mo_solar_variability.F90 $(RRTMGP_DIR)/mo_gas_optics_rrtmgp.o
 
 clean:
 	-rm rrtmgp_rfmip_sw rrtmgp_rfmip_lw *.o *.mod *.optrpt
