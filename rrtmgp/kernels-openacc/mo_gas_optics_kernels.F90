@@ -15,7 +15,8 @@
 !   source functions.
 
 module mo_gas_optics_kernels
-  use mo_rte_kind,      only: wp, wl
+  use mo_rte_kind,        only: wp, wl
+  use mo_reorder_kernels, only: reorder_123x321_kernel
   implicit none
 contains
   ! --------------------------------------------------------------------------------------
@@ -538,21 +539,22 @@ contains
     real(wp), dimension(nPlanckTemp,nbnd),        intent(in) :: totplnk
     integer,  dimension(2,ngpt),                  intent(in) :: gpoint_flavor
 
-    real(wp), dimension(ngpt,     ncol), intent(out) :: sfc_src
-    real(wp), dimension(ngpt,nlay,ncol), intent(out) :: lay_src
-    real(wp), dimension(ngpt,nlay,ncol), intent(out) :: lev_src_inc, lev_src_dec
+    real(wp), dimension(ncol,     ngpt), intent(out) :: sfc_src
+    real(wp), dimension(ncol,nlay,ngpt), intent(out) :: lay_src
+    real(wp), dimension(ncol,nlay,ngpt), intent(out) :: lev_src_inc, lev_src_dec
     ! -----------------
     ! local
     integer  :: ilay, icol, igpt, ibnd, itropo, iflav
     integer  :: gptS, gptE
     real(wp), dimension(2), parameter :: one = [1._wp, 1._wp]
-    real(wp) :: pfrac          (ngpt,nlay,  ncol)
+    real(wp) :: pfrac_t        (ngpt,nlay,  ncol)
+    real(wp) :: pfrac          (ncol,nlay,  ngpt)
     real(wp) :: planck_function(nbnd,nlay+1,ncol)
     ! -----------------
 
     !$acc enter data copyin(tlay,tlev,tsfc,fmajor,jeta,tropo,jtemp,jpress,gpoint_bands,pfracin,totplnk,gpoint_flavor,one)
     !$acc enter data create(sfc_src,lay_src,lev_src_inc,lev_src_dec)
-    !$acc enter data create(pfrac,planck_function)
+    !$acc enter data create(pfrac,pfrac_t,planck_function)
 
     ! Calculation of fraction of band's Planck irradiance associated with each g-point
     !$acc parallel loop collapse(3)
@@ -562,14 +564,14 @@ contains
           ! itropo = 1 lower atmosphere; itropo = 2 upper atmosphere
           itropo = merge(1,2,tropo(icol,ilay))  !WS moved itropo inside loop for GPU
           iflav = gpoint_flavor(itropo, igpt) !eta interpolation depends on band's flavor
-          pfrac(igpt,ilay,icol) = &
+          pfrac_t(igpt,ilay,icol) = &
             ! interpolation in temperature, pressure, and eta
             interpolate3D(one, fmajor(:,:,:,iflav,icol,ilay), pfracin, &
                           igpt, jeta(:,iflav,icol,ilay), jtemp(icol,ilay),jpress(icol,ilay)+itropo)
         end do ! igpt
       end do   ! layer
     end do     ! column
-
+    call reorder_123x321_kernel(ngpt,nlay,ncol,pfrac_t,pfrac)
     !
     ! Planck function by band for the surface
     ! Compute surface source irradiance for g-point, equals band irradiance x fraction for g-point
@@ -584,7 +586,7 @@ contains
     !$acc parallel loop collapse(2)
     do igpt = 1, ngpt
       do icol = 1, ncol
-        sfc_src(igpt,icol) = pfrac(igpt,sfc_lay,icol) * planck_function(gpoint_bands(igpt), 1, icol)
+        sfc_src(icol,igpt) = pfrac(icol,sfc_lay,igpt) * planck_function(gpoint_bands(igpt), 1, icol)
       end do
     end do ! icol
 
@@ -602,7 +604,7 @@ contains
     do igpt = 1, ngpt
       do ilay = 1, nlay
         do icol = 1, ncol
-          lay_src(igpt,ilay,icol) = pfrac(igpt,ilay,icol) * planck_function(gpoint_bands(igpt),ilay,icol)
+          lay_src(icol,ilay,igpt) = pfrac(icol,ilay,igpt) * planck_function(gpoint_bands(igpt),ilay,icol)
         end do
       end do ! ilay
     end do ! icol
@@ -627,14 +629,14 @@ contains
     do igpt = 1, ngpt
       do ilay = 1, nlay
         do icol = 1, ncol
-          lev_src_dec(igpt,ilay,icol) = pfrac(igpt,ilay,icol) * planck_function(gpoint_bands(igpt),ilay,  icol)
-          lev_src_inc(igpt,ilay,icol) = pfrac(igpt,ilay,icol) * planck_function(gpoint_bands(igpt),ilay+1,icol)
+          lev_src_dec(icol,ilay,igpt) = pfrac(icol,ilay,igpt) * planck_function(gpoint_bands(igpt),ilay,  icol)
+          lev_src_inc(icol,ilay,igpt) = pfrac(icol,ilay,igpt) * planck_function(gpoint_bands(igpt),ilay+1,icol)
         end do
       end do ! ilay
     end do ! icol
 
     !$acc exit data delete(tlay,tlev,tsfc,fmajor,jeta,tropo,jtemp,jpress,gpoint_bands,pfracin,totplnk,gpoint_flavor,one)
-    !$acc exit data delete(pfrac,planck_function)
+    !$acc exit data delete(pfrac,pfrac_t,planck_function)
     !$acc exit data copyout(sfc_src,lay_src,lev_src_inc,lev_src_dec)
 
   end subroutine compute_Planck_source

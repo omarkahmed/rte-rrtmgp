@@ -512,7 +512,9 @@ contains
     real(wp), dimension(2), parameter :: one = [1._wp, 1._wp]
     real(wp) :: pfrac_t        (ngpt,nlay,  ncol)
     real(wp) :: pfrac          (ncol,nlay,  ngpt)
-    real(wp) :: planck_function(nbnd,nlay+1,ncol)
+    real(wp) :: planck_function_t  (nbnd,nlay+1,ncol)
+    real(wp) :: planck_function    (ncol,nlay+1,nbnd)
+    real(wp) :: planck_function_sfc(nbnd,   ncol)
     ! -----------------
 
     ! Calculation of fraction of band's Planck irradiance associated with each g-point
@@ -538,17 +540,17 @@ contains
     ! Compute surface source irradiance for g-point, equals band irradiance x fraction for g-point
     !
     do icol = 1, ncol
-      planck_function(1:nbnd,1,icol) = interpolate1D(tsfc(icol), temp_ref_min, totplnk_delta, totplnk)
+      planck_function_sfc(1:nbnd,icol) = interpolate1D(tsfc(icol), temp_ref_min, totplnk_delta, totplnk)
     end do
     !
     ! Map to g-points
     !
-    do icol = 1, ncol
-      do ibnd = 1, nbnd
-        gptS = band_lims_gpt(1, ibnd)
-        gptE = band_lims_gpt(2, ibnd)
-        do igpt = gptS, gptE
-          sfc_src(icol,igpt) = pfrac(icol,sfc_lay,igpt) * planck_function(ibnd, 1, icol)
+    do ibnd = 1, nbnd
+      gptS = band_lims_gpt(1, ibnd)
+      gptE = band_lims_gpt(2, ibnd)
+      do igpt = gptS, gptE
+        do icol = 1, ncol
+          sfc_src(icol,igpt) = pfrac(icol,sfc_lay,igpt) * planck_function_sfc(ibnd,icol)
         end do
       end do
     end do ! icol
@@ -559,9 +561,10 @@ contains
     do icol = 1, ncol
       do ilay = 1, nlay
         ! Compute layer source irradiance for g-point, equals band irradiance x fraction for g-point
-        planck_function(1:nbnd,ilay,icol) = interpolate1D(tlay(icol,ilay), temp_ref_min, totplnk_delta, totplnk)
+        planck_function_t(1:nbnd,ilay,icol) = interpolate1D(tlay(icol,ilay), temp_ref_min, totplnk_delta, totplnk)
       end do
     end do
+    call reorder_123x321_kernel(nbnd,nlay+1,ncol,planck_function_t,planck_function)
     !
     ! Map to g-points
     !
@@ -571,7 +574,7 @@ contains
       do igpt = gptS, gptE
         do ilay = 1, nlay
           do icol = 1, ncol
-            lay_src(icol,ilay,igpt) = pfrac(icol,ilay,igpt) * planck_function(ibnd,ilay,icol)
+            lay_src(icol,ilay,igpt) = pfrac(icol,ilay,igpt) * planck_function(icol,ilay,ibnd)
           end do ! col
         end do ! lay
       end do ! gpt
@@ -579,11 +582,11 @@ contains
 
     ! compute level source irradiances for each g-point, one each for upward and downward paths
     do icol = 1, ncol
-      planck_function(1:nbnd,       1,icol) = interpolate1D(tlev(icol,     1), temp_ref_min, totplnk_delta, totplnk)
-      do ilay = 1, nlay
-        planck_function(1:nbnd,ilay+1,icol) = interpolate1D(tlev(icol,ilay+1), temp_ref_min, totplnk_delta, totplnk)
+      do ilay = 1, nlay+1
+        planck_function_t(1:nbnd,ilay,icol) = interpolate1D(tlev(icol,ilay), temp_ref_min, totplnk_delta, totplnk)
       end do
     end do
+    call reorder_123x321_kernel(nbnd,nlay+1,ncol,planck_function_t,planck_function)
     !
     ! Map to g-points
     !
@@ -593,8 +596,8 @@ contains
       do igpt = gptS, gptE
         do ilay = 1, nlay
           do icol = 1, ncol
-            lev_src_inc(icol,ilay,igpt) = pfrac(icol,ilay,igpt) * planck_function(ibnd,ilay+1,icol)
-            lev_src_dec(icol,ilay,igpt) = pfrac(icol,ilay,igpt) * planck_function(ibnd,ilay,  icol)
+            lev_src_inc(icol,ilay,igpt) = pfrac(icol,ilay,igpt) * planck_function(icol,ilay+1,ibnd)
+            lev_src_dec(icol,ilay,igpt) = pfrac(icol,ilay,igpt) * planck_function(icol,ilay,  ibnd)
           end do
         end do
       end do ! ilay
