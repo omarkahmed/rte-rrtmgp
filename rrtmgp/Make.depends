@@ -28,7 +28,7 @@ mo_gas_concentrations.o: mo_rte_kind.o mo_util_string.o mo_gas_concentrations.F9
 #
 # Gas optics
 #
-mo_gas_optics_kernels.o: mo_rte_kind.o mo_gas_optics_kernels.F90
+mo_gas_optics_kernels.o: mo_rte_kind.o mo_reorder_kernels.o mo_gas_optics_kernels.F90
 
 mo_gas_optics.o: mo_rte_kind.o mo_gas_concentrations.o \
   mo_optical_props.o mo_source_functions.o \
