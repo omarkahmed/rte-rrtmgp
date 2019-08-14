@@ -34,6 +34,7 @@ module mo_solar_variability
       !
       generic,   public  :: solar_var_index => solar_var_ind_direct, &
                                                solar_var_ind_interp 
+      procedure, public  :: set_scon_or_tsi
       procedure, public  :: load_avgcyc
       procedure, public  :: finalize
       !
@@ -51,6 +52,39 @@ module mo_solar_variability
   end interface check_range
 
 contains
+  ! ------------------------------------------------------------------------------
+  !
+  ! Routine to load mean facular and sunspot index tables
+  !
+  ! ------------------------------------------------------------------------------
+  function set_scon_or_tsi(this, gas_opt, scon_or_tsi) result(error_msg)
+
+    class(ty_solar_var),        intent(in   ) :: this
+    type(ty_gas_optics_rrtmgp), intent(inout) :: gas_opt     ! Gas optics type
+    ! Lookup table of mean solar cycle facular brightening and sunspot dimming indices
+    real(wp), optional,         intent(in   ) :: scon_or_tsi
+    character(len=128)    :: error_msg
+    ! -------
+    !
+    ! Local variables
+    !
+    real(wp)              :: scon_def
+
+    ! Default solar constant or TSI (1360.858 Wm-2)
+    if (allocated(gas_opt%solar_irr_int)) then 
+       scon_def = gas_opt%solar_irr_int(1) + gas_opt%solar_irr_int(2) + &
+                  gas_opt%solar_irr_int(3)
+       gas_opt%scon_or_tsi = scon_def
+    endif
+    ! User-specified solar constant or TSI if different from default
+    if (present(scon_or_tsi) .and.  scon_or_tsi /= scon_def) then 
+       gas_opt%scon_or_tsi = scon_or_tsi
+    endif
+
+    error_msg = check_range(gas_opt%scon_or_tsi, 0._wp, huge(gas_opt%scon_or_tsi), &
+                            'set_scon_or_tsi: scon_or_tsi must be positive')
+  
+  end function set_scon_or_tsi
   ! ------------------------------------------------------------------------------
   !
   ! Routine to load mean facular and sunspot index tables

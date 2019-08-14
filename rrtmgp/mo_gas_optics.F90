@@ -49,7 +49,7 @@ module mo_gas_optics
     function gas_optics_ext_abstract(this,                         &
                                      play, plev, tlay, gas_desc,   & ! mandatory inputs
                                      optical_props, toa_src,       & ! mandatory outputs
-                                     scon_or_tsi, col_dry) result(error_msg) ! optional input
+                                     col_dry) result(error_msg)      ! optional input
       import ty_gas_optics, wp, ty_gas_concs, ty_optical_props_arry
       class(ty_gas_optics), intent(inout) :: this
       real(wp), dimension(:,:), intent(in   ) :: play, &   ! layer pressures [Pa, mb]; (ncol,nlay)
@@ -61,14 +61,6 @@ module mo_gas_optics
       real(wp), dimension(:,:), intent(  out) :: toa_src     ! Incoming solar irradiance(ncol,ngpt)
       character(len=128)                      :: error_msg
       ! Optional inputs
-      real(wp),                 intent(in   ), &
-                             optional, target :: scon_or_tsi ! Solar constant over the cycle if solar
-                                                             ! variability is activated
-                                                             ! (i.e. this%solar_var_ind is allocated), or
-                                                             ! Total solar irradiance if solar
-                                                             ! variability is not activated
-                                                             ! (i.e. this%solar_var_ind is not allocated)
-                                                             ! Units: W m-2
       real(wp), dimension(:,:), intent(in   ), &
                              optional, target :: col_dry ! Column dry amount; dim(ncol,nlay)
     end function gas_optics_ext_abstract

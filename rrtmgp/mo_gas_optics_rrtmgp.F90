@@ -160,7 +160,12 @@ module mo_gas_optics_rrtmgp
                                                                        ! (facular, sunspot)
                                                                        ! Allows user to scale the amplitudes of the facular and 
                                                                        ! sunspot cycles. 
-
+    real(wp), public                              :: scon_or_tsi       ! Solar constant over the cycle if solar variability is
+                                                                       ! activated (i.e. this%solar_var_ind is allocated), or
+                                                                       ! Total solar irradiance if solar variability is not
+                                                                       ! activated (i.e. this%solar_var_ind is not allocated)
+                                                                       ! Units: W m-2
+                                                            
   contains
     ! Type-bound procedures
     ! Public procedures
@@ -322,7 +327,7 @@ contains
   function gas_optics_ext(this,                         &
                           play, plev, tlay, gas_desc,   & ! mandatory inputs
                           optical_props, toa_src,       & ! mandatory outputs
-                          scon_or_tsi, col_dry) result(error_msg) ! optional input
+                          col_dry) result(error_msg) ! optional input
 
     class(ty_gas_optics_rrtmgp), intent(inout) :: this
     real(wp), dimension(:,:), intent(in   ) :: play, &   ! layer pressures [Pa, mb]; (ncol,nlay)
@@ -336,15 +341,6 @@ contains
     character(len=128)                      :: error_msg
 
     ! Optional inputs
-    real(wp),                 intent(in   ), &
-                           optional, target :: scon_or_tsi ! Solar constant over the cycle if solar
-                                                           ! variability is activated
-                                                           ! (i.e. this%solar_var_ind is allocated), or
-                                                           ! Total solar irradiance if solar
-                                                           ! variability is not activated
-                                                           ! (i.e. this%solar_var_ind is not allocated)
-                                                           ! Units: W m-2
-                                                            
     real(wp), dimension(:,:), intent(in   ), &
                            optional, target :: col_dry ! Column dry amount; dim(ncol,nlay)
     ! ----------------------------------------------------------
@@ -395,48 +391,26 @@ contains
     ! b) the overal integral of the total irradiance over the cycle (solar constant,
     ! given by scon_or_tsi). 
     !
-    ! Error checking
-    if(present(scon_or_tsi)) then
-      error_msg = check_range(scon_or_tsi, 0._wp, huge(scon_or_tsi), 'scon_or_tsi must be positive')
-      if(error_msg  /= '') return
-    end if
+    ! Define default solar constant (as sum of spectrally-integrated, mean solar cycle 
+    ! quiet sun, facular and sunspot terms.
+    ! Default be replaced below by value specified by user if provided in scon_or_tsi
 
-    ! With solar constant scaling
-    if (present(scon_or_tsi)) then 
-
-       ! Solar variability from user specified facular and sunspot indices
-       if (allocated(this%solar_var_ind)) then 
-          scon = scon_or_tsi
-          error_msg = compute_solar_var(this,                         &
-                                        svar_irr, svar_fac, svar_spt, &
-                                        scon)
-          if(error_msg  /= '') return
-       ! No solar variability; total solar irradiance is scon_or_tsi, so scale quiet term appropriately
-       else
-          tsi = scon_or_tsi
-          svar_cprime = this%solar_irr_int(1) + this%solar_irr_int(2) + &
-                        this%solar_irr_int(3)
-          svar_r = tsi / svar_cprime
-          svar_fac = svar_r
-          svar_spt = svar_r
-          svar_irr = svar_r
-       endif
-
-    ! Without solar constant scaling
+    ! Solar variability from user specified facular and sunspot indices
+    if (allocated(this%solar_var_ind)) then 
+       scon = this%scon_or_tsi
+       error_msg = compute_solar_var(this,                         &
+                                     svar_irr, svar_fac, svar_spt, &
+                                     scon)
+       if(error_msg  /= '') return
+    ! No solar variability; total solar irradiance is scon_or_tsi, so scale quiet term appropriately
     else
-
-       ! Solar variability from user specified facular and sunspot indices
-       if (allocated(this%solar_var_ind)) then 
-          error_msg = compute_solar_var(this,                        &
-                                        svar_irr, svar_fac, svar_spt)
-          if(error_msg  /= '') return
-     ! No solar variability, fixed total irradiance of 1360.85 Wm-2
-       else
-          svar_fac = 1._wp 
-          svar_spt = 1._wp 
-          svar_irr = 1._wp 
-       endif
-
+       tsi = this%scon_or_tsi
+       svar_cprime = this%solar_irr_int(1) + this%solar_irr_int(2) + &
+                     this%solar_irr_int(3)
+       svar_r = tsi / svar_cprime
+       svar_fac = svar_r
+       svar_spt = svar_r
+       svar_irr = svar_r
     endif
 
     ! Set final TOA solar source function
@@ -678,7 +652,7 @@ contains
 
     class(ty_gas_optics_rrtmgp), intent(inout) :: gas_opt
     real(wp),                    intent(out  ) :: svar_irr, svar_fac, svar_spt
-    real(wp), optional,          intent(in   ) :: scon
+    real(wp),                    intent(in   ) :: scon
 
     character(len=128)                         :: error_msg
 
@@ -701,24 +675,13 @@ contains
     ! calculate the final total solar irradiance. The derivation 
     ! incorporates any solar constant scaling (if requested by the user).
     !
-    if (present(scon)) then 
+    if (allocated(gas_opt%solar_var_ind_scl)) then 
+       gas_opt%solar_irr_int(1) = gas_opt%solar_var_ind_scl(1) * gas_opt%solar_irr_int(1)
+       gas_opt%solar_irr_int(2) = gas_opt%solar_var_ind_scl(2) * gas_opt%solar_irr_int(2)
+    endif
+    tsi = scon - gas_opt%solar_irr_int(1) - gas_opt%solar_irr_int(2)
+    svar_irr = tsi / gas_opt%solar_irr_int(3)
 
-       if (allocated(gas_opt%solar_var_ind_scl)) then 
-          gas_opt%solar_irr_int(1) = gas_opt%solar_var_ind_scl(1) * gas_opt%solar_irr_int(1)
-          gas_opt%solar_irr_int(2) = gas_opt%solar_var_ind_scl(2) * gas_opt%solar_irr_int(2)
-       endif
-       tsi = scon - gas_opt%solar_irr_int(1) - gas_opt%solar_irr_int(2)
-       svar_irr = tsi / gas_opt%solar_irr_int(3)
-
-    else
-       !
-       ! Keep quiet term as is; total solar irradiance is the sum of the quiet term
-       ! and user-specified facular and sunspot terms
-       !
-       svar_irr = 1._wp
-
-    end if
- 
   end function compute_solar_var
   !------------------------------------------------------------------------------------------
   !
