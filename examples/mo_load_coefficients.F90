@@ -23,6 +23,7 @@ module mo_load_coefficients
   use mo_rte_kind,           only: wp, wl
   use mo_gas_concentrations, only: ty_gas_concs
   use mo_gas_optics_rrtmgp,  only: ty_gas_optics_rrtmgp
+  use mo_solar_variability,  only: ty_solar_var
   ! --------------------------------------------------
   use mo_simple_netcdf, only: read_field, read_char_vec, read_logical_vec, var_exists, get_dim_size
   use netcdf
@@ -42,10 +43,11 @@ contains
   end subroutine
   !--------------------------------------------------------------------------------------------------------------------
   ! read optical coefficients from NetCDF file
-  subroutine load_and_init(kdist, filename, available_gases)
+  subroutine load_and_init(kdist, filename, available_gases, solar_var)
     class(ty_gas_optics_rrtmgp), intent(inout) :: kdist
     character(len=*),     intent(in   ) :: filename
     class(ty_gas_concs),  intent(in   ) :: available_gases ! Which gases does the host model have available?
+    class(ty_solar_var),  optional, intent(inout) :: solar_var ! optional solar variability data
     ! --------------------------------------------------
     !
     ! Variables that will be passed to gas_optics%load()
@@ -70,9 +72,13 @@ contains
     real(wp), dimension(:,:,:),       allocatable :: kminor_lower,                    kminor_upper
 
     real(wp), dimension(:,:,:  ), allocatable :: rayl_lower, rayl_upper
-    real(wp), dimension(:      ), allocatable :: solar_src
     real(wp), dimension(:,:    ), allocatable :: totplnk
     real(wp), dimension(:,:,:,:), allocatable :: planck_frac
+    real(wp), dimension(:,:    ), allocatable :: solar_irr
+    real(wp), dimension(:      ), allocatable :: solar_irr_int
+    real(wp), dimension(:      ), allocatable :: svar_offset
+    real(wp), dimension(:      ), allocatable :: svar_avg
+    real(wp), dimension(:,:    ), allocatable :: svar_avgcyc
     ! -----------------
     !
     ! Book-keeping variables
@@ -92,7 +98,9 @@ contains
                nminor_absorber_intervals_upper, &
                ncontributors_lower, &
                ncontributors_upper, &
-               ninternalSourcetemps
+               ninternalSourcetemps, &
+               nsolarterms,     &
+               nsolarfrac
     ! --------------------------------------------------
     !
     ! How big are the various arrays?
@@ -117,6 +125,8 @@ contains
                       = get_dim_size(ncid,'temperature_Planck')
     ncontributors_lower = get_dim_size(ncid,'contributors_lower')
     ncontributors_upper = get_dim_size(ncid,'contributors_upper')
+    nsolarterms         = get_dim_size(ncid,'n_solar_terms')
+    nsolarfrac          = get_dim_size(ncid,'n_solar_frac')
     ! -----------------
     !
     ! Read the many arrays
@@ -205,7 +215,10 @@ contains
       !
       ! Solar source doesn't have an dependencies yet
       !
-      solar_src = read_field(ncid, 'solar_source', ngpts)
+      solar_irr = read_field(ncid, 'solar_irradiance', nsolarterms, ngpts)
+      solar_irr_int = read_field(ncid, 'solar_irr_int', nsolarterms)
+      svar_offset = read_field(ncid, 'solar_var_offset', nsolarterms)
+      svar_avg = read_field(ncid, 'solar_var_avg', nsolarterms)
       call stop_on_err(kdist%load(available_gases, &
                                   gas_names,   &
                                   key_species, &
@@ -228,8 +241,15 @@ contains
                                   scale_by_complement_upper, &
                                   kminor_start_lower, &
                                   kminor_start_upper, &
-                                  solar_src, &
+                                  solar_irr, solar_irr_int, &
+                                  svar_offset, svar_avg, &
                                   rayl_lower, rayl_upper))
+
+      if (present(solar_var)) then 
+         svar_avgcyc = read_field(ncid, 'solar_var_avgcyc', nsolarterms, nsolarfrac)
+         call stop_on_err(solar_var%load_avgcyc(svar_avgcyc))
+      endif
+
     end if
     ! --------------------------------------------------
     ncid = nf90_close(ncid)
