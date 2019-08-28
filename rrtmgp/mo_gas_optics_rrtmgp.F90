@@ -140,7 +140,7 @@ module mo_gas_optics_rrtmgp
     !   Allocated only when gas optics object is external-source
     !   n-solar-terms: quiet sun, facular brightening and sunspot dimming components
     !
-    real(wp), dimension(:,:), allocatable, public :: solar_irr         ! incoming solar irradiance (n-solar-terms,g-point)
+    real(wp), dimension(:,:), allocatable :: solar_irr  ! incoming solar irradiance (n-solar-terms,g-point)
     !
     ! Mean facular brightening, sunspot dimming and quiet sun coefficient terms (NRLSSI2, 100-50000 cm-1)
     ! spectrally integrated (from hi-resolution values after mapping to g-point space)
