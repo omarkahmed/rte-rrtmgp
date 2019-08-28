@@ -79,6 +79,9 @@ contains
     real(wp), dimension(:      ), allocatable :: svar_offset
     real(wp), dimension(:      ), allocatable :: svar_avg
     real(wp), dimension(:,:    ), allocatable :: svar_avgcyc
+    real(wp)                                  :: irr_int, fac_int, spt_int
+    real(wp)                                  :: fac_offset, spt_offset
+    real(wp)                                  :: fac_avg_ind, spt_avg_ind
     ! -----------------
     !
     ! Book-keeping variables
@@ -216,9 +219,19 @@ contains
       ! Solar source doesn't have an dependencies yet
       !
       solar_irr = read_field(ncid, 'solar_irradiance', nsolarterms, ngpts)
+      allocate (solar_irr_int(nsolarterms))
+      allocate (svar_offset(nsolarterms))
+      allocate (svar_avg(nsolarterms))
       solar_irr_int = read_field(ncid, 'solar_irr_int', nsolarterms)
+      fac_int = solar_irr_int(1)
+      spt_int = solar_irr_int(2)
+      irr_int = solar_irr_int(3)
       svar_offset = read_field(ncid, 'solar_var_offset', nsolarterms)
+      fac_offset = svar_offset(1)
+      spt_offset = svar_offset(2)
       svar_avg = read_field(ncid, 'solar_var_avg', nsolarterms)
+      fac_avg_ind = svar_avg(1)
+      spt_avg_ind = svar_avg(2)
       call stop_on_err(kdist%load(available_gases, &
                                   gas_names,   &
                                   key_species, &
@@ -241,8 +254,8 @@ contains
                                   scale_by_complement_upper, &
                                   kminor_start_lower, &
                                   kminor_start_upper, &
-                                  solar_irr, solar_irr_int, &
-                                  svar_offset, svar_avg, &
+                                  solar_irr, irr_int, fac_int, spt_int, &
+                                  fac_offset, spt_offset, fac_avg_ind, spt_avg_ind, &
                                   rayl_lower, rayl_upper))
 
       if (present(solar_var)) then 
