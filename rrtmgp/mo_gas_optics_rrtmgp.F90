@@ -158,6 +158,7 @@ module mo_gas_optics_rrtmgp
     procedure, private :: load_ext
     procedure, public  :: gas_optics_int
     procedure, public  :: gas_optics_ext
+    procedure, public  :: gas_optics_int_cloud
     procedure, private :: check_key_species_present
     procedure, private :: get_minor_list
     ! Interpolation table dimensions
@@ -291,7 +292,204 @@ contains
     !$acc exit data delete(tsfc,tlev)
     !$acc exit data delete(jtemp, jpress, tropo, fmajor, jeta)
   end function gas_optics_int
-  !------------------------------------------------------------------------------------------
+!--------------------------------------------------------------------------------------------------------------------
+  !
+  ! Compute gas optical depth and Planck source functions,
+  !  given temperature, pressure, and composition
+  !
+  function gas_optics_int_cloud(this,                             &
+                          play, plev, tlay, tsfc, gas_desc, &
+                          optical_props, sources,           &
+                          col_dry, tlev, optical_props_clouds) result(error_msg)
+    use mo_optical_props_add,   only: ty_optical_props_tang, ty_optical_props_Tip
+    ! inputs
+    class(ty_gas_optics_rrtmgp), intent(in) :: this
+    real(wp), dimension(:,:), intent(in   ) :: play, &   ! layer pressures [Pa, mb]; (ncol,nlay)
+                                               plev, &   ! level pressures [Pa, mb]; (ncol,nlay+1)
+                                               tlay      ! layer temperatures [K]; (ncol,nlay)
+    real(wp), dimension(:),   intent(in   ) :: tsfc      ! surface skin temperatures [K]; (ncol)
+    type(ty_gas_concs),       intent(in   ) :: gas_desc  ! Gas volume mixing ratios
+    ! output
+    class(ty_optical_props_arry),  &
+                              intent(inout) :: optical_props ! Optical properties
+    class(ty_optical_props_2str),  &
+                              intent(in) :: optical_props_clouds ! Optical properties
+    class(ty_source_func_lw    ),  &
+                              intent(inout) :: sources       ! Planck sources
+    character(len=128)                      :: error_msg
+    ! Optional inputs
+    real(wp), dimension(:,:),   intent(in   ), &
+                           optional, target :: col_dry, &  ! Column dry amount; dim(ncol,nlay)
+                                               tlev        ! level temperatures [K]; (ncol,nlay+1)
+    ! ----------------------------------------------------------
+    ! Local variables
+    ! Interpolation coefficients for use in source function
+    integer,     dimension(size(play,dim=1), size(play,dim=2)) :: jtemp, jpress
+    logical(wl), dimension(size(play,dim=1), size(play,dim=2)) :: tropo
+    real(wp),    dimension(2,2,2,get_nflav(this),size(play,dim=1), size(play,dim=2)) :: fmajor
+    integer,     dimension(2,    get_nflav(this),size(play,dim=1), size(play,dim=2)) :: jeta
+
+    integer :: ncol, nlay, ngpt, nband, ngas, nflav
+    real(wp) :: tauc, ssa, g
+    integer  :: icol, ilay, ibnd, i
+    ! ----------------------------------------------------------
+    ncol  = size(play,dim=1)
+    nlay  = size(play,dim=2)
+    ngpt  = this%get_ngpt()
+    nband = this%get_nband()
+    !
+    ! Gas optics
+    !
+    !$acc enter data create(jtemp, jpress, tropo, fmajor, jeta)
+    error_msg = compute_gas_taus(this,                       &
+                                 ncol, nlay, ngpt, nband,    &
+                                 play, plev, tlay, gas_desc, &
+                                 optical_props,              &
+                                 jtemp, jpress, jeta, tropo, fmajor, &
+                                 col_dry)
+    if(error_msg  /= '') return
+    ! optical_props%tau = 0.1
+
+    ! ----------------------------------------------------------
+    !
+    ! External source -- check arrays sizes and values
+    ! input data sizes and values
+    !
+    error_msg = check_extent(tsfc, ncol, 'tsfc')
+    if(error_msg  /= '') return
+    error_msg = check_range(tsfc, this%temp_ref_min,  this%temp_ref_max,  'tsfc')
+    if(error_msg  /= '') return
+    if(present(tlev)) then
+      error_msg = check_extent(tlev, ncol, nlay+1, 'tlev')
+      if(error_msg  /= '') return
+      error_msg = check_range(tlev, this%temp_ref_min, this%temp_ref_max, 'tlev')
+      if(error_msg  /= '') return
+    end if
+
+    !
+    !   output extents
+    !
+    if(any([sources%get_ncol(), sources%get_nlay(), sources%get_ngpt()] /= [ncol, nlay, ngpt])) &
+      error_msg = "gas_optics%gas_optics: source function arrays inconsistently sized"
+    if(error_msg  /= '') return
+
+    ! add cloud properties to optical_props
+    select type(optical_props)
+
+    type is (ty_optical_props_1scl)
+      do ibnd=1,nband
+        do icol=1,ncol
+          do ilay=1,nlay
+            ssa = optical_props_clouds%ssa(icol,ilay,ibnd)
+            tauc= optical_props_clouds%tau(icol,ilay,ibnd)
+            do i=optical_props%band2gpt(1,ibnd),optical_props%band2gpt(2,ibnd)
+
+              optical_props%tau(icol,ilay,i) = &
+                  optical_props%tau(icol,ilay,i) + tauc*(1.-ssa)
+           enddo
+          enddo
+        enddo
+      enddo
+
+    type is (ty_optical_props_2str)
+      do ibnd=1,nband
+        do icol=1,ncol
+          do ilay=1,nlay
+            ssa = optical_props_clouds%ssa(icol,ilay,ibnd)
+            g   = optical_props_clouds%g  (icol,ilay,ibnd)
+            tauc= optical_props_clouds%tau(icol,ilay,ibnd)
+            do i=optical_props%band2gpt(1,ibnd),optical_props%band2gpt(2,ibnd)
+              optical_props%g(icol,ilay,i)   = g
+              
+              optical_props%tau(icol,ilay,i) = &
+                  optical_props%tau(icol,ilay,i) + tauc
+              if (tauc*ssa > epsilon(1.)) then
+                optical_props%ssa(icol,ilay,i) = &
+                      ssa*tauc/optical_props%tau(icol,ilay,i)
+              else
+                optical_props%ssa(icol,ilay,i) = 0.
+              endif
+
+           enddo
+          enddo
+        enddo
+      enddo
+    type is (ty_optical_props_Tang)
+      do ibnd=1,nband
+        do icol=1,ncol
+          do ilay=1,nlay
+            ssa = optical_props_clouds%ssa(icol,ilay,ibnd)
+            g   = optical_props_clouds%g  (icol,ilay,ibnd)
+            tauc= optical_props_clouds%tau(icol,ilay,ibnd)
+            do i=optical_props%band2gpt(1,ibnd),optical_props%band2gpt(2,ibnd)
+              optical_props%g(icol,ilay,i)   = g
+
+              optical_props%tau(icol,ilay,i) = &
+                  optical_props%tau(icol,ilay,i) + tauc
+
+              if (tauc*ssa > epsilon(1.)) then
+                optical_props%ssa(icol,ilay,i) = &
+                      ssa*tauc/optical_props%tau(icol,ilay,i)
+              else
+                optical_props%ssa(icol,ilay,i) = 0.
+              endif
+
+           enddo
+          enddo
+        enddo
+      enddo
+      ! print *,'dddddddddddddddddddddddddddddddd'
+      ! do ilay=1,nlay
+      !     print *,  optical_props%ssa(1,ilay,1),optical_props%tau(1,ilay,1) 
+      ! enddo
+
+      error_msg=optical_props%delta_scale()
+      ! do ilay=1,nlay
+      !     print *,  optical_props%ssa(1,ilay,1),optical_props%tau(1,ilay,1) 
+      ! enddo
+      ! print *,'dddddddddddddddddddddddddddddddd'
+    type is (ty_optical_props_Tip)
+      do ibnd=1,nband
+        do icol=1,ncol
+          do ilay=1,nlay
+            ssa = optical_props_clouds%ssa(icol,ilay,ibnd)
+            g   = optical_props_clouds%g  (icol,ilay,ibnd)
+            tauc= optical_props_clouds%tau(icol,ilay,ibnd)
+            do i=optical_props%band2gpt(1,ibnd),optical_props%band2gpt(2,ibnd)
+              optical_props%g(icol,ilay,i)   = g
+
+              optical_props%tau(icol,ilay,i) = &
+                  optical_props%tau(icol,ilay,i) + tauc
+
+              if (tauc*ssa > epsilon(1.)) then
+                optical_props%ssa(icol,ilay,i) = &
+                      ssa*tauc/optical_props%tau(icol,ilay,i)
+              else
+                optical_props%ssa(icol,ilay,i) = 0.
+              endif
+           enddo
+          enddo
+        enddo
+      enddo
+      error_msg=optical_props%delta_scale()
+
+      class default
+        print *,'class default'
+        STOP
+    end select  
+
+    !
+    ! Interpolate source function
+    !
+    error_msg = source(this,                               &
+                       ncol, nlay, nband, ngpt,            &
+                       play, plev, tlay, tsfc,             &
+                       jtemp, jpress, jeta, tropo, fmajor, &
+                       sources,                            &
+                       tlev)
+    !$acc exit data delete(jtemp, jpress, tropo, fmajor, jeta)
+  end function gas_optics_int_cloud
+    !------------------------------------------------------------------------------------------
   !
   ! Compute gas optical depth given temperature, pressure, and composition
   !
@@ -607,20 +805,20 @@ contains
                   result(error_msg)
     ! inputs
     class(ty_gas_optics_rrtmgp),    intent(in ) :: this
-    integer,                               intent(in   ) :: ncol, nlay, nbnd, ngpt
-    real(wp), dimension(ncol,nlay),        intent(in   ) :: play   ! layer pressures [Pa, mb]
-    real(wp), dimension(ncol,nlay+1),      intent(in   ) :: plev   ! level pressures [Pa, mb]
-    real(wp), dimension(ncol,nlay),        intent(in   ) :: tlay   ! layer temperatures [K]
-    real(wp), dimension(ncol),             intent(in   ) :: tsfc   ! surface skin temperatures [K]
+    integer,                               intent(in ) :: ncol, nlay, nbnd, ngpt
+    real(wp), dimension(ncol,nlay),        intent(in ) :: play   ! layer pressures [Pa, mb]
+    real(wp), dimension(ncol,nlay+1),      intent(in ) :: plev   ! level pressures [Pa, mb]
+    real(wp), dimension(ncol,nlay),        intent(in ) :: tlay   ! layer temperatures [K]
+    real(wp), dimension(ncol),             intent(in ) :: tsfc   ! surface skin temperatures [K]
     ! Interplation coefficients
-    integer,     dimension(ncol,nlay),     intent(in   ) :: jtemp, jpress
-    logical(wl), dimension(ncol,nlay),     intent(in   ) :: tropo
+    integer,     dimension(ncol,nlay),     intent(in ) :: jtemp, jpress
+    logical(wl), dimension(ncol,nlay),     intent(in ) :: tropo
     real(wp),    dimension(2,2,2,get_nflav(this),ncol,nlay),  &
-                                           intent(in   ) :: fmajor
+                                           intent(in ) :: fmajor
     integer,     dimension(2,    get_nflav(this),ncol,nlay),  &
-                                           intent(in   ) :: jeta
+                                           intent(in ) :: jeta
     class(ty_source_func_lw    ),          intent(inout) :: sources
-    real(wp), dimension(ncol,nlay+1),      intent(in   ), &
+    real(wp), dimension(ncol,nlay+1),      intent(in ), &
                                       optional, target :: tlev          ! level temperatures [K]
     character(len=128)                                 :: error_msg
     ! ----------------------------------------------------------
@@ -669,13 +867,26 @@ contains
     !$acc enter data copyin(sources)
     !$acc enter data create(sources%lay_source, sources%lev_source_inc, sources%lev_source_dec, sources%sfc_source)
     !$acc enter data create(sfc_source_t, lay_source_t, lev_source_inc_t, lev_source_dec_t) attach(tlev_wk)
-    call compute_Planck_source(ncol, nlay, nbnd, ngpt, &
-                get_nflav(this), this%get_neta(), this%get_npres(), this%get_ntemp(), this%get_nPlanckTemp(), &
-                tlay, tlev_wk, tsfc, merge(1,nlay,play(1,1) > play(1,nlay)), &
-                fmajor, jeta, tropo, jtemp, jpress,                    &
-                this%get_gpoint_bands(), this%get_band_lims_gpoint(), this%planck_frac, this%temp_ref_min,&
-                this%totplnk_delta, this%totplnk, this%gpoint_flavor,  &
-                sfc_source_t, lay_source_t, lev_source_inc_t, lev_source_dec_t)
+    if (allocated(sources%planckLay) .and. allocated(sources%planckLev) &
+        .and. allocated(sources%planckSfc).and. allocated(sources%planckFrac) )  then
+    !$acc enter data create(sources%planckSfc, sources%planckLay, sources%planckLev, sources%planckFrac)
+      call compute_Planck_source(ncol, nlay, nbnd, ngpt, &
+                  get_nflav(this), this%get_neta(), this%get_npres(), this%get_ntemp(), this%get_nPlanckTemp(), &
+                  tlay, tlev_wk, tsfc, merge(1,nlay,play(1,1) > play(1,nlay)), &
+                  fmajor, jeta, tropo, jtemp, jpress,                    &
+                  this%get_gpoint_bands(), this%get_band_lims_gpoint(), this%planck_frac, this%temp_ref_min,&
+                  this%totplnk_delta, this%totplnk, this%gpoint_flavor,  &
+                  sfc_source_t, lay_source_t, lev_source_inc_t, lev_source_dec_t,&
+                  sources%planckSfc, sources%planckLay, sources%planckLev, sources%planckFrac)
+    else
+      call compute_Planck_source(ncol, nlay, nbnd, ngpt, &
+                  get_nflav(this), this%get_neta(), this%get_npres(), this%get_ntemp(), this%get_nPlanckTemp(), &
+                  tlay, tlev_wk, tsfc, merge(1,nlay,play(1,1) > play(1,nlay)), &
+                  fmajor, jeta, tropo, jtemp, jpress,                    &
+                  this%get_gpoint_bands(), this%get_band_lims_gpoint(), this%planck_frac, this%temp_ref_min,&
+                  this%totplnk_delta, this%totplnk, this%gpoint_flavor,  &
+                  sfc_source_t, lay_source_t, lev_source_inc_t, lev_source_dec_t)
+    endif
     !$acc parallel loop collapse(2)
     do igpt = 1, ngpt
       do icol = 1, ncol
