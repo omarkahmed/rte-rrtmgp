@@ -9,7 +9,6 @@ C     created:   $Date: 2010/07/07 21:10:53 $
       use mo_rte_kind,           only: wp
       use mo_optical_props,       only: ty_optical_props_arry, 
      &    ty_optical_props_1scl, ty_optical_props_2str
-      use mo_optical_props_add,   only: ty_optical_props_tang
 C       use DISORT_LW_mod,          only: DISORT_LW  
       IMPLICIT NONE
       integer, PARAMETER :: MXLAY=603
@@ -223,24 +222,6 @@ C ***    Downward radiative transfer.
                   gasm = optProp%g(ICOL,jj,IG)
                   CALL  GETMOMloc( 3, gasm, NSTR, PMOM(:,jj) )
                 enddo  
-            else  
-                TAUREV(nlay:1:-1) = optProp%tau(ICOL,1:nlay,IG)
-                SSALB(nlay:1:-1)  = optProp%ssa(ICOL,1:nlay,IG)
-                do jj = 1, nlay
-                  gasm = optProp%g(ICOL,jj,IG)
-                  CALL  GETMOMloc( 3, gasm, NSTR, PMOM(:,nlay-jj+1) )
-                enddo  
-              endif
-
-            type is (ty_optical_props_tang)
-
-              if (top_at_1)  then
-                TAUREV(1:nlay) = optProp%tau(ICOL,1:nlay,IG)
-                SSALB (1:nlay) = optProp%ssa(ICOL,1:nlay,IG)
-                do jj = 1, nlay
-                  gasm = optProp%g(ICOL,jj,IG)
-                  CALL  GETMOMloc( 3, gasm, NSTR, PMOM(:,jj) )
-                enddo  
               else  
                 TAUREV(nlay:1:-1) = optProp%tau(ICOL,1:nlay,IG)
                 SSALB(nlay:1:-1)  = optProp%ssa(ICOL,1:nlay,IG)
@@ -250,6 +231,9 @@ C ***    Downward radiative transfer.
                 enddo  
               endif
 
+            class default
+                print *,'TYPE IS NOT SUPPORTED'
+                call exit(200)
           end select
 
           NTAU = nlay+1
@@ -267,8 +251,6 @@ C ***    Downward radiative transfer.
             print *,'clear'
           type is (ty_optical_props_2str) ! two-stream calculation
               print *,'2str'
-            type is (ty_optical_props_tang)
-              print *,'tang'
           end select
 
             do lay=1, NLAYERS
