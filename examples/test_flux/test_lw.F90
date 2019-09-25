@@ -55,7 +55,7 @@ program test_lw
                                             read_cldpp, write_cldop, is_lw
 
   use mo_optical_props,       only: ty_optical_props_arry, ty_optical_props_1scl, ty_optical_props_2str
-  use mo_optical_props_add,   only: ty_optical_props_tang, ty_optical_props_tip
+  use mo_optical_props_add,   only: ty_optical_props_tip
   !
   ! Gas optics: maps physical state of the atmosphere to optical properties
   !
@@ -120,7 +120,6 @@ program test_lw
   type(ty_gas_optics_rrtmgp)  :: k_dist
   type(ty_source_func_lw)     :: sourceClr
   type(ty_source_func_lw)     :: source2str
-  type(ty_source_func_lw)     :: sourceTang
   type(ty_source_func_lw)     :: sourceTip
   type(ty_source_func_lw)     :: source
 
@@ -128,12 +127,10 @@ program test_lw
   type(ty_fluxes_broadband)   :: fluxes
   type(ty_fluxes_broadband)   :: fluxesClr
   type(ty_fluxes_broadband)   :: fluxes2str
-  type(ty_fluxes_broadband)   :: fluxesTang
   type(ty_fluxes_broadband)   :: fluxesTip
 
   real(wp), dimension(:,:)  , target, allocatable :: flux_upC, flux_dnC
   real(wp), dimension(:,:)  , target, allocatable :: flux_up2, flux_dn2
-  real(wp), dimension(:,:)  , target, allocatable :: flux_upT, flux_dnT
   real(wp), dimension(:,:)  , target, allocatable :: flux_upP, flux_dnP
   !
   ! ty_gas_concentration holds multiple columns; we make an array of these objects to
@@ -168,7 +165,6 @@ program test_lw
   real(wp) :: dlwc
   class(ty_optical_props_1scl), allocatable :: optPropClr
   class(ty_optical_props_2str), allocatable :: optProp2str
-  class(ty_optical_props_tang), allocatable :: optPropTang
   class(ty_optical_props_tip),  allocatable :: optPropTip
   integer                                   :: sLev, eLev
   real(wp), dimension(4)                    :: lC, iC
@@ -222,7 +218,7 @@ program test_lw
 #elif defined(TWO_STREAM)
   allocate(ty_optical_props_2str::optical_props)
 #else  
-  allocate(ty_optical_props_tang::optical_props)
+  allocate(ty_optical_props_tip::optical_props)
 #endif
   allocate(cloud_optical_props)
 
@@ -231,7 +227,6 @@ if(k_dist%source_is_internal()) then
   call stop_on_err(source    %alloc(ncol, nlay, k_dist))
   call stop_on_err(sourceClr %alloc(ncol, nlay, k_dist))
   call stop_on_err(source2str%alloc(ncol, nlay, k_dist))
-  call stop_on_err(sourceTang%alloc(ncol, nlay, k_dist))
   call stop_on_err(sourceTip %alloc(ncol, nlay, k_dist))
 
 
@@ -247,18 +242,15 @@ end if
   !
   allocate(ty_optical_props_1scl::optPropClr)
   allocate(ty_optical_props_2str::optProp2str)
-  allocate(ty_optical_props_tang::optPropTang)
   allocate(ty_optical_props_tip ::optPropTip)
 
   call stop_on_err(       optical_props%init(k_dist))
   call stop_on_err(       optPropClr %init(k_dist))
   call stop_on_err(       optProp2str%init(k_dist))
-  call stop_on_err(       optPropTang%init(k_dist))
   call stop_on_err(       optPropTip %init(k_dist))
 
   call stop_on_err(optPropClr%alloc_1scl(ncol, nlay))
   call stop_on_err(optProp2str%alloc_2str(ncol, nlay))
-  call stop_on_err(optPropTang%alloc_2str(ncol, nlay))
   call stop_on_err(optPropTip %alloc_2str(ncol, nlay))
 
   select type (optical_props)
@@ -266,7 +258,7 @@ end if
         call stop_on_err(optical_props%alloc_1scl(ncol, nlay))
     type is (ty_optical_props_2str) ! two-stream calculation
         call stop_on_err(optical_props%alloc_2str(ncol, nlay))
-    type is (ty_optical_props_tang)
+    type is (ty_optical_props_tip)
         call stop_on_err(optical_props%alloc_2str(ncol, nlay))
   end select
 
@@ -425,20 +417,12 @@ end if
   call stop_on_err(k_dist%gas_optics_int_cloud(p_lay, p_lev, &
                                         t_lay, sfc_t, &
                                         gas_concs,                       &
-                                        optPropTang,                   &
-                                        sourceTang,                         &
-                                        tlev=t_lev, &
-                                        col_dry=col_dry,&
-                                        optical_props_clouds=cloud_optical_props) )
-
-  call stop_on_err(k_dist%gas_optics_int_cloud(p_lay, p_lev, &
-                                        t_lay, sfc_t, &
-                                        gas_concs,                       &
                                         optPropTip,                   &
                                         sourceTip,                         &
                                         tlev=t_lev, &
                                         col_dry=col_dry,&
                                         optical_props_clouds=cloud_optical_props) )
+  call stop_on_err(optPropTip%delta_scale())
 
 
 ! zero out the surface source
@@ -446,7 +430,6 @@ if (noSurfaceSource) then
   source    %sfc_source=0.
   sourceClr %sfc_source=0.
   source2str%sfc_source=0.
-  sourceTang%sfc_source=0.
   sourceTip %sfc_source=0.
   source2str%planckSfc=0.
 endif
@@ -454,7 +437,6 @@ endif
   allocate(    flux_up (ncol,nlay+1     ),     flux_dn (ncol,nlay+1     ))
   allocate(    flux_upC(ncol,nlay+1     ),     flux_dnC(ncol,nlay+1     ))
   allocate(    flux_up2(ncol,nlay+1     ),     flux_dn2(ncol,nlay+1     ))
-  allocate(    flux_upT(ncol,nlay+1     ),     flux_dnT(ncol,nlay+1     ))
   allocate(    flux_upP(ncol,nlay+1     ),     flux_dnP(ncol,nlay+1     ))
 
   fluxes%flux_up     => flux_up
@@ -463,8 +445,6 @@ endif
   fluxesClr%flux_dn  => flux_dnC
   fluxes2str%flux_up => flux_up2
   fluxes2str%flux_dn => flux_dn2
-  fluxesTang%flux_up => flux_upT
-  fluxesTang%flux_dn => flux_dnT
   fluxesTip %flux_up => flux_upP
   fluxesTip %flux_dn => flux_dnP
 
@@ -507,17 +487,6 @@ endif
 #ifdef USE_TIMING
     ret =  gptlstop('rte_lw_2str')
 
-    ret =  gptlstart('rte_lw_tang')
-#endif
-
-  call stop_on_err(rte_lw(optPropTang,             &
-                          top_at_1,              &
-                          sourceTang,        &
-                          sfc_emis, &
-                          fluxesTang, n_gauss_angles = n_quad_angles))
-
-#ifdef USE_TIMING
-    ret =  gptlstop('rte_lw_tang')
     ret =  gptlstart('rte_lw_tip')
 #endif
 
@@ -534,7 +503,7 @@ endif
 #endif
 
   call RTREGCLDIP( ncol, nlay, ngpt, n_quad_angles, &
-               optPropTang, &
+               optPropTip, &
                sfc_emis,&
                source2str%planckFrac,&
                source2str%planckLay,&
@@ -576,7 +545,7 @@ endif
 
 do icol=1,1!ncol  
 print *,'UP FLUX'
-print *,'  clear     2 str     Tang      Tang IP   DISORT      clear     2str      tang     tangip'
+print *,'  clear     2 str     Tang IP   DISORT      clear     2str      tangip'
 do jj=1,nlay+1
   if (top_at_1) then
     i = nlay - jj +1
@@ -584,14 +553,14 @@ do jj=1,nlay+1
     i = jj-1
   endif
   print '(I4, 100F10.4)', jj, flux_upC(icol,jj), flux_up2(icol,jj), &
-     flux_upT(icol,jj), flux_upP(icol,jj),  disUFLUX(i,icol),&
+     flux_upP(icol,jj),  disUFLUX(i,icol),&
      flux_upC(icol,jj)-disUFLUX(i,icol), flux_up2(icol,jj)-disUFLUX(i,icol),&
-     flux_upT(icol,jj)-disUFLUX(i,icol), flux_upP(icol,jj)-disUFLUX(i,icol),&
+     flux_upP(icol,jj)-disUFLUX(i,icol),&
      tangUFLUX(i,icol), tangUFLUX(i,icol)-disUFLUX(i,icol)
 enddo  
 print *,'------- '
 print *,'DOWN FLUX'
-print *,'  clear     2 str     Tang      Tang IP   DISORT      clear     2str      tang     tangip'
+print *,'  clear     2 str     Tang IP   DISORT      clear     2str      tangip'
  
 do jj=1,nlay+1
   if (top_at_1) then
@@ -600,9 +569,9 @@ do jj=1,nlay+1
     i = jj-1
   endif
   print '(I4, 100F10.4)', jj, flux_dnC(icol,jj), flux_dn2(icol,jj), &
-     flux_dnT(icol,jj), flux_dnP(icol,jj), disDFLUX(i,icol),&
+     flux_dnP(icol,jj), disDFLUX(i,icol),&
      flux_dnC(icol,jj)- disDFLUX(i,icol), flux_dn2(icol,jj)- disDFLUX(i,icol),&
-     flux_dnT(icol,jj)- disDFLUX(i,icol), flux_dnP(icol,jj)- disDFLUX(i,icol),&
+     flux_dnP(icol,jj)- disDFLUX(i,icol),&
      tangDFLUX(i,icol), tangDFLUX(i,icol)-disDFLUX(i,icol)
 enddo  
 print *,'------- '
@@ -613,9 +582,9 @@ do jj=1,nlay+1
     i = jj-1
   endif
   write(1001, *) flux_upC(icol,jj), flux_up2(icol,jj), &
-     flux_upT(icol,jj), flux_upP(icol,jj), disUFLUX(i,icol),&
+     flux_upP(icol,jj), disUFLUX(i,icol),&
      flux_upC(icol,jj)-disUFLUX(i,icol), flux_up2(icol,jj)-disUFLUX(i,icol),&
-     flux_upT(icol,jj)-disUFLUX(i,icol), flux_upP(icol,jj)-disUFLUX(i,icol),&
+     flux_upP(icol,jj)-disUFLUX(i,icol),&
      tangUFLUX(i,icol), tangUFLUX(i,icol)-disUFLUX(i,icol)
 enddo  
 do jj=1,nlay+1
@@ -625,9 +594,9 @@ do jj=1,nlay+1
     i = jj-1
   endif
   write(1002, *) flux_dnC(icol,jj), flux_dn2(icol,jj), &
-     flux_dnT(icol,jj), flux_dnP(icol,jj), disDFLUX(i,icol),&
+     flux_dnP(icol,jj), disDFLUX(i,icol),&
      flux_dnC(icol,jj)- disDFLUX(i,icol), flux_dn2(icol,jj)- disDFLUX(i,icol),&
-     flux_dnT(icol,jj)- disDFLUX(i,icol), flux_dnP(icol,jj)- disDFLUX(i,icol),&
+     flux_dnP(icol,jj)- disDFLUX(i,icol),&
      tangDFLUX(i,icol), tangDFLUX(i,icol)-disDFLUX(i,icol)
   write(1003, *) p_lev(1,jj)
 enddo  
