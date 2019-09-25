@@ -44,6 +44,8 @@ module mo_rte_solver_kernels
             lw_source_2str, sw_source_2str, &
             lw_two_stream, sw_two_stream, &
             adding
+  public :: lw_transport_noscat
+            
 
   real(wp), parameter :: pi = acos(-1._wp)
 contains
