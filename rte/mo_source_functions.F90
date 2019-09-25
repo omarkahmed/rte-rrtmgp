@@ -31,6 +31,14 @@ module mo_source_functions
                                                                   ! in increasing/decreasing ilay direction
                                                                   ! Includes spectral weighting that accounts for state-dependent
                                                                   ! frequency to g-space mapping
+
+    real(wp), allocatable, dimension(:,:  ) :: planckSfc         !  Planck source at surface temperature
+    real(wp), allocatable, dimension(:,:,:) :: planckLay,     &  ! Planck source at layer average temperature
+                                                                 ! [W/m2] (ncol, nlay, ngpt)
+                                               planckLev         ! Planck source at layer edge ! [W/m2] (ncol, nlay+1, ngpt)
+                                                                  ! Does not includes spectral weighting that accounts for state-dependent
+                                                                  ! frequency to g-space mapping
+    real(wp), allocatable, dimension(:,:,:) :: planckFrac        ! spectral weighting
     real(wp), allocatable, dimension(:,:  ) :: sfc_source
   contains
     generic,   public :: alloc => alloc_lw, copy_and_alloc_lw
@@ -96,10 +104,16 @@ contains
     if(allocated(this%lay_source)) deallocate(this%lay_source)
     if(allocated(this%lev_source_inc)) deallocate(this%lev_source_inc)
     if(allocated(this%lev_source_dec)) deallocate(this%lev_source_dec)
+    if(allocated(this%planckSfc)) deallocate(this%planckSfc)
+    if(allocated(this%planckLev)) deallocate(this%planckLev)
+    if(allocated(this%planckLay)) deallocate(this%planckLay)
+    if(allocated(this%planckFrac)) deallocate(this%planckFrac)
 
     ngpt = this%get_ngpt()
     allocate(this%sfc_source    (ncol,     ngpt), this%lay_source    (ncol,nlay,ngpt), &
              this%lev_source_inc(ncol,nlay,ngpt), this%lev_source_dec(ncol,nlay,ngpt))
+    allocate(this%planckSfc    (ncol,     ngpt), this%planckLay    (ncol,nlay,ngpt), &
+             this%planckLev(ncol,nlay+1,ngpt), this%planckFrac (ncol,nlay,ngpt))
   end function alloc_lw
   ! --------------------------------------------------------------
   function copy_and_alloc_lw(this, ncol, nlay, spectral_desc) result(err_message)
@@ -175,6 +189,12 @@ contains
     if(allocated(this%lev_source_inc)) deallocate(this%lev_source_inc)
     if(allocated(this%lev_source_dec)) deallocate(this%lev_source_dec)
     if(allocated(this%sfc_source    )) deallocate(this%sfc_source)
+
+    if(allocated(this%planckSfc    ))  deallocate(this%planckSfc)
+    if(allocated(this%planckLay))      deallocate(this%planckLay)
+    if(allocated(this%planckLev))      deallocate(this%planckLev)
+    if(allocated(this%planckFrac    )) deallocate(this%planckFrac)
+
     call this%ty_optical_props%finalize()
   end subroutine finalize_lw
   ! --------------------------------------------------------------
@@ -251,6 +271,11 @@ contains
     subset%lay_source    (1:n,:,:) = full%lay_source    (start:start+n-1,:,:)
     subset%lev_source_inc(1:n,:,:) = full%lev_source_inc(start:start+n-1,:,:)
     subset%lev_source_dec(1:n,:,:) = full%lev_source_dec(start:start+n-1,:,:)
+
+    subset%planckSfc    (1:n,  :)  = full%planckSfc    (start:start+n-1,  :)
+    subset%planckLay    (1:n,:,:)  = full%planckLay    (start:start+n-1,:,:)
+    subset%planckLev(1:n,:,:)      = full%planckLev(start:start+n-1,:,:)
+    subset%planckFrac(1:n,:,:)     = full%planckFrac(start:start+n-1,:,:)
   end function get_subset_range_lw
   ! ------------------------------------------------------------------------------------------
   function get_subset_range_sw(full, start, n, subset) result(err_message)
