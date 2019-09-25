@@ -304,7 +304,6 @@ contains
                           play, plev, tlay, tsfc, gas_desc, &
                           optical_props, sources,           &
                           col_dry, tlev, optical_props_clouds) result(error_msg)
-    use mo_optical_props_add,   only: ty_optical_props_tang, ty_optical_props_Tip
     ! inputs
     class(ty_gas_optics_rrtmgp), intent(in) :: this
     real(wp), dimension(:,:), intent(in   ) :: play, &   ! layer pressures [Pa, mb]; (ncol,nlay)
@@ -394,7 +393,7 @@ contains
         enddo
       enddo
 
-    type is (ty_optical_props_2str)
+    class is (ty_optical_props_2str)
       do ibnd=1,nband
         do icol=1,ncol
           do ilay=1,nlay
@@ -417,69 +416,12 @@ contains
           enddo
         enddo
       enddo
-    type is (ty_optical_props_Tang)
-      do ibnd=1,nband
-        do icol=1,ncol
-          do ilay=1,nlay
-            ssa = optical_props_clouds%ssa(icol,ilay,ibnd)
-            g   = optical_props_clouds%g  (icol,ilay,ibnd)
-            tauc= optical_props_clouds%tau(icol,ilay,ibnd)
-            do i=optical_props%band2gpt(1,ibnd),optical_props%band2gpt(2,ibnd)
-              optical_props%g(icol,ilay,i)   = g
-
-              optical_props%tau(icol,ilay,i) = &
-                  optical_props%tau(icol,ilay,i) + tauc
-
-              if (tauc*ssa > epsilon(1.)) then
-                optical_props%ssa(icol,ilay,i) = &
-                      ssa*tauc/optical_props%tau(icol,ilay,i)
-              else
-                optical_props%ssa(icol,ilay,i) = 0.
-              endif
-
-           enddo
-          enddo
-        enddo
-      enddo
-      ! print *,'dddddddddddddddddddddddddddddddd'
-      ! do ilay=1,nlay
-      !     print *,  optical_props%ssa(1,ilay,1),optical_props%tau(1,ilay,1) 
-      ! enddo
-
-      error_msg=optical_props%delta_scale()
-      ! do ilay=1,nlay
-      !     print *,  optical_props%ssa(1,ilay,1),optical_props%tau(1,ilay,1) 
-      ! enddo
-      ! print *,'dddddddddddddddddddddddddddddddd'
-    type is (ty_optical_props_Tip)
-      do ibnd=1,nband
-        do icol=1,ncol
-          do ilay=1,nlay
-            ssa = optical_props_clouds%ssa(icol,ilay,ibnd)
-            g   = optical_props_clouds%g  (icol,ilay,ibnd)
-            tauc= optical_props_clouds%tau(icol,ilay,ibnd)
-            do i=optical_props%band2gpt(1,ibnd),optical_props%band2gpt(2,ibnd)
-              optical_props%g(icol,ilay,i)   = g
-
-              optical_props%tau(icol,ilay,i) = &
-                  optical_props%tau(icol,ilay,i) + tauc
-
-              if (tauc*ssa > epsilon(1.)) then
-                optical_props%ssa(icol,ilay,i) = &
-                      ssa*tauc/optical_props%tau(icol,ilay,i)
-              else
-                optical_props%ssa(icol,ilay,i) = 0.
-              endif
-           enddo
-          enddo
-        enddo
-      enddo
-      error_msg=optical_props%delta_scale()
 
       class default
-        print *,'class default'
-        STOP
+        error_msg = 'UNKNOWN class used'
+        return
     end select  
+    if(error_msg  /= '') return
 
     !
     ! Interpolate source function
