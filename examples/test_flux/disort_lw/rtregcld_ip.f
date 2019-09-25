@@ -21,8 +21,7 @@ C  --------------------------------------------------------------------------
       use mo_rte_kind,           only: wp
       use mo_optical_props,       only: ty_optical_props_arry, 
      &    ty_optical_props_1scl, ty_optical_props_2str
-      use mo_optical_props_add,   only: ty_optical_props_tang, 
-     & ty_optical_props_tip
+      use mo_optical_props_add,   only: ty_optical_props_tip
 
 C       use DISORT_LW_mod,          only: DISORT_LW  
       IMPLICIT NONE
@@ -293,10 +292,6 @@ C ***    Loop over g-channels.
                     SSACLOUD(LAY)=optProp%ssa(ICOL,jj,IG)
                     ODEPTH=ODEPTH*optProp%ssa(ICOL,jj,IG)
         
-                type is (ty_optical_props_tang)
-                    SSACLOUD(LAY)=optProp%ssa(ICOL,jj,IG)
-                    ODEPTH=ODEPTH*optProp%ssa(ICOL,jj,IG)
-
                 type is (ty_optical_props_tip)
                     SSACLOUD(LAY)=optProp%ssa(ICOL,jj,IG)
                     ODEPTH=ODEPTH*optProp%ssa(ICOL,jj,IG)
