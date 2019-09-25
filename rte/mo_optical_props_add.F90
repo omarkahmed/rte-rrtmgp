@@ -147,22 +147,17 @@ module mo_optical_props_add
   !     phase function moments (index 1 = g) for use with discrete ordinate methods
   !
   ! -------------------------------------------------------------------------------------------------
-  type, extends(ty_optical_props_2str) :: ty_optical_props_tang
+  type, extends(ty_optical_props_2str) :: ty_optical_props_tip
       integer               :: paramType = 1
   contains
-      procedure, public  :: delta_scale => delta_scale_tang
-      procedure, public  :: setParam
-  end type  ty_optical_props_tang
-
-  type, extends(ty_optical_props_tang) :: ty_optical_props_tip
-  contains
       procedure, public  :: delta_scale => delta_scale_tip
-      procedure, public  :: setParam => setParamTip
+      procedure, public  :: setParam
   end type  ty_optical_props_tip
+
 
 contains  
   function setParam(this, dat) result(err_message)
-    class(ty_optical_props_tang), intent(inout) :: this
+    class(ty_optical_props_tip), intent(inout) :: this
     character(128)                              :: err_message
     integer                                     :: dat
     err_message=''
@@ -174,19 +169,6 @@ contains
     end select
   end function setParam    
   
-  function setParamTip(this, dat) result(err_message)
-    class(ty_optical_props_tip), intent(inout) :: this
-    character(128)                              :: err_message
-    integer                                     :: dat
-    err_message=''
-    select case(dat)
-    case(1:2)
-      this%paramType = dat
-    case default
-      err_message='allowed paramater value: 1,2'
-    end select
-  end function setParamTip    
-
   ! ------------------------------------------------------------------------------------------
   ! --- delta scaling
   ! ------------------------------------------------------------------------------------------
@@ -217,37 +199,7 @@ contains
       call scalingChou(ncol, nlay, ngpt, this%tau, this%ssa, this%g)
     endif
   end function delta_scale_tip  
-  ! ------------------------------------------------------------------------------------------
-  ! --- delta scaling
-  ! ------------------------------------------------------------------------------------------
-  ! ------------------------------------------------------------------------------------------
-  function delta_scale_tang(this, for) result(err_message)
-    class(ty_optical_props_tang), intent(inout) :: this
-    real(wp), dimension(:,:,:), optional, &
-                                  intent(in   ) :: for
-    ! Forward scattering fraction; g**2 if not provided
-    character(128)                              :: err_message
-
-    real(wp) :: wf
-    integer  :: icol, ilay, igpt
-    integer :: ncol, nlay, ngpt
-    ! --------------------------------
-    ncol = this%get_ncol()
-    nlay = this%get_nlay()
-    ngpt = this%get_ngpt()
-    err_message = ""
-    ! Chou scaling
-    ! f = 0.5+0.3738*this%g+0.0076*this%g**2+0.1186*this%g**3
-    ! Tang scaling
-    ! taucloud = taucloud *(1.0-ssacoice(ib)*f)
-    ! this%g    = f
-    if (this%paramType == 1) then
-      call scalingTang(ncol, nlay, ngpt, this%tau, this%ssa, this%g)
-    elseif (this%paramType == 1) then
-      call scalingChou(ncol, nlay, ngpt, this%tau, this%ssa, this%g)
-    endif
-  end function delta_scale_tang  
-
+  
 
   pure subroutine scalingTang(ncol, nlay, ngpt, tau, ssa, g)
     integer ,                              intent(in)    :: ncol
