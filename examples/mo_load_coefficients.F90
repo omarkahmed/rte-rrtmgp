@@ -23,7 +23,6 @@ module mo_load_coefficients
   use mo_rte_kind,           only: wp, wl
   use mo_gas_concentrations, only: ty_gas_concs
   use mo_gas_optics_rrtmgp,  only: ty_gas_optics_rrtmgp
-  use mo_solar_variability,  only: ty_solar_var
   ! --------------------------------------------------
   use mo_simple_netcdf, only: read_field, read_char_vec, read_logical_vec, var_exists, get_dim_size
   use netcdf
@@ -43,11 +42,10 @@ contains
   end subroutine
   !--------------------------------------------------------------------------------------------------------------------
   ! read optical coefficients from NetCDF file
-  subroutine load_and_init(kdist, filename, available_gases, solar_var)
+  subroutine load_and_init(kdist, filename, available_gases)
     class(ty_gas_optics_rrtmgp), intent(inout) :: kdist
     character(len=*),     intent(in   ) :: filename
     class(ty_gas_concs),  intent(in   ) :: available_gases ! Which gases does the host model have available?
-    class(ty_solar_var),  optional, intent(inout) :: solar_var ! optional solar variability data
     ! --------------------------------------------------
     !
     ! Variables that will be passed to gas_optics%load()
@@ -78,10 +76,10 @@ contains
     real(wp), dimension(:      ), allocatable :: solar_irr_int
     real(wp), dimension(:      ), allocatable :: svar_offset
     real(wp), dimension(:      ), allocatable :: svar_avg
-    real(wp), dimension(:,:    ), allocatable :: svar_avgcyc
     real(wp)                                  :: irr_int, fac_int, spt_int
     real(wp)                                  :: fac_offset, spt_offset
     real(wp)                                  :: fac_avg_ind, spt_avg_ind
+    real(wp)                                  :: svar_irr, svar_fac, svar_spt
     ! -----------------
     !
     ! Book-keeping variables
@@ -220,18 +218,23 @@ contains
       !
       solar_irr = read_field(ncid, 'solar_irradiance', nsolarterms, ngpts)
       allocate (solar_irr_int(nsolarterms))
-      allocate (svar_offset(nsolarterms))
-      allocate (svar_avg(nsolarterms))
-      solar_irr_int = read_field(ncid, 'solar_irr_int', nsolarterms)
+      call integrate_solar_irr(nsolarterms, ngpts, solar_irr, solar_irr_int)
       fac_int = solar_irr_int(1)
       spt_int = solar_irr_int(2)
       irr_int = solar_irr_int(3)
+      allocate (svar_offset(nsolarterms))
       svar_offset = read_field(ncid, 'solar_var_offset', nsolarterms)
       fac_offset = svar_offset(1)
       spt_offset = svar_offset(2)
+      allocate (svar_avg(nsolarterms))
       svar_avg = read_field(ncid, 'solar_var_avg', nsolarterms)
       fac_avg_ind = svar_avg(1)
       spt_avg_ind = svar_avg(2)
+      ! Solar variability multiplier terms
+      ! Set default to no solar variability
+      svar_irr = 1.0_wp
+      svar_fac = 1.0_wp
+      svar_spt = 1.0_wp
       call stop_on_err(kdist%load(available_gases, &
                                   gas_names,   &
                                   key_species, &
@@ -256,15 +259,34 @@ contains
                                   kminor_start_upper, &
                                   solar_irr, irr_int, fac_int, spt_int, &
                                   fac_offset, spt_offset, fac_avg_ind, spt_avg_ind, &
+                                  svar_irr, svar_fac, svar_spt, &
                                   rayl_lower, rayl_upper))
-
-      if (present(solar_var)) then 
-         svar_avgcyc = read_field(ncid, 'solar_var_avgcyc', nsolarterms, nsolarfrac)
-         call stop_on_err(solar_var%load_avgcyc(svar_avgcyc))
-      endif
-
     end if
     ! --------------------------------------------------
+    if (allocated(solar_irr_int)) deallocate (solar_irr_int)
+    if (allocated(svar_offset)) deallocate (svar_offset)
+    if (allocated(svar_avg)) deallocate (svar_avg)
     ncid = nf90_close(ncid)
   end subroutine load_and_init
+  ! ----------------------------------------------------
+  !
+  ! Spectral integration of facular, sunspot and quiet sun components of solar irradiance
+  !
+  subroutine integrate_solar_irr(nsolarterms, ngpts, solar_irr, solar_irr_int)
+     integer,                                intent(in ) :: nsolarterms, ngpts
+     real(wp), dimension(nsolarterms,ngpts), intent(in ) :: solar_irr
+     real(wp), dimension(nsolarterms),       intent(out) :: solar_irr_int
+
+     integer :: iterms, igpt
+
+     do iterms = 1, nsolarterms
+        solar_irr_int(iterms) = solar_irr(iterms, 1)
+     end do
+     do igpt = 2, ngpts
+        do iterms = 1, nsolarterms
+           solar_irr_int(iterms) = solar_irr_int(iterms) + solar_irr(iterms, igpt)
+        end do
+     end do
+  end subroutine integrate_solar_irr
+
 end module
