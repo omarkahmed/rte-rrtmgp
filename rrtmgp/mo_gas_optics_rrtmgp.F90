@@ -28,7 +28,7 @@ module mo_gas_optics_rrtmgp
   use mo_source_functions,   only: ty_source_func_lw
   use mo_gas_optics_kernels, only: interpolation,                                                       &
                                    compute_tau_absorption, compute_tau_rayleigh, compute_Planck_source, &
-                                   combine_and_reorder_2str, combine_and_reorder_nstr
+                                   combine_and_reorder_2str, combine_and_reorder_nstr, compute_PlanckFrac
 
   use mo_util_string,        only: lower_case, string_in_array, string_loc_in_array
   use mo_gas_concentrations, only: ty_gas_concs
@@ -153,6 +153,7 @@ module mo_gas_optics_rrtmgp
     procedure, public :: get_press_max
     procedure, public :: get_temp_min
     procedure, public :: get_temp_max
+    procedure, public :: get_PlanckFrac
     ! Internal procedures
     procedure, private :: load_int
     procedure, private :: load_ext
@@ -1907,4 +1908,64 @@ contains
       check_range_3D = trim(label) // ' values out of range.'
   end function check_range_3D
   !------------------------------------------------------------------------------------------
+
+  !
+  ! Compute gas optical depth and Planck fraction
+  !  given temperature, pressure, and composition
+  !
+  function get_PlanckFrac(this,ncol, nlay, ngpt,       &
+                          play, plev, tlay, gas_desc, &
+                          optical_props, planckFrac,  &
+                          col_dry) result(error_msg)
+    ! inputs
+    class(ty_gas_optics_rrtmgp), intent(in) :: this
+    integer                           , intent(in) :: ncol, nlay, ngpt 
+    real(wp), dimension(ncol, nlay+1) , intent(in) :: plev      ! layer temperatures [K]; (ncol,nlay)
+    real(wp), dimension(ncol, nlay)   , intent(in) :: play, &   ! layer pressures [Pa, mb]; (ncol,nlay)
+                                                      tlay      ! layer temperatures [K]; (ncol,nlay)
+    type(ty_gas_concs)                ,intent(in)  :: gas_desc  ! Gas volume mixing ratios
+    ! output
+    class(ty_optical_props_arry),     intent(inout) :: optical_props ! Optical properties
+    real(wp), dimension(ncol,nlay,ngpt), intent(out) :: planckFrac
+    character(len=128)                      :: error_msg
+    ! Optional inputs
+    real(wp), dimension(:,:),   intent(in   ), &
+                           optional, target :: col_dry    ! Column dry amount; dim(ncol,nlay)
+    ! ----------------------------------------------------------
+    ! Local variables
+    ! Interpolation coefficients for use in source function
+    integer,     dimension(size(play,dim=1), size(play,dim=2)) :: jtemp, jpress
+    logical(wl), dimension(size(play,dim=1), size(play,dim=2)) :: tropo
+    real(wp),    dimension(2,2,2,get_nflav(this),size(play,dim=1), size(play,dim=2)) :: fmajor
+    integer,     dimension(2,    get_nflav(this),size(play,dim=1), size(play,dim=2)) :: jeta
+
+    integer :: nband, ngas, nflav
+    real(wp) :: tauc, ssa, g
+    integer  :: icol, ilay, ibnd, i
+    ! ----------------------------------------------------------
+    nband = this%get_nband()
+    !
+    ! Gas optics
+    !
+    !$acc enter data create(jtemp, jpress, tropo, fmajor, jeta)
+    error_msg = compute_gas_taus(this,                       &
+                                 ncol, nlay, ngpt, nband,    &
+                                 play, plev, tlay, gas_desc, &
+                                 optical_props,              &
+                                 jtemp, jpress, jeta, tropo, fmajor, &
+                                 col_dry)
+    if(error_msg  /= '') return
+
+
+    ! Compute internal (Planck) source functions at layers and levels,
+    !  which depend on mapping from spectral space that creates k-distribution.
+    call compute_PlanckFrac(ncol, nlay, nband, ngpt, &
+                  get_nflav(this),  this%get_neta(), this%get_npres(), &
+                  this%get_ntemp(), this%get_nPlanckTemp(), &
+                  fmajor, jeta, tropo, jtemp, jpress,                    &
+                  this%get_band_lims_gpoint(), &
+                  this%planck_frac, this%gpoint_flavor,  &
+                  planckFrac)
+  end function get_PlanckFrac
+
 end module mo_gas_optics_rrtmgp
