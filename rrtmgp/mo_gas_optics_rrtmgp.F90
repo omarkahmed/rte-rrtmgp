@@ -435,7 +435,7 @@ contains
                        tlev)
     !$acc exit data delete(jtemp, jpress, tropo, fmajor, jeta)
   end function gas_optics_int_cloud
-    !------------------------------------------------------------------------------------------
+  !------------------------------------------------------------------------------------------
   !
   ! Compute gas optical depth given temperature, pressure, and composition
   !
@@ -728,20 +728,20 @@ contains
                   result(error_msg)
     ! inputs
     class(ty_gas_optics_rrtmgp),    intent(in ) :: this
-    integer,                               intent(in ) :: ncol, nlay, nbnd, ngpt
-    real(wp), dimension(ncol,nlay),        intent(in ) :: play   ! layer pressures [Pa, mb]
-    real(wp), dimension(ncol,nlay+1),      intent(in ) :: plev   ! level pressures [Pa, mb]
-    real(wp), dimension(ncol,nlay),        intent(in ) :: tlay   ! layer temperatures [K]
-    real(wp), dimension(ncol),             intent(in ) :: tsfc   ! surface skin temperatures [K]
+    integer,                               intent(in   ) :: ncol, nlay, nbnd, ngpt
+    real(wp), dimension(ncol,nlay),        intent(in   ) :: play   ! layer pressures [Pa, mb]
+    real(wp), dimension(ncol,nlay+1),      intent(in   ) :: plev   ! level pressures [Pa, mb]
+    real(wp), dimension(ncol,nlay),        intent(in   ) :: tlay   ! layer temperatures [K]
+    real(wp), dimension(ncol),             intent(in   ) :: tsfc   ! surface skin temperatures [K]
     ! Interplation coefficients
-    integer,     dimension(ncol,nlay),     intent(in ) :: jtemp, jpress
-    logical(wl), dimension(ncol,nlay),     intent(in ) :: tropo
+    integer,     dimension(ncol,nlay),     intent(in   ) :: jtemp, jpress
+    logical(wl), dimension(ncol,nlay),     intent(in   ) :: tropo
     real(wp),    dimension(2,2,2,get_nflav(this),ncol,nlay),  &
-                                           intent(in ) :: fmajor
+                                           intent(in   ) :: fmajor
     integer,     dimension(2,    get_nflav(this),ncol,nlay),  &
-                                           intent(in ) :: jeta
+                                           intent(in   ) :: jeta
     class(ty_source_func_lw    ),          intent(inout) :: sources
-    real(wp), dimension(ncol,nlay+1),      intent(in ), &
+    real(wp), dimension(ncol,nlay+1),      intent(in   ), &
                                       optional, target :: tlev          ! level temperatures [K]
     character(len=128)                                 :: error_msg
     ! ----------------------------------------------------------
@@ -790,26 +790,13 @@ contains
     !$acc enter data copyin(sources)
     !$acc enter data create(sources%lay_source, sources%lev_source_inc, sources%lev_source_dec, sources%sfc_source)
     !$acc enter data create(sfc_source_t, lay_source_t, lev_source_inc_t, lev_source_dec_t) attach(tlev_wk)
-    if (allocated(sources%planckLay) .and. allocated(sources%planckLev) &
-        .and. allocated(sources%planckSfc).and. allocated(sources%planckFrac) )  then
-    !$acc enter data create(sources%planckSfc, sources%planckLay, sources%planckLev, sources%planckFrac)
-      call compute_Planck_source(ncol, nlay, nbnd, ngpt, &
-                  get_nflav(this), this%get_neta(), this%get_npres(), this%get_ntemp(), this%get_nPlanckTemp(), &
-                  tlay, tlev_wk, tsfc, merge(1,nlay,play(1,1) > play(1,nlay)), &
-                  fmajor, jeta, tropo, jtemp, jpress,                    &
-                  this%get_gpoint_bands(), this%get_band_lims_gpoint(), this%planck_frac, this%temp_ref_min,&
-                  this%totplnk_delta, this%totplnk, this%gpoint_flavor,  &
-                  sfc_source_t, lay_source_t, lev_source_inc_t, lev_source_dec_t,&
-                  sources%planckSfc, sources%planckLay, sources%planckLev, sources%planckFrac)
-    else
-      call compute_Planck_source(ncol, nlay, nbnd, ngpt, &
-                  get_nflav(this), this%get_neta(), this%get_npres(), this%get_ntemp(), this%get_nPlanckTemp(), &
-                  tlay, tlev_wk, tsfc, merge(1,nlay,play(1,1) > play(1,nlay)), &
-                  fmajor, jeta, tropo, jtemp, jpress,                    &
-                  this%get_gpoint_bands(), this%get_band_lims_gpoint(), this%planck_frac, this%temp_ref_min,&
-                  this%totplnk_delta, this%totplnk, this%gpoint_flavor,  &
-                  sfc_source_t, lay_source_t, lev_source_inc_t, lev_source_dec_t)
-    endif
+    call compute_Planck_source(ncol, nlay, nbnd, ngpt, &
+                get_nflav(this), this%get_neta(), this%get_npres(), this%get_ntemp(), this%get_nPlanckTemp(), &
+                tlay, tlev_wk, tsfc, merge(1,nlay,play(1,1) > play(1,nlay)), &
+                fmajor, jeta, tropo, jtemp, jpress,                    &
+                this%get_gpoint_bands(), this%get_band_lims_gpoint(), this%planck_frac, this%temp_ref_min,&
+                this%totplnk_delta, this%totplnk, this%gpoint_flavor,  &
+                sfc_source_t, lay_source_t, lev_source_inc_t, lev_source_dec_t)
     !$acc parallel loop collapse(2)
     do igpt = 1, ngpt
       do icol = 1, ncol

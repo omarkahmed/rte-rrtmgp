@@ -481,8 +481,7 @@ contains
                     fmajor, jeta, tropo, jtemp, jpress,    &
                     gpoint_bands, band_lims_gpt,           &
                     pfracin, temp_ref_min, totplnk_delta, totplnk, gpoint_flavor, &
-                    sfc_src, lay_src, lev_src_inc, lev_src_dec, &
-                    planckSfc, planckLay, planckLev, planckFrac) bind(C, name="compute_Planck_source")
+                    sfc_src, lay_src, lev_src_inc, lev_src_dec) bind(C, name="compute_Planck_source")
     integer,                                    intent(in) :: ncol, nlay, nbnd, ngpt
     integer,                                    intent(in) :: nflav, neta, npres, ntemp, nPlanckTemp
     real(wp),    dimension(ncol,nlay  ),        intent(in) :: tlay
@@ -505,11 +504,6 @@ contains
     real(wp), dimension(ngpt,     ncol), intent(out) :: sfc_src
     real(wp), dimension(ngpt,nlay,ncol), intent(out) :: lay_src
     real(wp), dimension(ngpt,nlay,ncol), intent(out) :: lev_src_inc, lev_src_dec
-    real(wp), dimension(ncol,       ngpt), optional, intent(out) :: planckSfc
-    real(wp), dimension(ncol,nlay  ,ngpt), optional, intent(out) :: planckLay
-    real(wp), dimension(ncol,nlay+1,ngpt), optional, intent(out) :: planckLev
-    real(wp), dimension(ncol,nlay  ,ngpt), optional, intent(out) :: planckFrac
-
     ! -----------------
     ! local
     integer  :: ilay, icol, igpt, ibnd, itropo, iflav
@@ -536,13 +530,7 @@ contains
         end do ! band
       end do   ! layer
     end do     ! column
-    if (present(planckFrac)) then
-      do igpt = 1, ngpt
-        do ilay = 1, nlay
-            planckFrac(1:ncol,ilay,igpt) = pfrac(igpt,ilay,1:ncol)
-        enddo  
-      enddo  
-    endif
+
     !
     ! Planck function by band for the surface
     ! Compute surface source irradiance for g-point, equals band irradiance x fraction for g-point
@@ -560,15 +548,6 @@ contains
         end do
       end do
     end do ! icol
-    if (present(planckSfc)) then
-      do ibnd = 1, nbnd
-        gptS = band_lims_gpt(1, ibnd)
-        gptE = band_lims_gpt(2, ibnd)
-        do igpt = gptS, gptE
-          planckSfc(1:ncol, igpt) = planck_function(ibnd,1,1:ncol)
-        end do
-      end do
-    endif
 
     do icol = 1, ncol
       do ilay = 1, nlay
@@ -586,17 +565,6 @@ contains
         end do
       end do ! ilay
     end do ! icol
-    if (present(planckLay)) then
-      do ibnd = 1, nbnd
-        gptS = band_lims_gpt(1, ibnd)
-        gptE = band_lims_gpt(2, ibnd)
-        do igpt = gptS, gptE
-          do ilay = 1, nlay
-              planckLay(1:ncol,ilay,igpt) = planck_function(ibnd,ilay,1:ncol)
-          enddo  
-        end do
-      end do
-    endif
 
     ! compute level source irradiances for each g-point, one each for upward and downward paths
     do icol = 1, ncol
@@ -616,17 +584,7 @@ contains
         end do
       end do ! ilay
     end do ! icol
-    if (present(planckLev)) then
-      do ibnd = 1, nbnd
-        gptS = band_lims_gpt(1, ibnd)
-        gptE = band_lims_gpt(2, ibnd)
-        do igpt = gptS, gptE
-          do ilay = 1, nlay+1
-            planckLev(1:ncol,ilay,igpt) =  planck_function(ibnd,ilay,1:ncol)
-          enddo  
-        end do
-      end do
-    endif
+
   end subroutine compute_Planck_source
   ! ----------------------------------------------------------
   !
