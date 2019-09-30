@@ -28,7 +28,7 @@ module mo_gas_optics_rrtmgp
   use mo_source_functions,   only: ty_source_func_lw
   use mo_gas_optics_kernels, only: interpolation,                                                       &
                                    compute_tau_absorption, compute_tau_rayleigh, compute_Planck_source, &
-                                   combine_and_reorder_2str, combine_and_reorder_nstr
+                                   combine_and_reorder_2str, combine_and_reorder_nstr, compute_PlanckFrac
 
   use mo_rrtmgp_util_string, only: lower_case, string_in_array, string_loc_in_array
   use mo_gas_concentrations, only: ty_gas_concs
@@ -153,6 +153,7 @@ module mo_gas_optics_rrtmgp
     procedure, public :: get_press_max
     procedure, public :: get_temp_min
     procedure, public :: get_temp_max
+    procedure, public :: get_PlanckFrac
     ! Internal procedures
     procedure, private :: load_int
     procedure, private :: load_ext
