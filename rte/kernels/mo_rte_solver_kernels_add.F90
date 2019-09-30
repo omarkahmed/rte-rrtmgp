@@ -111,7 +111,7 @@ contains
       ! Transport is for intensity
       !   convert flux at top of domain to intensity assuming azimuthal isotropy
       !
-      radn_dn(:,top_level,igpt) = radn_dn(:,top_level,igpt)/(2._wp * pi * weight)
+      ! radn_dn(:,top_level,igpt) = radn_dn(:,top_level,igpt)/(2._wp * pi * weight)
 
       !
       ! Optical path and transmission, used in source function and transport calculations
@@ -148,8 +148,8 @@ contains
 
       ! Convert intensity to flux assuming azimuthal isotropy and quadrature weight
       !
-      radn_dn(:,:,igpt) = 2._wp * pi * weight * radn_dn(:,:,igpt)
-      radn_up(:,:,igpt) = 2._wp * pi * weight * radn_up(:,:,igpt)
+      ! radn_dn(:,:,igpt) = 2._wp * pi * weight * radn_dn(:,:,igpt)
+      ! radn_up(:,:,igpt) = 2._wp * pi * weight * radn_up(:,:,igpt)
     end do  ! g point loop
   end subroutine lw_solver_Tip
   ! -------------------------------------------------------------------------------------------------
@@ -166,6 +166,7 @@ contains
                                   flux_up, flux_dn) &
                                    bind(C, name="lw_solver_Tip_GaussQuad")
     use mo_rte_solver_kernels, only : lw_solver_noscat
+    use mo_rte_solver_kernels, only : apply_BC
     integer,                               intent(in   ) :: ncol, nlay, ngpt ! Number of columns, layers, g-points
     logical(wl),                           intent(in   ) :: top_at_1
     integer,                               intent(in   ) :: nmus         ! number of quadrature angles
@@ -187,32 +188,35 @@ contains
     real(wp), dimension(ncol,       ngpt) :: Ds_ncol
 
     integer :: imu, top_level
+    real    :: weight
     ! ------------------------------------
     !
     ! For the first angle output arrays store total flux
     !
+    top_level = MERGE(1, nlay+1, top_at_1)
     Ds_ncol(:,:) = Ds(1)
+    weight = 2._wp*pi*weights(1)
+    radn_dn(1:ncol, top_level, 1:ngpt)  = flux_dn(1:ncol, top_level, 1:ngpt) / weight
+
     call lw_solver_Tip(ncol, nlay, ngpt, &
                           top_at_1, Ds_ncol, weights(1), tau, ssa, &
                           lay_source, lev_source_inc, lev_source_dec, sfc_emis, sfc_src, &
                           flux_up, flux_dn)
 
-    !
-    ! For more than one angle use local arrays
-    !
-    top_level = MERGE(1, nlay+1, top_at_1)
-    ! call apply_BC(ncol, nlay, ngpt, top_at_1, flux_dn(:,top_level,:), radn_dn)
-    radn_dn(1:ncol, top_level, 1:ngpt)  = flux_dn(1:ncol, top_level, 1:ngpt)
+    flux_up = flux_up * weight
+    flux_dn = flux_dn * weight
 
     do imu = 2, nmus
       Ds_ncol(:,:) = Ds(imu)
+      weight = 2._wp*pi*weights(imu)
+      radn_dn(1:ncol, top_level, 1:ngpt)  = flux_dn(1:ncol, top_level, 1:ngpt) / weight
       call lw_solver_Tip(ncol, nlay, ngpt, &
                             top_at_1, Ds_ncol, weights(imu), tau, ssa, &
                             lay_source, lev_source_inc, lev_source_dec, sfc_emis, sfc_src, &
                             radn_up, radn_dn)
 
-      flux_up(:,:,:) = flux_up(:,:,:) + radn_up(:,:,:)
-      flux_dn(:,:,:) = flux_dn(:,:,:) + radn_dn(:,:,:)
+      flux_up(:,:,:) = flux_up(:,:,:) + weight*radn_up(:,:,:)
+      flux_dn(:,:,:) = flux_dn(:,:,:) + weight*radn_dn(:,:,:)
     end do
   end subroutine lw_solver_Tip_GaussQuad
 
@@ -251,10 +255,7 @@ contains
 
       ! Surface reflection and emission
       radn_up(:,nlay+1) = radn_dn(:,nlay+1)*sfc_albedo(:) + source_sfc(:)
-
-      ! Surface reflection and emission
-      radn_up(:,     1) = radn_dn(:,     1)*sfc_albedo(:) + source_sfc(:)
-      i_up   (:,     1) = radn_up(:,     1)
+      i_up   (:,nlay+1) = radn_up(:,nlay+1)
 
       ! 1st Upward propagation
       do ilev = nlay, 1, -1
