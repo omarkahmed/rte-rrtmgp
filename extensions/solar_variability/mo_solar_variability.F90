@@ -1,15 +1,15 @@
+! This code is part of RRTM for GCM Applications - Parallel (RRTMGP)
 !
-! Eli Mlawer and Robert Pincus
-! Andre Wehe and Jennifer Delamere
+! Contacts: Robert Pincus and Eli Mlawer
 ! email:  rrtmgp@aer.com
 !
-! Copyright 2016-2017,  Atmospheric and Environmental Research and
+! Copyright 2015-2019,  Atmospheric and Environmental Research and
 ! Regents of the University of Colorado.  All right reserved.
 !
 ! Use and duplication is permitted under the terms of the
 !    BSD 3-clause license, see http://opensource.org/licenses/BSD-3-Clause
-!
-! Description: Optional calculation of solar variability facular and 
+! -------------------------------------------------------------------------------------------------
+! Description: Optional calculation of solar variability facular and
 ! sunspot indices
 
 module mo_solar_variability
@@ -20,10 +20,10 @@ module mo_solar_variability
   type, public :: ty_solar_var
       !
       ! Data
-      ! 
-      real(wp), dimension(:,:), allocatable :: avgcyc_ind  ! solar variabilty index lookup table 
+      !
+      real(wp), dimension(:,:), allocatable :: avgcyc_ind  ! solar variabilty index lookup table
                                                            ! time-averaged over solar cycles 13-24.
-                                                           ! (NRLSSI2 facular "Bremen" index and 
+                                                           ! (NRLSSI2 facular "Bremen" index and
                                                            ! sunspot "SPOT67" index)
                                                            ! (nsolarterms, nsolarfrac) -> (2,134)
     contains
@@ -50,7 +50,7 @@ contains
 
     class(ty_solar_var),      intent(inout) :: this
     ! Lookup table of mean solar cycle facular brightening and sunspot dimming indices
-    real(wp), dimension(:,:), intent(in   ) :: avgcyc_ind   
+    real(wp), dimension(:,:), intent(in   ) :: avgcyc_ind
     character(len=128)    :: error_msg
     ! -------
     !
@@ -86,9 +86,10 @@ contains
     end if
 
   end subroutine finalize
-  ! 
-  ! Facular brightening and sunspot dimming indices are derived from the 
-  ! averaged solar cycle, which is the mean of Solar Cycles 13-24. The user specifices 
+  ! ------------------------------------------------------------------------------
+  !
+  ! Facular brightening and sunspot dimming indices are derived from the
+  ! averaged solar cycle, which is the mean of Solar Cycles 13-24. The user specifices
   ! the solar cycle fraction (0 to 1) and the indices are interpolated to the
   ! requested fractional position within the cycle, where 0 is close to solar minimum.
   !
@@ -96,8 +97,8 @@ contains
   ! fraction such that the full scaling is applied at solar maximum, no scaling
   ! is applied at solar minimum, and intermediate values are applied at other points
   ! in the solar cycle. In other workds, the amplitude of the solar cycle is stretched
-  ! to match the requested scaling at solar maximum. 
-  ! 
+  ! to match the requested scaling at solar maximum.
+  !
   function solar_var_ind_interp(this,                   &
                                 solcycfrac,             &
                                 mg_index, sb_index,     &
@@ -109,10 +110,10 @@ contains
 
     real(wp),                   intent(out  ) :: mg_index, & ! Facular brightening NRLSSI2 index
                                                              ! interpolated from the mean solar cycle
-                                                             ! to the provided solar cycle fraction  
+                                                             ! to the provided solar cycle fraction
                                                  sb_index    ! Sunspot dimmng NRLSSI2 index
                                                              ! interpolated from the mean solar cycle
-                                                             ! to the provided solar cycle fraction  
+                                                             ! to the provided solar cycle fraction
     real(wp), optional,         intent(inout) :: mg_scl, &   ! Facular brightening scaling (user-defined)
                                                  sb_scl      ! Sunspot dimmng scaling (user-defined)
 
@@ -121,7 +122,7 @@ contains
     ! ----------------------------------------------------------
     ! Local variables
     !
-    integer  :: nsolfrac                                 ! Number of solar fraction points in facular 
+    integer  :: nsolfrac                                 ! Number of solar fraction points in facular
                                                          ! and sunspot tables
     integer  :: sfid                                     ! Solar variability solar cycle fraction index
 
@@ -131,8 +132,8 @@ contains
 
     real(wp), parameter ::  solcycfrac_min = 0.0189_wp   ! Solar cycle fraction at mean solar cycle minimum
     real(wp), parameter ::  solcycfrac_max = 0.3750_wp   ! Solar cycle fraction at mean solar cycle maximum
-    real(wp), parameter ::  fracdiff_min2max = 0.3561_wp ! 0.3750 - 0.0189
-    real(wp), parameter ::  fracdiff_max2min = 0.6439_wp ! 1.0189 - 0.3750
+    real(wp), parameter ::  fracdiff_min2max = solcycfrac_max - solcycfrac_min
+    real(wp), parameter ::  fracdiff_max2min = 1._wp + solcycfrac_min - solcycfrac_max
     real(wp) :: wgt                                      ! Weighting factor for amplitude scale factor adjustment
     ! ----------------------------------------------------------
     !
@@ -157,19 +158,19 @@ contains
        intrvl_len = 1._wp / (nsolfrac-2)
        intrvl_len_hf = 0.5_wp * intrvl_len
        !   Initial half interval (1)
-       if (solcycfrac .le. intrvl_len_hf) then 
+       if (solcycfrac .le. intrvl_len_hf) then
           sfid = 1
           fraclo = 0._wp
           frachi = intrvl_len_hf
        endif
        !   Main whole intervals (131)
-       if (solcycfrac .gt. intrvl_len_hf .and. solcycfrac .lt. 1._wp-intrvl_len_hf) then 
+       if (solcycfrac .gt. intrvl_len_hf .and. solcycfrac .lt. 1._wp-intrvl_len_hf) then
           sfid = floor((solcycfrac-intrvl_len_hf) * (nsolfrac-2)) + 2
           fraclo = (sfid-2) * intrvl_len + intrvl_len_hf
           frachi = fraclo + intrvl_len
        endif
        !   Final half interval (1)
-       if (solcycfrac .ge. 1._wp-intrvl_len_hf) then 
+       if (solcycfrac .ge. 1._wp-intrvl_len_hf) then
           sfid = (nsolfrac-2) + 1
           fraclo = 1._wp - intrvl_len_hf
           frachi = 1._wp
@@ -182,11 +183,11 @@ contains
     endif
     !
     ! Adjust amplitude scaling of mean solar cycle to be 1.0 at solar minimum (solcycfrac_min=0.0189),
-    ! to be the user-provided scaling at solar maximum (solcycfrac_max=0.3750), and to vary between 
-    ! those values at intervening values of solcycfrac. 
+    ! to be the user-provided scaling at solar maximum (solcycfrac_max=0.3750), and to vary between
+    ! those values at intervening values of solcycfrac.
     !
-    if (present(mg_scl) .and. present(sb_scl)) then 
-       if (mg_scl .ne. 1._wp .or. sb_scl .ne. 1._wp) then 
+    if (present(mg_scl) .and. present(sb_scl)) then
+       if (mg_scl .ne. 1._wp .or. sb_scl .ne. 1._wp) then
           if (solcycfrac .ge. 0._wp .and. solcycfrac .lt. solcycfrac_min) then
              wgt = (solcycfrac+1._wp-solcycfrac_max)/fracdiff_max2min
              mg_scl = mg_scl + wgt * (1._wp-mg_scl)
