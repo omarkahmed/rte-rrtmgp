@@ -381,21 +381,19 @@ contains
     ! The default response is to provide no solar variability with a fixed solar
     ! constant of 1360.85 Wm-2. The user may optionally scale this default solar
     ! irradiance by calling set_solar_var_terms before calling gas_optics and 
-    ! providing a value for tsi that will be used to scale the default value. 
+    ! providing a value that will be used to scale the default value. 
     !
     ! Solar variability is activated by calling set_solar_var_terms before calling
     ! gas_optics and providing facular brightening and sunspot dimming indices in
-    ! one of two ways: 1) the index terms can be provided directly in the call to 
+    ! one of two ways: 1) the index terms can be provided directly in the call to
     ! set_solar_var_terms to model a specific point in a specific solar cycle, or
     ! 2) the user can call the external function solar_var_ind_interp prior to calling
     ! set_solar_var_terms and providing a solar cycle fraction, which will be used to
-    ! interpolate the required indices from values for the mean solar cycle, and then  
+    ! interpolate the required indices from values for the mean solar cycle, and then
     ! passing the returned indices into set_solar_var_terms. Both of these options
-    ! allow the specification of a) amplitude scale factors for the cycles of each 
-    ! index, where the scaling provided is the value at solar maximum,  and 
-    ! b) the overal integral of the total irradiance over the cycle (solar constant,
-    ! given by scon), or the instantaneous total solar irradience (given by tsi),
-    ! which will be used to scale the default solar constant.  
+    ! allow the specification of a) the overall integral of the total solar irradiance
+    ! over the cycle (solar constant, given by scon), or the instantaneous total solar
+    ! irradience (given by tsi), which will be used to scale the default solar constant.
     
     ! Set final TOA solar source function
     !
@@ -639,16 +637,13 @@ contains
   ! The user must either provide the NRLSSI2 facular and sunspot indices directly,
   ! or must first call the extension function solar_var_ind_interp to derive the 
   ! indices by interpolation from the mean solar cycle values by specifying a 
-  ! specific solar cycle fraction. The user may optionally provide facular and sunspot
-  ! scaling values at solar maximum to the function solar_var_ind_interp, which will 
-  ! interpolate them to the requested solar cycle fraction, and then provide those
-  ! scaling values to this routine. The user may also optionally provide to this
+  ! specific solar cycle fraction.  The user may optionally provide to this
   ! function an alternate value of the solar constant to replace the default value
   ! when solar variability is active. 
   !
-  function set_solar_var_terms(this,                             &
-                             mg_index, sb_index, mg_scl, sb_scl, &
-                             scon) result(error_msg)
+  function set_solar_var_terms(this,                   &
+                             mg_index, sb_index, scon) &
+                             result(error_msg)
 
     class(ty_gas_optics_rrtmgp), intent(inout) :: this
     real(wp), optional,          intent(inout) :: mg_index, &  ! user-defined facular brightening index for 
@@ -660,10 +655,6 @@ contains
                                                                ! from the mean solar cycle to s specific solar cycle 
                                                                ! fraction which the user obtained by previously 
                                                                ! calling extension function solar_var_ind_interp
-    real(wp), optional,          intent(in   ) :: mg_scl, &    ! facular brightening scaling at
-                                                               ! solar maximum (user-defined) 
-                                                  sb_scl       ! sunspot dimming scaling at
-                                                               ! solar maximum (user-defined) 
     real(wp), optional,          intent(in   ) :: scon         ! user-specified total solar irradiance;
                                                                ! can be an instantaneous TSI or a 
                                                                ! time-averaged solar constant;
@@ -714,14 +705,6 @@ contains
     if (present(mg_index) .and. present(sb_index)) then 
     ! ----------------------------------------------------------
     !
-    ! Scale input facular and sunspot indices if requested, 
-    ! otherwise use user-defined indices without scaling. 
-    !
-       if (present(mg_scl) .and. present(sb_scl)) then 
-          mg_index = mg_scl * (mg_index - this%fac_offset) + this%fac_offset
-          sb_index = sb_scl * (sb_index - this%spt_offset) + this%spt_offset
-       endif
-
     ! Error checking
     ! Check index values
        error_msg = check_range(mg_index, 0._wp, huge(mg_index), 'mg_index out of range')
@@ -741,13 +724,8 @@ contains
                        (this%spt_avg_ind - this%spt_offset)
     !
     ! Derive the final form of the quiet sun component index term needed 
-    ! to calculate the final total solar irradiance. The derivation 
-    ! incorporates any solar constant scaling (if requested by the user).
+    ! to calculate the final total solar irradiance.
     !
-       if (present(mg_scl) .and. present(sb_scl)) then 
-          this%fac_int = mg_scl * this%fac_int
-          this%spt_int = sb_scl * this%spt_int
-       endif
        tsi = this%scon - this%fac_int - this%spt_int
        this%svar_irr = tsi / this%irr_int
     endif
