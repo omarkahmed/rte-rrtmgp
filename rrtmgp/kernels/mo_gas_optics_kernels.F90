@@ -797,8 +797,6 @@ contains
     integer  :: ilay, icol, igpt, ibnd, itropo, iflav
     integer  :: gptS, gptE
     real(wp), dimension(2), parameter :: one = [1._wp, 1._wp]
-    real(wp) :: pfrac          (ngpt,nlay,  ncol)
-    real(wp) :: planck_function(nbnd,nlay+1,ncol)
     ! -----------------
 
     ! Calculation of fraction of band's Planck irradiance associated with each g-point
