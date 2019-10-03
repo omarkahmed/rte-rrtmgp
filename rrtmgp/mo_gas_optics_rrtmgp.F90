@@ -28,7 +28,7 @@ module mo_gas_optics_rrtmgp
   use mo_source_functions,   only: ty_source_func_lw
   use mo_gas_optics_kernels, only: interpolation,                                                       &
                                    compute_tau_absorption, compute_tau_rayleigh, compute_Planck_source, &
-                                   combine_and_reorder_2str, combine_and_reorder_nstr, compute_PlanckFrac
+                                   combine_and_reorder_2str, combine_and_reorder_nstr
 
   use mo_rrtmgp_util_string, only: lower_case, string_in_array, string_loc_in_array
   use mo_gas_concentrations, only: ty_gas_concs
@@ -153,13 +153,11 @@ module mo_gas_optics_rrtmgp
     procedure, public :: get_press_max
     procedure, public :: get_temp_min
     procedure, public :: get_temp_max
-    procedure, public :: get_PlanckFrac
     ! Internal procedures
     procedure, private :: load_int
     procedure, private :: load_ext
     procedure, public  :: gas_optics_int
     procedure, public  :: gas_optics_ext
-    procedure, public  :: gas_optics_int_cloud
     procedure, private :: check_key_species_present
     procedure, private :: get_minor_list
     ! Interpolation table dimensions
@@ -293,145 +291,6 @@ contains
     !$acc exit data delete(tsfc,tlev)
     !$acc exit data delete(jtemp, jpress, tropo, fmajor, jeta)
   end function gas_optics_int
-!--------------------------------------------------------------------------------------------------------------------
-  !
-  ! Compute gas optical depth and Planck source functions,
-  !  given temperature, pressure, and composition
-  !
-  function gas_optics_int_cloud(this,                             &
-                          play, plev, tlay, tsfc, gas_desc, &
-                          optical_props, sources,           &
-                          col_dry, tlev, optical_props_clouds) result(error_msg)
-    ! inputs
-    class(ty_gas_optics_rrtmgp), intent(in) :: this
-    real(wp), dimension(:,:), intent(in   ) :: play, &   ! layer pressures [Pa, mb]; (ncol,nlay)
-                                               plev, &   ! level pressures [Pa, mb]; (ncol,nlay+1)
-                                               tlay      ! layer temperatures [K]; (ncol,nlay)
-    real(wp), dimension(:),   intent(in   ) :: tsfc      ! surface skin temperatures [K]; (ncol)
-    type(ty_gas_concs),       intent(in   ) :: gas_desc  ! Gas volume mixing ratios
-    ! output
-    class(ty_optical_props_arry),  &
-                              intent(inout) :: optical_props ! Optical properties
-    class(ty_optical_props_2str),  &
-                              intent(in) :: optical_props_clouds ! Optical properties
-    class(ty_source_func_lw    ),  &
-                              intent(inout) :: sources       ! Planck sources
-    character(len=128)                      :: error_msg
-    ! Optional inputs
-    real(wp), dimension(:,:),   intent(in   ), &
-                           optional, target :: col_dry, &  ! Column dry amount; dim(ncol,nlay)
-                                               tlev        ! level temperatures [K]; (ncol,nlay+1)
-    ! ----------------------------------------------------------
-    ! Local variables
-    ! Interpolation coefficients for use in source function
-    integer,     dimension(size(play,dim=1), size(play,dim=2)) :: jtemp, jpress
-    logical(wl), dimension(size(play,dim=1), size(play,dim=2)) :: tropo
-    real(wp),    dimension(2,2,2,get_nflav(this),size(play,dim=1), size(play,dim=2)) :: fmajor
-    integer,     dimension(2,    get_nflav(this),size(play,dim=1), size(play,dim=2)) :: jeta
-
-    integer :: ncol, nlay, ngpt, nband, ngas, nflav
-    real(wp) :: tauc, ssa, g
-    integer  :: icol, ilay, ibnd, i
-    ! ----------------------------------------------------------
-    ncol  = size(play,dim=1)
-    nlay  = size(play,dim=2)
-    ngpt  = this%get_ngpt()
-    nband = this%get_nband()
-    !
-    ! Gas optics
-    !
-    !$acc enter data create(jtemp, jpress, tropo, fmajor, jeta)
-    error_msg = compute_gas_taus(this,                       &
-                                 ncol, nlay, ngpt, nband,    &
-                                 play, plev, tlay, gas_desc, &
-                                 optical_props,              &
-                                 jtemp, jpress, jeta, tropo, fmajor, &
-                                 col_dry)
-    if(error_msg  /= '') return
-    ! optical_props%tau = 0.1
-
-    ! ----------------------------------------------------------
-    !
-    ! External source -- check arrays sizes and values
-    ! input data sizes and values
-    !
-    error_msg = check_extent(tsfc, ncol, 'tsfc')
-    if(error_msg  /= '') return
-    error_msg = check_range(tsfc, this%temp_ref_min,  this%temp_ref_max,  'tsfc')
-    if(error_msg  /= '') return
-    if(present(tlev)) then
-      error_msg = check_extent(tlev, ncol, nlay+1, 'tlev')
-      if(error_msg  /= '') return
-      error_msg = check_range(tlev, this%temp_ref_min, this%temp_ref_max, 'tlev')
-      if(error_msg  /= '') return
-    end if
-
-    !
-    !   output extents
-    !
-    if(any([sources%get_ncol(), sources%get_nlay(), sources%get_ngpt()] /= [ncol, nlay, ngpt])) &
-      error_msg = "gas_optics%gas_optics: source function arrays inconsistently sized"
-    if(error_msg  /= '') return
-
-    ! add cloud properties to optical_props
-    select type(optical_props)
-
-    type is (ty_optical_props_1scl)
-      do ibnd=1,nband
-        do icol=1,ncol
-          do ilay=1,nlay
-            ssa = optical_props_clouds%ssa(icol,ilay,ibnd)
-            tauc= optical_props_clouds%tau(icol,ilay,ibnd)
-            do i=optical_props%band2gpt(1,ibnd),optical_props%band2gpt(2,ibnd)
-
-              optical_props%tau(icol,ilay,i) = &
-                  optical_props%tau(icol,ilay,i) + tauc*(1.-ssa)
-           enddo
-          enddo
-        enddo
-      enddo
-
-    class is (ty_optical_props_2str)
-      do ibnd=1,nband
-        do icol=1,ncol
-          do ilay=1,nlay
-            ssa = optical_props_clouds%ssa(icol,ilay,ibnd)
-            g   = optical_props_clouds%g  (icol,ilay,ibnd)
-            tauc= optical_props_clouds%tau(icol,ilay,ibnd)
-            do i=optical_props%band2gpt(1,ibnd),optical_props%band2gpt(2,ibnd)
-              optical_props%g(icol,ilay,i)   = g
-              
-              optical_props%tau(icol,ilay,i) = &
-                  optical_props%tau(icol,ilay,i) + tauc
-              if (tauc*ssa > epsilon(1.)) then
-                optical_props%ssa(icol,ilay,i) = &
-                      ssa*tauc/optical_props%tau(icol,ilay,i)
-              else
-                optical_props%ssa(icol,ilay,i) = 0.
-              endif
-
-           enddo
-          enddo
-        enddo
-      enddo
-
-      class default
-        error_msg = 'UNKNOWN class used'
-        return
-    end select  
-    if(error_msg  /= '') return
-
-    !
-    ! Interpolate source function
-    !
-    error_msg = source(this,                               &
-                       ncol, nlay, nband, ngpt,            &
-                       play, plev, tlay, tsfc,             &
-                       jtemp, jpress, jeta, tropo, fmajor, &
-                       sources,                            &
-                       tlev)
-    !$acc exit data delete(jtemp, jpress, tropo, fmajor, jeta)
-  end function gas_optics_int_cloud
   !------------------------------------------------------------------------------------------
   !
   ! Compute gas optical depth given temperature, pressure, and composition
@@ -1836,4 +1695,117 @@ contains
 
     get_nPlanckTemp = size(this%totplnk,dim=1) ! dimensions are Planck-temperature, band
   end function get_nPlanckTemp
+  !--------------------------------------------------------------------------------------------------------------------
+  ! Generic procedures for checking sizes, limits
+  !--------------------------------------------------------------------------------------------------------------------
+  !
+  ! Extents
+  !
+  ! --------------------------------------------------------------------------------------
+  function check_extent_1d(array, n1, label)
+    real(wp), dimension(:          ), intent(in) :: array
+    integer,                          intent(in) :: n1
+    character(len=*),                 intent(in) :: label
+    character(len=128)                           :: check_extent_1d
+
+    check_extent_1d = ""
+    if(size(array,1) /= n1) &
+      check_extent_1d = trim(label) // ' has incorrect size.'
+  end function check_extent_1d
+  ! --------------------------------------------------------------------------------------
+  function check_extent_2d(array, n1, n2, label)
+    real(wp), dimension(:,:        ), intent(in) :: array
+    integer,                          intent(in) :: n1, n2
+    character(len=*),                 intent(in) :: label
+    character(len=128)                           :: check_extent_2d
+
+    check_extent_2d = ""
+    if(size(array,1) /= n1 .or. size(array,2) /= n2 ) &
+      check_extent_2d = trim(label) // ' has incorrect size.'
+  end function check_extent_2d
+  ! --------------------------------------------------------------------------------------
+  function check_extent_3d(array, n1, n2, n3, label)
+    real(wp), dimension(:,:,:      ), intent(in) :: array
+    integer,                          intent(in) :: n1, n2, n3
+    character(len=*),                 intent(in) :: label
+    character(len=128)                           :: check_extent_3d
+
+    check_extent_3d = ""
+    if(size(array,1) /= n1 .or. size(array,2) /= n2 .or. size(array,3) /= n3) &
+      check_extent_3d = trim(label) // ' has incorrect size.'
+  end function check_extent_3d
+  ! --------------------------------------------------------------------------------------
+  function check_extent_4d(array, n1, n2, n3, n4, label)
+    real(wp), dimension(:,:,:,:    ), intent(in) :: array
+    integer,                          intent(in) :: n1, n2, n3, n4
+    character(len=*),                 intent(in) :: label
+    character(len=128)                           :: check_extent_4d
+
+    check_extent_4d = ""
+    if(size(array,1) /= n1 .or. size(array,2) /= n2 .or. size(array,3) /= n3 .or. &
+       size(array,4) /= n4) &
+      check_extent_4d = trim(label) // ' has incorrect size.'
+  end function check_extent_4d
+  ! --------------------------------------------------------------------------------------
+  function check_extent_5d(array, n1, n2, n3, n4, n5, label)
+    real(wp), dimension(:,:,:,:,:  ), intent(in) :: array
+    integer,                          intent(in) :: n1, n2, n3, n4, n5
+    character(len=*),                 intent(in) :: label
+    character(len=128)                           :: check_extent_5d
+
+    check_extent_5d = ""
+    if(size(array,1) /= n1 .or. size(array,2) /= n2 .or. size(array,3) /= n3 .or. &
+       size(array,4) /= n4 .or. size(array,5) /= n5) &
+      check_extent_5d = trim(label) // ' has incorrect size.'
+  end function check_extent_5d
+  ! --------------------------------------------------------------------------------------
+  function check_extent_6d(array, n1, n2, n3, n4, n5, n6, label)
+    real(wp), dimension(:,:,:,:,:,:), intent(in) :: array
+    integer,                          intent(in) :: n1, n2, n3, n4, n5, n6
+    character(len=*),                 intent(in) :: label
+    character(len=128)                           :: check_extent_6d
+
+    check_extent_6d = ""
+    if(size(array,1) /= n1 .or. size(array,2) /= n2 .or. size(array,3) /= n3 .or. &
+       size(array,4) /= n4 .or. size(array,5) /= n5 .or. size(array,6) /= n6 ) &
+      check_extent_6d = trim(label) // ' has incorrect size.'
+  end function check_extent_6d
+  ! --------------------------------------------------------------------------------------
+  !
+  ! Values
+  !
+  ! --------------------------------------------------------------------------------------
+  function check_range_1D(val, minV, maxV, label)
+    real(wp), dimension(:),     intent(in) :: val
+    real(wp),                   intent(in) :: minV, maxV
+    character(len=*),           intent(in) :: label
+    character(len=128)                     :: check_range_1D
+
+    check_range_1D = ""
+    if(any(val < minV) .or. any(val > maxV)) &
+      check_range_1D = trim(label) // ' values out of range.'
+  end function check_range_1D
+  ! --------------------------------------------------------------------------------------
+  function check_range_2D(val, minV, maxV, label)
+    real(wp), dimension(:,:),   intent(in) :: val
+    real(wp),                   intent(in) :: minV, maxV
+    character(len=*),           intent(in) :: label
+    character(len=128)                     :: check_range_2D
+
+    check_range_2D = ""
+    if(any(val < minV) .or. any(val > maxV)) &
+      check_range_2D = trim(label) // ' values out of range.'
+  end function check_range_2D
+  ! --------------------------------------------------------------------------------------
+  function check_range_3D(val, minV, maxV, label)
+    real(wp), dimension(:,:,:), intent(in) :: val
+    real(wp),                   intent(in) :: minV, maxV
+    character(len=*),           intent(in) :: label
+    character(len=128)                     :: check_range_3D
+
+    check_range_3D = ""
+    if(any(val < minV) .or. any(val > maxV)) &
+      check_range_3D = trim(label) // ' values out of range.'
+  end function check_range_3D
+  !------------------------------------------------------------------------------------------
 end module mo_gas_optics_rrtmgp
