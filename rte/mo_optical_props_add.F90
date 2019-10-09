@@ -147,28 +147,19 @@ module mo_optical_props_add
   !     phase function moments (index 1 = g) for use with discrete ordinate methods
   !
   ! -------------------------------------------------------------------------------------------------
+
+  ! Implemented based on the paper
+  ! Tang G, P Yang, GW Kattawar, X Huang, EJ Mlawer, BA Baum, MD King, 2018: Improvement of 
+  ! the Simulation of Cloud Longwave Scattering in Broadband Radiative Transfer Models, 
+  ! Journal of the Atmospheric Sciences 75 (7), 2217-2233
+
   type, extends(ty_optical_props_2str) :: ty_optical_props_tip
-      integer               :: paramType = 1
   contains
       procedure, public  :: delta_scale => delta_scale_tip
-      procedure, public  :: setParam
   end type  ty_optical_props_tip
 
 
 contains  
-  function setParam(this, dat) result(err_message)
-    class(ty_optical_props_tip), intent(inout) :: this
-    character(128)                              :: err_message
-    integer                                     :: dat
-    err_message=''
-    select case(dat)
-    case(1:2)
-      this%paramType = dat
-    case default
-      err_message='allowed paramater value: 1,2'
-    end select
-  end function setParam    
-  
   ! ------------------------------------------------------------------------------------------
   ! --- delta scaling
   ! ------------------------------------------------------------------------------------------
@@ -188,16 +179,7 @@ contains
     nlay = this%get_nlay()
     ngpt = this%get_ngpt()
     err_message = ""
-    ! Chou scaling
-    ! f = 0.5+0.3738*this%g+0.0076*this%g**2+0.1186*this%g**3
-    ! Tang scaling
-    ! taucloud = taucloud *(1.0-ssacoice(ib)*f)
-    ! this%g    = f
-    if (this%paramType == 1) then
-      call scalingTang(ncol, nlay, ngpt, this%tau, this%ssa, this%g)
-    elseif (this%paramType == 1) then
-      call scalingChou(ncol, nlay, ngpt, this%tau, this%ssa, this%g)
-    endif
+    call scalingTang(ncol, nlay, ngpt, this%tau, this%ssa, this%g)
   end function delta_scale_tip  
   
 
@@ -217,41 +199,12 @@ contains
           gl = (1._wp + g(icol, ilay, igpt)) / 2._wp
           ssal = ssa(icol, ilay, igpt)
           tau(icol, ilay, igpt) = (1._wp - ssal * gl) * tau(icol, ilay, igpt)
-
           !  parameter wb/[(]1-w(1-b)] to put in Eq.21 of Tang's paper
-          !  a good place to add factor 0.5 (0.4 note A of Table)
+          !  here it is a good place to add factor 0.5 (0.4 note A of Table) to save a flop
           ssa(icol, ilay, igpt) = (1._wp - gl) *ssal / (1._wp - ssal * gl)*0.4/0.5
           g(icol, ilay, igpt)   = gl
         enddo
       enddo
     enddo
   end subroutine scalingTang
-
-  pure subroutine scalingChou(ncol, nlay, ngpt, tau, ssa, g)
-    integer ,                              intent(in)    :: ncol
-    integer ,                              intent(in)    :: nlay
-    integer ,                              intent(in)    :: ngpt
-    real(wp), dimension(ncol, nlay, ngpt), intent(inout) :: tau
-    real(wp), dimension(ncol, nlay, ngpt), intent(inout) :: ssa
-    real(wp), dimension(ncol, nlay, ngpt), intent(inout) :: g
-    integer  :: icol, ilay, igpt
-    real(wp) :: gl, ssal
-
-    do igpt=1,ngpt
-      do ilay=1,nlay
-        do icol=1,ncol
-          gl = g(icol, ilay, igpt)
-          gl = 0.5+0.3738*gl+0.0076*gl**2+0.1186*gl**3
-
-          ssal = ssa(icol, ilay, igpt)
-          tau(icol, ilay, igpt) = (1._wp - ssal * gl) * tau(icol, ilay, igpt)
-
-          !  parameter wb/[(]1-w(1-b)] to put in Eq.21 of Tang's paper
-          !  a good place to add factor 0.5 (0.3 note B of Table)
-          ssa(icol, ilay, igpt) = (1._wp - gl) *ssal / (1._wp - ssal * gl)*0.3/0.5
-          g(icol, ilay, igpt)   = gl
-        enddo
-      enddo
-    enddo
-  end subroutine scalingChou
 end module mo_optical_props_add
