@@ -98,10 +98,7 @@ contains
           ! 
           ! here ssa is used to store parameter wb/[(]1-w(1-b)] of Eq.21 of the Tang's paper
           ! actually it is in line of parameter rescaling defined in Eq.7
-          !
-          ! here it is a good place to add factor 0.5 (0.4 note A of Table) to save a flop
-          !
-          ssa(icol, ilay, igpt) = (1._wp - gl) *ssal / (1._wp - ssal * gl)*0.4/0.5
+          ssa(icol, ilay, igpt) = (1._wp - gl) *ssal / (1._wp - ssal * gl)
           g(icol, ilay, igpt)   = gl
         enddo
       enddo

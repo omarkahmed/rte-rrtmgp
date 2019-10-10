@@ -28,7 +28,6 @@
 module mo_rte_solver_kernels_add
   use,  intrinsic :: iso_c_binding
   use mo_rte_kind, only: wp, wl
-  use mo_rte_solver_kernels, only : apply_BC
   implicit none
   private
 
@@ -53,7 +52,7 @@ contains
   !   using user-supplied weights
   !
   ! ---------------------------------------------------------------
-  subroutine lw_solver_Tip(ncol, nlay, ngpt, top_at_1, D, weight,                             &
+  subroutine lw_solver_Tip(ncol, nlay, ngpt, top_at_1, D,                             &
                               tau, ssa, lay_source, lev_source_inc, lev_source_dec, sfc_emis, sfc_src, &
                               radn_up, radn_dn) bind(C, name="lw_solver_Tip")
   use mo_rte_solver_kernels, only : lw_source_noscat, lw_transport_noscat
@@ -61,7 +60,6 @@ contains
     integer,                               intent(in   ) :: ncol, nlay, ngpt ! Number of columns, layers, g-points
     logical(wl),                           intent(in   ) :: top_at_1
     real(wp), dimension(ncol,       ngpt), intent(in   ) :: D            ! secant of propagation angle  []
-    real(wp),                              intent(in   ) :: weight       ! quadrature weight
     real(wp), dimension(ncol,nlay,  ngpt), intent(in   ) :: tau          ! Absorption optical thickness []
     real(wp), dimension(ncol,nlay,  ngpt), intent(in   ) :: ssa          ! single scattering albedo []
     real(wp), dimension(ncol,nlay,  ngpt), intent(in   ) :: lay_source   ! Planck source at layer average temperature [W/m2]
@@ -86,10 +84,7 @@ contains
     real(wp), parameter :: pi = acos(-1._wp)
     integer             :: ilev, igpt, top_level
     ! ------------------------------------
-    real(wp)            :: fact
     real(wp), parameter :: tau_thresh = sqrt(epsilon(tau))
-    integer             :: icol
-    real(wp), dimension(ncol     ) :: sfcSource
     ! ------------------------------------
 
     ! Which way is up?
@@ -108,15 +103,6 @@ contains
 
     do igpt = 1, ngpt
       !
-      ! Transport is for intensity
-      !   convert flux at top of domain to intensity assuming azimuthal isotropy
-      !
-      ! radn_dn(:,top_level,igpt) = radn_dn(:,top_level,igpt)/(2._wp * pi * weight)
-
-      !
-      ! Optical path and transmission, used in source function and transport calculations
-      !
-      !
       ! Optical path and transmission, used in source function and transport calculations
       !
       do ilev = 1, nlay
@@ -124,9 +110,6 @@ contains
         trans  (:,ilev) = exp(-tau_loc(:,ilev))
       end do
 
-      ! forall(icol = 1:ncol,ilev = 1:nlay) tau_loc(icol,ilev) = tau(icol,ilev,igpt)*D(icol,igpt)
-      ! forall(icol = 1:ncol,ilev = 1:nlay) trans  (icol,ilev) = exp(-tau_loc(icol,ilev))
-      !
       ! Source function for diffuse radiation
       !
       call lw_source_noscat(ncol, nlay, &
@@ -141,15 +124,15 @@ contains
       !
       ! Transport
       !
+      call lw_transport_noscat(ncol, nlay, top_at_1,  &
+                               tau_loc, trans, sfc_albedo, source_dn, source_up, source_sfc, &
+                               radn_up(:,:,igpt), radn_dn(:,:,igpt))
+
       call lw_transport_Tip(ncol, nlay, top_at_1,  &
-                               tau_loc, ssa(:,:,igpt), trans, &
+                               ssa(:,:,igpt), trans, &
                                sfc_albedo, source_dn, source_up, source_sfc, &
                                radn_up(:,:,igpt), radn_dn(:,:,igpt))
 
-      ! Convert intensity to flux assuming azimuthal isotropy and quadrature weight
-      !
-      ! radn_dn(:,:,igpt) = 2._wp * pi * weight * radn_dn(:,:,igpt)
-      ! radn_up(:,:,igpt) = 2._wp * pi * weight * radn_up(:,:,igpt)
     end do  ! g point loop
   end subroutine lw_solver_Tip
   ! -------------------------------------------------------------------------------------------------
@@ -166,7 +149,6 @@ contains
                                   flux_up, flux_dn) &
                                    bind(C, name="lw_solver_Tip_GaussQuad")
     use mo_rte_solver_kernels, only : lw_solver_noscat
-    use mo_rte_solver_kernels, only : apply_BC
     integer,                               intent(in   ) :: ncol, nlay, ngpt ! Number of columns, layers, g-points
     logical(wl),                           intent(in   ) :: top_at_1
     integer,                               intent(in   ) :: nmus         ! number of quadrature angles
@@ -199,7 +181,7 @@ contains
     radn_dn(1:ncol, top_level, 1:ngpt)  = flux_dn(1:ncol, top_level, 1:ngpt) / weight
 
     call lw_solver_Tip(ncol, nlay, ngpt, &
-                          top_at_1, Ds_ncol, weights(1), tau, ssa, &
+                          top_at_1, Ds_ncol, tau, ssa, &
                           lay_source, lev_source_inc, lev_source_dec, sfc_emis, sfc_src, &
                           flux_up, flux_dn)
 
@@ -211,7 +193,7 @@ contains
       weight = 2._wp*pi*weights(imu)
       radn_dn(1:ncol, top_level, 1:ngpt)  = flux_dn(1:ncol, top_level, 1:ngpt) / weight
       call lw_solver_Tip(ncol, nlay, ngpt, &
-                            top_at_1, Ds_ncol, weights(imu), tau, ssa, &
+                            top_at_1, Ds_ncol, tau, ssa, &
                             lay_source, lev_source_inc, lev_source_dec, sfc_emis, sfc_src, &
                             radn_up, radn_dn)
 
@@ -220,18 +202,26 @@ contains
     end do
   end subroutine lw_solver_Tip_GaussQuad
 
-    ! -------------------------------------------------------------------------------------------------
+  ! -------------------------------------------------------------------------------------------------
   !
-  ! Longwave no-scattering transport
+  ! Longwave no-scattering + a single itergation transport
   !
+  ! 
+  ! Implemented based on the paper
+  ! Tang G, P Yang, GW Kattawar, X Huang, EJ Mlawer, BA Baum, MD King, 2018: Improvement of 
+  ! the Simulation of Cloud Longwave Scattering in Broadband Radiative Transfer Models, 
+  ! Journal of the Atmospheric Sciences 75 (7), 2217-2233
+  ! https://doi.org/10.1175/JAS-D-18-0014.1
+  ! adustment terms is computed based on solution of the Tang equations
+  ! for "linear-in-tau" internal source
+  ! 
   ! -------------------------------------------------------------------------------------------------
   subroutine lw_transport_Tip(ncol, nlay, top_at_1, &
-                                 tau, ssa, trans, sfc_albedo, source_dn, source_up, source_sfc, &
+                                 ssa, trans, sfc_albedo, source_dn, source_up, source_sfc, &
                                  radn_up, radn_dn) bind(C, name="lw_transport_Tip")
     integer,                          intent(in   ) :: ncol, nlay ! Number of columns, layers, g-points
     logical(wl),                      intent(in   ) :: top_at_1   !
-    real(wp), dimension(ncol,nlay  ), intent(in   ) :: tau, &     ! Absorption optical thickness, pre-divided by mu []
-                                                       trans      ! transmissivity = exp(-tau)
+    real(wp), dimension(ncol,nlay  ), intent(in   ) :: trans      ! transmissivity = exp(-tau)
     real(wp), dimension(ncol,nlay  ), intent(in   ) :: ssa        ! single scattering
     real(wp), dimension(ncol       ), intent(in   ) :: sfc_albedo ! Surface albedo
     real(wp), dimension(ncol,nlay  ), intent(in   ) :: source_dn, &
@@ -242,29 +232,31 @@ contains
     ! Local variables
     integer :: ilev, icol
     ! ---------------------------------------------------
-    real(wp), dimension(ncol,nlay+1)                :: i_up    ! Radiances [W/m2-str]
-    real(wp) :: xx, yy, xx1, xx2, xx3
+    ! real(wp), dimension(ncol,nlay+1)                :: i_up    ! Radiances [W/m2-str]
+    real(wp) :: xx
     if(top_at_1) then
       !
       ! Top of domain is index 1
       !
       ! Downward propagation
-      do ilev = 1, nlay
-        radn_dn(:,ilev+1) = trans(:,ilev)  *radn_dn(:,ilev)  + source_dn(:,ilev)
-      end do
+      ! do ilev = 1, nlay
+      !   radn_dn(:,ilev+1) = trans(:,ilev)  *radn_dn(:,ilev)  + source_dn(:,ilev)
+      ! end do
 
       ! Surface reflection and emission
-      radn_up(:,nlay+1) = radn_dn(:,nlay+1)*sfc_albedo(:) + source_sfc(:)
-      i_up   (:,nlay+1) = radn_up(:,nlay+1)
+      ! radn_up(:,nlay+1) = radn_dn(:,nlay+1)*sfc_albedo(:) + source_sfc(:)
 
       ! 1st Upward propagation
       do ilev = nlay, 1, -1
         radn_up(:,ilev) = trans(:,ilev  )*radn_up(:,ilev+1) + source_up(:,ilev)
-        i_up   (:,ilev) = radn_up(:,ilev)
-
         do icol=1,ncol
            if ( ssa(icol,ilev) > 1e-6 )  then
-              xx = 0.5_wp*ssa(icol,ilev)*&
+          !  
+          ! here ssa is used to store parameter wb/[(]1-w(1-b)] of Eq.21 of the Tang's paper
+          ! explanation of factor 0.4 note A of Table
+          !
+
+              xx = 0.4_wp*ssa(icol,ilev)*&
                      ( radn_dn(icol,ilev)*(1.-trans(icol,ilev )**2 ) - &
                        source_dn(icol,ilev) *trans(icol,ilev  ) - &
                        source_up(icol,ilev))
@@ -277,8 +269,13 @@ contains
         radn_dn(:,ilev+1) = trans(:,ilev)*radn_dn(:,ilev) + source_dn(:,ilev)
         do icol=1,ncol
           if ( ssa(icol,ilev) > 1e-6 )  then
-              xx = 0.5_wp*ssa(icol,ilev)*( &
-                  i_up(icol,ilev)*(1.-trans(icol,ilev  )**2)  - &
+          !  
+          ! here ssa is used to store parameter wb/[(]1-w(1-b)] of Eq.21 of the Tang's paper
+          ! explanation of factor 0.4 note A of Table
+          !
+
+              xx = 0.4_wp*ssa(icol,ilev)*( &
+                  radn_up(icol,ilev)*(1.-trans(icol,ilev  )**2)  - &
                   source_up(icol,ilev)*trans(icol,ilev  ) - &
                   source_dn(icol,ilev) )
                 radn_dn(:,ilev+1) = radn_dn(:,ilev+1) + xx
@@ -296,20 +293,22 @@ contains
       ! ----------N
       !
       !
-      do ilev = nlay, 1, -1
-        radn_dn(:,ilev) = trans(:,ilev  )*radn_dn(:,ilev+1) + source_dn(:,ilev)
-      end do
+      ! do ilev = nlay, 1, -1
+      !   radn_dn(:,ilev) = trans(:,ilev  )*radn_dn(:,ilev+1) + source_dn(:,ilev)
+      ! end do
 
       ! Surface reflection and emission
-      radn_up(:,     1) = radn_dn(:,     1)*sfc_albedo(:) + source_sfc(:)
-      i_up   (:,     1) = radn_up(:,     1)
+      ! radn_up(:,     1) = radn_dn(:,     1)*sfc_albedo(:) + source_sfc(:)
       ! Upward propagation
       do ilev = 1, nlay
         radn_up(:,ilev+1) =  trans(:,ilev) * radn_up(:,ilev) +  source_up(:,ilev)
-        i_up   (:,ilev+1) = radn_up(:,ilev+1)
         do icol=1,ncol
            if ( ssa(icol,ilev) > 1e-6 )  then
-              xx = 0.5_wp*ssa(icol,ilev)*&
+          !  
+          ! here ssa is used to store parameter wb/[(]1-w(1-b)] of Eq.21 of the Tang's paper
+          ! explanation of factor 0.4 note A of Table
+          !
+              xx = 0.4_wp*ssa(icol,ilev)*&
                      ( radn_dn(icol,ilev+1)*(1.-trans(icol,ilev )**2 ) - &
                        source_dn(icol,ilev) *trans(icol,ilev  ) - &
                        source_up(icol,ilev))
@@ -323,8 +322,12 @@ contains
         radn_dn(:,ilev) = trans(:,ilev  )*radn_dn(:,ilev+1) + source_dn(:,ilev)
         do icol=1,ncol
            if ( ssa(icol,ilev) > 1e-6 )  then
-                     xx = 0.5_wp*ssa(icol,ilev)*( &
-                      i_up(icol,ilev)*(1.-trans(icol,ilev  )**2)  - &
+          !  
+          ! here ssa is used to store parameter wb/[(]1-w(1-b)] of Eq.21 of the Tang's paper
+          ! explanation of factor 0.4 note A of Table
+          !
+                     xx = 0.4_wp*ssa(icol,ilev)*( &
+                      radn_up(icol,ilev)*(1.-trans(icol,ilev  )**2)  - &
                       source_up(icol,ilev)*trans(icol,ilev  ) - &
                       source_dn(icol,ilev) )
               radn_dn(icol,ilev) = radn_dn(icol,ilev) + xx
