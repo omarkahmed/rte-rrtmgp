@@ -254,8 +254,7 @@ contains
     ! Local variables
     integer :: ilev, icol, igpt
     ! ---------------------------------------------------
-    real(wp), dimension(nlay+1)                     :: i_up    ! Radiances [W/m2-str]
-    real(wp) :: xx, yy, xx1, xx2, xx3
+    real(wp) :: xx
     if(top_at_1) then
       !
       ! Top of domain is index 1
@@ -271,27 +270,32 @@ contains
 
           ! Surface reflection and emission
           radn_up(icol,nlay+1,igpt) = radn_dn(icol,nlay+1,igpt)*sfc_albedo(icol,igpt) + source_sfc(icol,igpt)
-          i_up   (nlay+1)           = radn_up(icol,nlay+1,igpt)
 
           ! 1st Upward propagation
           do ilev = nlay, 1, -1
             radn_up(icol,ilev,igpt) = trans(icol,ilev,igpt)*radn_up(icol,ilev+1,igpt) + source_up(icol,ilev,igpt)
-            i_up   (ilev)      = radn_up(icol,ilev,igpt)
 
             if ( ssa(icol,ilev,igpt) > 1e-6 )  then
-              xx = 0.5_wp*ssa(icol,ilev,igpt)*&
+          !  
+          ! here ssa is used to store parameter wb/[(]1-w(1-b)] of Eq.21 of the Tang's paper
+          ! explanation of factor 0.4 note A of Table
+          !
+              xx = 0.4_wp*ssa(icol,ilev,igpt)*&
                      ( radn_dn(icol,ilev,igpt)*(1.-trans(icol,ilev,igpt)**2 ) - &
                        source_dn(icol,ilev,igpt)  *trans(icol,ilev,igpt ) - &
                        source_up(icol,ilev,igpt))
-              radn_up(icol,ilev,igpt) = radn_up(icol,ilev,igpt) + xx
             endif  
           enddo  
           ! 2nd Downward propagation
           do ilev = 1, nlay
             radn_dn(icol,ilev+1,igpt) = trans(icol,ilev,igpt)*radn_dn(icol,ilev,igpt) + source_dn(icol,ilev,igpt)
             if ( ssa(icol,ilev,igpt) > 1e-6 )  then
-                xx = 0.5_wp*ssa(icol,ilev,igpt)*( &
-                    i_up(ilev)*(1. -trans(icol,ilev,igpt)**2)  - &
+          !  
+          ! here ssa is used to store parameter wb/[(]1-w(1-b)] of Eq.21 of the Tang's paper
+          ! explanation of factor 0.4 note A of Table
+          !
+                xx = 0.4_wp*ssa(icol,ilev,igpt)*( &
+                    radn_up(icol,ilev,igpt)*(1. -trans(icol,ilev,igpt)**2)  - &
                     source_up(icol,ilev,igpt)*trans(icol,ilev,igpt) - &
                     source_dn(icol,ilev,igpt) )
                   radn_dn(icol,ilev+1,igpt) = radn_dn(icol,ilev+1,igpt) + xx
@@ -319,13 +323,15 @@ contains
 
           ! Surface reflection and emission
           radn_up(icol,1,igpt) = radn_dn(icol,1,igpt)*sfc_albedo(icol,igpt) + source_sfc(icol,igpt)
-          i_up(1)              = radn_up(icol,1,igpt)
           ! Upward propagation
           do ilev = 1, nlay
             radn_up(icol,ilev+1,igpt) =  trans(icol,ilev,igpt) * radn_up(icol,ilev,igpt) +  source_up(icol,ilev,igpt)
-            i_up   (ilev+1) =  radn_up(icol,ilev+1,igpt)
             if ( ssa(icol,ilev,igpt) > 1e-6 )  then
-               xx = 0.5_wp*ssa(icol,ilev,igpt)*&
+          !  
+          ! here ssa is used to store parameter wb/[(]1-w(1-b)] of Eq.21 of the Tang's paper
+          ! explanation of factor 0.4 note A of Table
+          !
+               xx = 0.4_wp*ssa(icol,ilev,igpt)*&
                       ( radn_dn(icol,ilev+1,igpt)*(1.-trans(icol,ilev,igpt)**2 ) - &
                         source_dn(icol,ilev,igpt) *trans(icol,ilev ,igpt) - &
                         source_up(icol,ilev,igpt))
@@ -337,8 +343,12 @@ contains
           do ilev = nlay, 1, -1
             radn_dn(icol,ilev,igpt) = trans(icol,ilev,igpt)*radn_dn(icol,ilev+1,igpt) + source_dn(icol,ilev,igpt)
              if ( ssa(icol,ilev,igpt) > 1e-6 )  then
-                       xx = 0.5_wp*ssa(icol,ilev,igpt)*( &
-                        i_up(ilev)*(1.-trans(icol,ilev,igpt)**2)  - &
+          !  
+          ! here ssa is used to store parameter wb/[(]1-w(1-b)] of Eq.21 of the Tang's paper
+          ! explanation of factor 0.4 note A of Table
+          !
+                       xx = 0.4_wp*ssa(icol,ilev,igpt)*( &
+                        radn_up(icol,ilev,igpt)*(1.-trans(icol,ilev,igpt)**2)  - &
                         source_up(icol,ilev,igpt)*trans(icol,ilev ,igpt ) - &
                         source_dn(icol,ilev,igpt) )
                 radn_dn(icol,ilev,igpt) = radn_dn(icol,ilev,igpt) + xx
