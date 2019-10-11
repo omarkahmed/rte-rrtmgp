@@ -42,10 +42,16 @@ contains
   end subroutine
   !--------------------------------------------------------------------------------------------------------------------
   ! read optical coefficients from NetCDF file
-  subroutine load_and_init(kdist, filename, available_gases)
+  subroutine load_and_init(kdist, filename, available_gases, &
+                           irr_int, fac_int, spt_int, &
+                           fac_offset, spt_offset, &
+                           fac_avg_ind, spt_avg_ind)
     class(ty_gas_optics_rrtmgp), intent(inout) :: kdist
     character(len=*),     intent(in   ) :: filename
     class(ty_gas_concs),  intent(in   ) :: available_gases ! Which gases does the host model have available?
+    real(wp), optional ,  intent(inout) :: irr_int, fac_int, spt_int
+    real(wp), optional ,  intent(inout) :: fac_offset, spt_offset
+    real(wp), optional ,  intent(inout) :: fac_avg_ind, spt_avg_ind
     ! --------------------------------------------------
     !
     ! Variables that will be passed to gas_optics%load()
@@ -76,9 +82,6 @@ contains
     real(wp), dimension(:      ), allocatable :: solar_irr_int
     real(wp), dimension(:      ), allocatable :: svar_offset
     real(wp), dimension(:      ), allocatable :: svar_avg
-    real(wp)                                  :: irr_int, fac_int, spt_int
-    real(wp)                                  :: fac_offset, spt_offset
-    real(wp)                                  :: fac_avg_ind, spt_avg_ind
     real(wp)                                  :: svar_irr, svar_fac, svar_spt
     ! -----------------
     !
@@ -216,20 +219,21 @@ contains
       !
       ! Solar source doesn't have an dependencies yet
       !
+      allocate (solar_irr(nsolarterms,ngpts))
       solar_irr = read_field(ncid, 'solar_irradiance', nsolarterms, ngpts)
       allocate (solar_irr_int(nsolarterms))
       call integrate_solar_irr(nsolarterms, ngpts, solar_irr, solar_irr_int)
-      fac_int = solar_irr_int(1)
-      spt_int = solar_irr_int(2)
-      irr_int = solar_irr_int(3)
+      if (present(fac_int)) fac_int = solar_irr_int(1)
+      if (present(spt_int)) spt_int = solar_irr_int(2)
+      if (present(irr_int)) irr_int = solar_irr_int(3)
       allocate (svar_offset(nsolarterms))
       svar_offset = read_field(ncid, 'solar_var_offset', nsolarterms)
-      fac_offset = svar_offset(1)
-      spt_offset = svar_offset(2)
+      if (present(fac_offset)) fac_offset = svar_offset(1)
+      if (present(spt_offset)) spt_offset = svar_offset(2)
       allocate (svar_avg(nsolarterms))
       svar_avg = read_field(ncid, 'solar_var_avg', nsolarterms)
-      fac_avg_ind = svar_avg(1)
-      spt_avg_ind = svar_avg(2)
+      if (present(fac_avg_ind)) fac_avg_ind = svar_avg(1)
+      if (present(spt_avg_ind)) spt_avg_ind = svar_avg(2)
       ! Solar variability multiplier terms
       ! Set default to no solar variability
       svar_irr = 1.0_wp
@@ -257,12 +261,11 @@ contains
                                   scale_by_complement_upper, &
                                   kminor_start_lower, &
                                   kminor_start_upper, &
-                                  solar_irr, irr_int, fac_int, spt_int, &
-                                  fac_offset, spt_offset, fac_avg_ind, spt_avg_ind, &
-                                  svar_irr, svar_fac, svar_spt, &
+                                  solar_irr, svar_irr, svar_fac, svar_spt, &
                                   rayl_lower, rayl_upper))
     end if
     ! --------------------------------------------------
+    if (allocated(solar_irr)) deallocate (solar_irr)
     if (allocated(solar_irr_int)) deallocate (solar_irr_int)
     if (allocated(svar_offset)) deallocate (svar_offset)
     if (allocated(svar_avg)) deallocate (svar_avg)
