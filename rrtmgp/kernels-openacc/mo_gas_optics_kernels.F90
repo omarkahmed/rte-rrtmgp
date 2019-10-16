@@ -562,7 +562,7 @@ contains
     real(wp), dimension(ngpt,nlay,ncol), intent(out) :: lay_src
     real(wp), dimension(ngpt,nlay,ncol), intent(out) :: lev_src_inc, lev_src_dec
 
-    real(wp), dimension(ngpt,     ncol), optional, intent(out) :: sfc_source_Jac
+    real(wp), dimension(ngpt,     ncol), intent(out) :: sfc_source_Jac
     ! -----------------
     ! local
     real(wp), parameter                             :: dST = 1.0_wp
@@ -571,12 +571,12 @@ contains
     real(wp), dimension(2), parameter :: one = [1._wp, 1._wp]
     real(wp) :: pfrac          (ngpt,nlay,  ncol)
     real(wp) :: planck_function(nbnd,nlay+1,ncol)
-    real(wp) :: tsfcLoc(ncol)
     ! -----------------
 
     !$acc enter data copyin(tlay,tlev,tsfc,fmajor,jeta,tropo,jtemp,jpress,gpoint_bands,pfracin,totplnk,gpoint_flavor)
     !$acc enter data create(sfc_src,lay_src,lev_src_inc,lev_src_dec)
     !$acc enter data create(pfrac,planck_function)
+    !$acc enter data create(sfc_source_Jac)
 
     ! Calculation of fraction of band's Planck irradiance associated with each g-point
     !$acc parallel loop collapse(3)
@@ -600,44 +600,25 @@ contains
     !
     !$acc parallel loop
     do icol = 1, ncol
-      call interpolate1D(tsfc(icol), temp_ref_min, totplnk_delta, totplnk, planck_function(1:nbnd,1,icol))
+      call interpolate1D(tsfc(icol)      , temp_ref_min, totplnk_delta, totplnk, planck_function(1:nbnd,1,icol))
+      call interpolate1D(tsfc(icol) + dST, temp_ref_min, totplnk_delta, totplnk, planck_function(1:nbnd,2,icol))
     end do
+    !$acc parallel loop collapse(2)
+    do icol = 1, ncol
+      do ibnd = 1, nbnd
+        planck_function(ibnd,2,icol) = planck_function(ibnd,2,icol) - planck_function(ibnd,1,icol)
+      end do
+    end do ! icol
     !
     ! Map to g-points
     !
     !$acc parallel loop collapse(2)
     do igpt = 1, ngpt
       do icol = 1, ncol
-        sfc_src(igpt,icol) = pfrac(igpt,sfc_lay,icol) * planck_function(gpoint_bands(igpt), 1, icol)
+        sfc_src       (igpt,icol) = pfrac(igpt,sfc_lay,icol) * planck_function(gpoint_bands(igpt), 1, icol)
+        sfc_source_Jac(igpt,icol) = pfrac(igpt,sfc_lay,icol) * planck_function(gpoint_bands(igpt), 2, icol)
       end do
     end do ! icol
-    if (present(sfc_source_Jac)) then
-      
-       !$acc enter data create(tsfcLoc, sfc_source_Jac)
-
-      !$acc parallel loop
-      do icol = 1, ncol
-        tsfcLoc(icol) = tsfc(icol) + dST
-      end do
-      !
-      ! perturbed Planck function by band for the surface
-      ! Compute perturbed surface source irradiance for g-point, equals band irradiance x fraction for g-point
-      !
-      !$acc parallel loop
-      do icol = 1, ncol
-        call interpolate1D(tsfcLoc(icol), temp_ref_min, totplnk_delta, totplnk, planck_function(1:nbnd,1,icol))
-      end do
-      !
-      ! Map to g-points
-      !
-      !$acc parallel loop collapse(2)
-      do igpt = 1, ngpt
-        do icol = 1, ncol
-          sfc_source_Jac(igpt,icol) = pfrac(igpt,sfc_lay,icol) * planck_function(gpoint_bands(igpt), 1, icol)
-        end do
-      end do ! icol
-    endif
-
 
     !$acc parallel loop collapse(2)
     do icol = 1, ncol
@@ -695,10 +676,7 @@ contains
       end do ! ilay
     end do ! icol
 
-    if (present(sfc_source_Jac)) then
-      !$acc exit data delete(tsfcLoc)
-      !$acc exit data copyout(sfc_source_Jac)
-    endif   
+    !$acc exit data copyout(sfc_source_Jac)
     !$acc exit data delete(tlay,tlev,tsfc,fmajor,jeta,tropo,jtemp,jpress,gpoint_bands,pfracin,totplnk,gpoint_flavor)
     !$acc exit data delete(pfrac,planck_function)
     !$acc exit data copyout(sfc_src,lay_src,lev_src_inc,lev_src_dec)

@@ -505,7 +505,7 @@ contains
     real(wp), dimension(ngpt,nlay,ncol), intent(out) :: lay_src
     real(wp), dimension(ngpt,nlay,ncol), intent(out) :: lev_src_inc, lev_src_dec
 
-    real(wp), dimension(ngpt,     ncol), optional, intent(out) :: sfc_source_Jac
+    real(wp), dimension(ngpt,     ncol), intent(out) :: sfc_source_Jac
 
     ! -----------------
     ! local
@@ -542,6 +542,7 @@ contains
     !
     do icol = 1, ncol
       planck_function(1:nbnd,1,icol) = interpolate1D(tsfc(icol), temp_ref_min, totplnk_delta, totplnk)
+      planck_function(1:nbnd,2,icol) = interpolate1D(tsfc(icol) + dST, temp_ref_min, totplnk_delta, totplnk) - planck_function(1:nbnd,1,icol)
       !
       ! Map to g-points
       !
@@ -549,31 +550,11 @@ contains
         gptS = band_lims_gpt(1, ibnd)
         gptE = band_lims_gpt(2, ibnd)
         do igpt = gptS, gptE
-          sfc_src(igpt, icol) = pfrac(igpt,sfc_lay,icol) * planck_function(ibnd, 1, icol)
+          sfc_src       (igpt, icol) = pfrac(igpt,sfc_lay,icol) * planck_function(ibnd, 1, icol)
+          sfc_source_Jac(igpt, icol) = pfrac(igpt,sfc_lay,icol) * planck_function(ibnd, 2, icol)
         end do
       end do
     end do ! icol
-
-    if (present(sfc_source_Jac)) then
-      !
-      ! perturbed Planck function by band for the surface
-      ! Compute perturbed surface source irradiance for g-point, equals band irradiance x fraction for g-point
-      !
-      do icol = 1, ncol
-        planck_function(1:nbnd,1,icol) = interpolate1D(tsfc(icol) + dST, temp_ref_min, totplnk_delta, totplnk)
-        !
-        ! Map to g-points
-        !
-        do ibnd = 1, nbnd
-          gptS = band_lims_gpt(1, ibnd)
-          gptE = band_lims_gpt(2, ibnd)
-          do igpt = gptS, gptE
-            sfc_source_Jac(igpt, icol) = pfrac(igpt,sfc_lay,icol) * planck_function(ibnd, 1, icol)
-          end do
-        end do
-      end do ! icol
-
-    endif
 
     do icol = 1, ncol
       do ilay = 1, nlay
