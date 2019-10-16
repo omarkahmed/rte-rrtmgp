@@ -34,9 +34,7 @@ module mo_fluxes
   contains
     procedure(reduce_abstract),      deferred, public :: reduce
     procedure(are_desired_abstract), deferred, public :: are_desired
-    procedure(decrease_abstract),       deferred, public :: decrease
   end type ty_fluxes
-
   ! -----------------------------------------------------------------------------------------------
   !
   ! Class implementing broadband integration for the complete flux profile
@@ -48,7 +46,6 @@ module mo_fluxes
     real(wp), dimension(:,:), pointer :: flux_net => NULL()    ! Net (down - up)
     real(wp), dimension(:,:), pointer :: flux_dn_dir => NULL() ! Direct flux down
   contains
-    procedure, public :: decrease       => decrease_broadband
     procedure, public :: reduce      => reduce_broadband
     procedure, public :: are_desired => are_desired_broadband
   end type ty_fluxes_broadband
@@ -59,18 +56,6 @@ module mo_fluxes
   ! Abstract interfaces: any implemntation has to provide routines with these interfaces
   !
   abstract interface
-    ! -------------------
-    !
-    ! This routine takes the fully resolved calculation (detailed in spectral and vertical dimensions) and
-    !   computes desired outputs. Output values will normally be data components of the derived type.
-    !
-    function decrease_abstract(this, v1) result(error_msg)
-      import ty_fluxes
-      class(ty_fluxes),                  intent(in)    :: v1
-      class(ty_fluxes),                  intent(inout) :: this
-      character(len=128)                               :: error_msg
-    end function decrease_abstract
-
     ! -------------------
     !
     ! This routine takes the fully resolved calculation (detailed in spectral and vertical dimensions) and
@@ -213,21 +198,4 @@ contains
                                   associated(this%flux_net)] )
   end function are_desired_broadband
   ! --------------------------------------------------------------------------------------
-
-  ! --------------------------------------------------------------------------------------
-  !
-  ! Broadband fluxes -- simply sum over the spectral dimension and report the whole profile
-  !
-  ! --------------------------------------------------------------------------------------
-  function decrease_broadband(this, v1) result(error_msg)
-    class(ty_fluxes_broadband),   intent(in   )      :: v1
-    class(ty_fluxes_broadband),   intent(inout)      :: this
-    character(len=128)                               :: error_msg
-    ! ------
-    integer :: ncol, nlev, ngpt
-    error_msg=''
-    ! ------
-    this%flux_up=this%flux_up - v1%flux_up
-    this%flux_dn=this%flux_dn - v1%flux_dn
-  end function decrease_broadband  
 end module mo_fluxes

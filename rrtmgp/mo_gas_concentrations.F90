@@ -338,7 +338,7 @@ contains
   ! -------------------------------------------------------------------------------------
   pure function get_gas_names(this)
     class(ty_gas_concs), intent(in) :: this
-    character(len=32), dimension(size(this%gas_name)) :: get_gas_names
+    character(len=32), dimension(this%get_num_gases()) :: get_gas_names
 
     get_gas_names(:) = this%gas_name(:)
     return
