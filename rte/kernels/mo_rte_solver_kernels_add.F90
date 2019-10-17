@@ -31,7 +31,7 @@ module mo_rte_solver_kernels_add
   implicit none
   private
 
-  public :: lw_solver_Tip_GaussQuad,  lw_solver_Tip
+  public :: lw_solver_1rescl_GaussQuad,  lw_solver_1rescl
 
   real(wp), parameter :: pi = acos(-1._wp)
 contains
@@ -52,9 +52,9 @@ contains
   !   using user-supplied weights
   !
   ! ---------------------------------------------------------------
-  subroutine lw_solver_Tip(ncol, nlay, ngpt, top_at_1, D,                             &
+  subroutine lw_solver_1rescl(ncol, nlay, ngpt, top_at_1, D,                             &
                               tau, ssa, lay_source, lev_source_inc, lev_source_dec, sfc_emis, sfc_src, &
-                              radn_up, radn_dn) bind(C, name="lw_solver_Tip")
+                              radn_up, radn_dn) bind(C, name="lw_solver_1rescl")
   use mo_rte_solver_kernels, only : lw_source_noscat, lw_transport_noscat
 
     integer,                               intent(in   ) :: ncol, nlay, ngpt ! Number of columns, layers, g-points
@@ -128,13 +128,13 @@ contains
                                tau_loc, trans, sfc_albedo, source_dn, source_up, source_sfc, &
                                radn_up(:,:,igpt), radn_dn(:,:,igpt))
 
-      call lw_transport_Tip(ncol, nlay, top_at_1,  &
+      call lw_transport_1rescl(ncol, nlay, top_at_1,  &
                                ssa(:,:,igpt), trans, &
                                sfc_albedo, source_dn, source_up, source_sfc, &
                                radn_up(:,:,igpt), radn_dn(:,:,igpt))
 
     end do  ! g point loop
-  end subroutine lw_solver_Tip
+  end subroutine lw_solver_1rescl
   ! -------------------------------------------------------------------------------------------------
   !
   ! LW transport, no scattering, multi-angle quadrature
@@ -143,11 +143,11 @@ contains
   !
   ! ---------------------------------------------------------------
  
-  subroutine lw_solver_Tip_GaussQuad(ncol, nlay, ngpt, top_at_1, nmus, Ds, weights, &
+  subroutine lw_solver_1rescl_GaussQuad(ncol, nlay, ngpt, top_at_1, nmus, Ds, weights, &
                                    tau, ssa, lay_source, lev_source_inc, lev_source_dec, &
                                    sfc_emis, sfc_src,&
                                   flux_up, flux_dn) &
-                                   bind(C, name="lw_solver_Tip_GaussQuad")
+                                   bind(C, name="lw_solver_1rescl_GaussQuad")
     use mo_rte_solver_kernels, only : lw_solver_noscat
     integer,                               intent(in   ) :: ncol, nlay, ngpt ! Number of columns, layers, g-points
     logical(wl),                           intent(in   ) :: top_at_1
@@ -180,7 +180,7 @@ contains
     weight = 2._wp*pi*weights(1)
     radn_dn(1:ncol, top_level, 1:ngpt)  = flux_dn(1:ncol, top_level, 1:ngpt) / weight
 
-    call lw_solver_Tip(ncol, nlay, ngpt, &
+    call lw_solver_1rescl(ncol, nlay, ngpt, &
                           top_at_1, Ds_ncol, tau, ssa, &
                           lay_source, lev_source_inc, lev_source_dec, sfc_emis, sfc_src, &
                           flux_up, flux_dn)
@@ -192,7 +192,7 @@ contains
       Ds_ncol(:,:) = Ds(imu)
       weight = 2._wp*pi*weights(imu)
       radn_dn(1:ncol, top_level, 1:ngpt)  = flux_dn(1:ncol, top_level, 1:ngpt) / weight
-      call lw_solver_Tip(ncol, nlay, ngpt, &
+      call lw_solver_1rescl(ncol, nlay, ngpt, &
                             top_at_1, Ds_ncol, tau, ssa, &
                             lay_source, lev_source_inc, lev_source_dec, sfc_emis, sfc_src, &
                             radn_up, radn_dn)
@@ -200,7 +200,7 @@ contains
       flux_up(:,:,:) = flux_up(:,:,:) + weight*radn_up(:,:,:)
       flux_dn(:,:,:) = flux_dn(:,:,:) + weight*radn_dn(:,:,:)
     end do
-  end subroutine lw_solver_Tip_GaussQuad
+  end subroutine lw_solver_1rescl_GaussQuad
 
   ! -------------------------------------------------------------------------------------------------
   !
@@ -216,9 +216,9 @@ contains
   ! for "linear-in-tau" internal source
   ! 
   ! -------------------------------------------------------------------------------------------------
-  subroutine lw_transport_Tip(ncol, nlay, top_at_1, &
+  subroutine lw_transport_1rescl(ncol, nlay, top_at_1, &
                                  ssa, trans, sfc_albedo, source_dn, source_up, source_sfc, &
-                                 radn_up, radn_dn) bind(C, name="lw_transport_Tip")
+                                 radn_up, radn_dn) bind(C, name="lw_transport_1rescl")
     integer,                          intent(in   ) :: ncol, nlay ! Number of columns, layers, g-points
     logical(wl),                      intent(in   ) :: top_at_1   !
     real(wp), dimension(ncol,nlay  ), intent(in   ) :: trans      ! transmissivity = exp(-tau)
@@ -335,5 +335,5 @@ contains
         enddo  
       end do
     end if
-  end subroutine lw_transport_Tip
+  end subroutine lw_transport_1rescl
 end module mo_rte_solver_kernels_add
