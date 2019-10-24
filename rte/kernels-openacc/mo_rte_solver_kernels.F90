@@ -152,8 +152,6 @@ contains
         end do
       end do
     end do
-
-
       !
       ! Transport
       !
@@ -357,6 +355,7 @@ contains
   !   Extinction-only i.e. solar direct beam
   !
   ! -------------------------------------------------------------------------------------------------
+<<<<<<< HEAD
   subroutine sw_solver_noscat(ncol, nlay, ngpt, &
                               top_at_1, tau, mu0, flux_dir) bind (C, name="sw_solver_noscat")
     integer,                    intent(in   ) :: ncol, nlay, ngpt ! Number of columns, layers, g-points
@@ -1000,16 +999,14 @@ end subroutine sw_source_2str
                                               ! scattering of direct beam
                                               ! G in SH08
     real(wp), dimension(ncol,nlay  ,ngpt) :: denom      ! beta in SH08
-    ! ------------------
     ! ---------------------------------
-  !
-  ! Indexing into arrays for upward and downward propagation depends on the vertical
-  !   orientation of the arrays (whether the domain top is at the first or last index)
-  ! We write the loops out explicitly so compilers will have no trouble optimizing them.
-  !
+    !
+    ! Indexing into arrays for upward and downward propagation depends on the vertical
+    !   orientation of the arrays (whether the domain top is at the first or last index)
+    ! We write the loops out explicitly so compilers will have no trouble optimizing them.
+    !
     !$acc enter data copyin(albedo_sfc, rdif, tdif, src_dn, src_up, src_sfc, flux_dn)
     !$acc enter data create(flux_up, albedo, src, denom)
-
     if(top_at_1) then
       !$acc parallel loop gang vector collapse(2)
       do igpt = 1, ngpt
@@ -1042,6 +1039,7 @@ end subroutine sw_source_2str
           ilev = 1
           flux_up(icol,ilev,igpt) = flux_dn(icol,ilev,igpt) * albedo(icol,ilev,igpt) + & ! ... reflection of incident diffuse and
                                     src(icol,ilev,igpt)                                  ! emission from below
+
     !
     ! From the top of the atmosphere downward -- compute fluxes
     !
@@ -1088,7 +1086,6 @@ end subroutine sw_source_2str
           ilev = nlay+1
           flux_up(icol,ilev,igpt) = flux_dn(icol,ilev,igpt) * albedo(icol,ilev,igpt) + & ! ... reflection of incident diffuse and
                             src(icol,ilev,igpt)                          ! scattering by the direct beam below
-
     !
     ! From the top of the atmosphere downward -- compute fluxes
     !
