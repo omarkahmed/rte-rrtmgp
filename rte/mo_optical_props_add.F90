@@ -125,7 +125,7 @@ contains
   !
   ! ------------------------------------------------------------------------------------------
   function validate_1rescl(this) result(err_message)
-    use mo_util_array, only: any_vals_less_than, any_vals_outside
+    use mo_rte_util_array, only: any_vals_less_than, any_vals_outside
     class(ty_optical_props_1rescl), intent(in) :: this
     character(len=128)                         :: err_message
 
