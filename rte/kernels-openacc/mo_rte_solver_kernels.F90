@@ -44,6 +44,8 @@ module mo_rte_solver_kernels
             lw_source_2str, sw_source_2str, &
             lw_two_stream, sw_two_stream, &
             adding
+  public :: lw_transport_noscat
+            
 
   real(wp), parameter :: pi = acos(-1._wp)
 contains
@@ -61,26 +63,26 @@ contains
   subroutine lw_solver_noscat(ncol, nlay, ngpt, top_at_1, D, weight,                             &
                               tau, lay_source, lev_source_inc, lev_source_dec, sfc_emis, sfc_src, &
                               radn_up, radn_dn) bind(C, name="lw_solver_noscat")
-    integer,                    intent( in) :: ncol, nlay, ngpt ! Number of columns, layers, g-points
-    logical(wl),                intent( in) :: top_at_1
-    real(wp), dimension(ncol,       ngpt), intent( in) :: D            ! secant of propagation angle  []
-    real(wp),                              intent( in) :: weight       ! quadrature weight
-    real(wp), dimension(ncol,nlay,  ngpt), intent( in) :: tau          ! Absorption optical thickness []
-    real(wp), dimension(ncol,nlay,  ngpt), intent( in) :: lay_source   ! Planck source at layer average temperature [W/m2]
+    integer,                               intent(in   ) :: ncol, nlay, ngpt ! Number of columns, layers, g-points
+    logical(wl),                           intent(in   ) :: top_at_1
+    real(wp), dimension(ncol,       ngpt), intent(in   ) :: D            ! secant of propagation angle  []
+    real(wp),                              intent(in   ) :: weight       ! quadrature weight
+    real(wp), dimension(ncol,nlay,  ngpt), intent(in   ) :: tau          ! Absorption optical thickness []
+    real(wp), dimension(ncol,nlay,  ngpt), intent(in   ) :: lay_source   ! Planck source at layer average temperature [W/m2]
     ! Planck source at layer edge for radiation in increasing/decreasing ilay direction
     ! lev_source_dec applies the mapping in layer i to the Planck function at layer i
     ! lev_source_inc applies the mapping in layer i to the Planck function at layer i+1
     real(wp), dimension(ncol,nlay,  ngpt), target, &
-                                           intent( in) :: lev_source_inc, lev_source_dec
-    real(wp), dimension(ncol,       ngpt), intent( in) :: sfc_emis         ! Surface emissivity      []
-    real(wp), dimension(ncol,       ngpt), intent( in) :: sfc_src          ! Surface source function [W/m2]
+                                           intent(in   ) :: lev_source_inc, lev_source_dec
+    real(wp), dimension(ncol,       ngpt), intent(in   ) :: sfc_emis     ! Surface emissivity      []
+    real(wp), dimension(ncol,       ngpt), intent(in   ) :: sfc_src      ! Surface source function [W/m2]
     real(wp), dimension(ncol,nlay+1,ngpt), intent(inout) :: radn_dn ! Radiances [W/m2-str]
-    real(wp), dimension(ncol,nlay+1,ngpt), intent(  out) :: radn_up ! Radiances [W/m2-str]
+    real(wp), dimension(ncol,nlay+1,ngpt), intent(  out) :: radn_up      ! Radiances [W/m2-str]
                                                                            ! Top level must contain incident flux boundary condition
 
     ! Local variables, no g-point dependency
     real(wp), dimension(ncol,nlay,ngpt) :: tau_loc, &  ! path length (tau/mu)
-                                           trans       ! transmissivity  = exp(-tau)
+                                        trans       ! transmissivity  = exp(-tau)
     real(wp), dimension(ncol,nlay,ngpt) :: source_dn, source_up
     real(wp), dimension(ncol,     ngpt) :: source_sfc, sfc_albedo
 
@@ -116,18 +118,18 @@ contains
     !$acc parallel loop collapse(2)
     do igpt = 1, ngpt
       do icol = 1, ncol
-        !
-        ! Transport is for intensity
-        !   convert flux at top of domain to intensity assuming azimuthal isotropy
-        !
+      !
+      ! Transport is for intensity
+      !   convert flux at top of domain to intensity assuming azimuthal isotropy
+      !
         radn_dn(icol,top_level,igpt) = radn_dn(icol,top_level,igpt)/(2._wp * pi * weight)
-        !
+      !
         ! Surface albedo, surface source function
-        !
+      !
         sfc_albedo(icol,igpt) = 1._wp - sfc_emis(icol,igpt)
         source_sfc(icol,igpt) = sfc_emis(icol,igpt) * sfc_src(icol,igpt)
       end do
-    end do
+      end do
 
     ! NOTE: This kernel produces small differences between GPU and CPU
     ! implementations on Ascent with PGI, we assume due to floating point
@@ -150,17 +152,16 @@ contains
         end do
       end do
     end do
-
-    !
-    ! Transport
-    !
+      !
+      ! Transport
+      !
     call lw_transport_noscat(ncol, nlay, ngpt, top_at_1,  &
-                             tau_loc, trans, sfc_albedo, source_dn, source_up, source_sfc, &
+                               tau_loc, trans, sfc_albedo, source_dn, source_up, source_sfc, &
                              radn_up, radn_dn)
 
-    !
-    ! Convert intensity to flux assuming azimuthal isotropy and quadrature weight
-    !
+      !
+      ! Convert intensity to flux assuming azimuthal isotropy and quadrature weight
+      !
     !$acc parallel loop collapse(3)
     do igpt = 1, ngpt
       do ilev = 1, nlay+1
@@ -185,10 +186,10 @@ contains
   ! ---------------------------------------------------------------
   subroutine lw_solver_noscat_GaussQuad(ncol, nlay, ngpt, top_at_1, nmus, Ds, weights, &
                                    tau, lay_source, lev_source_inc, lev_source_dec, sfc_emis, sfc_src, flux_up, flux_dn) &
-                                   bind (C, name="lw_solver_noscat_GaussQuad")
+                                   bind(C, name="lw_solver_noscat_GaussQuad")
     integer,                               intent(in   ) :: ncol, nlay, ngpt ! Number of columns, layers, g-points
     logical(wl),                           intent(in   ) :: top_at_1
-    integer,                               intent(in   ) :: nmus          ! number of quadrature angles
+    integer,                               intent(in   ) :: nmus         ! number of quadrature angles
     real(wp), dimension(nmus),             intent(in   ) :: Ds, weights  ! quadrature secants, weights
     real(wp), dimension(ncol,nlay,  ngpt), intent(in   ) :: tau          ! Absorption optical thickness []
     real(wp), dimension(ncol,nlay,  ngpt), intent(in   ) :: lay_source   ! Planck source at layer average temperature [W/m2]
@@ -197,10 +198,10 @@ contains
                                         ! Includes spectral weighting that accounts for state-dependent frequency to g-space mapping
     real(wp), dimension(ncol,nlay,  ngpt), intent(in   ) :: lev_source_dec
                                                ! Planck source at layer edge for radiation in decreasing ilay direction [W/m2]
-    real(wp), dimension(ncol,       ngpt), intent(in   ) :: sfc_emis         ! Surface emissivity      []
-    real(wp), dimension(ncol,       ngpt), intent(in   ) :: sfc_src          ! Surface source function [W/m2]
+    real(wp), dimension(ncol,       ngpt), intent(in   ) :: sfc_emis     ! Surface emissivity      []
+    real(wp), dimension(ncol,       ngpt), intent(in   ) :: sfc_src      ! Surface source function [W/m2]
     real(wp), dimension(ncol,nlay+1,ngpt), intent(inout) :: flux_dn ! Radiances [W/m2-str]
-    real(wp), dimension(ncol,nlay+1,ngpt), intent(  out) :: flux_up ! Radiances [W/m2-str]
+    real(wp), dimension(ncol,nlay+1,ngpt), intent(  out) :: flux_up      ! Radiances [W/m2-str]
                                                                            ! Top level must contain incident flux boundary condition
     ! Local variables
     real(wp), dimension(ncol,nlay+1,ngpt) :: radn_dn, radn_up ! Fluxes per quad angle
@@ -256,7 +257,7 @@ contains
             flux_up(icol,ilev,ngpt) = flux_up(icol,ilev,ngpt) + radn_up(icol,ilev,ngpt)
             flux_dn(icol,ilev,ngpt) = flux_dn(icol,ilev,ngpt) + radn_dn(icol,ilev,ngpt)
           end do
-        end do
+    end do
       end do
 
     end do ! imu loop
@@ -282,7 +283,7 @@ contains
     real(wp), dimension(ncol,nlay,  ngpt), intent(in   ) :: tau, &  ! Optical thickness,
                                                             ssa, &  ! single-scattering albedo,
                                                             g       ! asymmetry parameter []
-    real(wp), dimension(ncol,nlay,ngpt), intent(in   ) :: lay_source   ! Planck source at layer average temperature [W/m2]
+    real(wp), dimension(ncol,nlay,ngpt),   intent(in   ) :: lay_source   ! Planck source at layer average temperature [W/m2]
     real(wp), dimension(ncol,nlay,ngpt), target, &
                                            intent(in   ) :: lev_source_inc, lev_source_dec
                                         ! Planck source at layer edge for radiation in increasing/decreasing ilay direction [W/m2]
@@ -294,7 +295,7 @@ contains
     real(wp), dimension(ncol,nlay+1,ngpt), &
                                            intent(inout) :: flux_dn  ! Fluxes [W/m2]
                                                                               ! Top level (= merge(1, nlay+1, top_at_1)
-                                                                              ! must contain incident flux boundary condition
+                                                                      ! must contain incident flux boundary condition
     ! ----------------------------------------------------------------------
     integer :: icol, igpt
     real(wp), dimension(ncol,nlay  ,ngpt) :: Rdif, Tdif, gamma1, gamma2
@@ -306,29 +307,29 @@ contains
     ! ------------------------------------
     !$acc enter data copyin(tau, ssa, g, lay_source, lev_source_inc, lev_source_dec, sfc_emis, sfc_src, flux_dn)
     !$acc enter data create(flux_up, Rdif, Tdif, gamma1, gamma2, sfc_albedo, lev_source, source_dn, source_up, source_sfc)
-    !
-    ! RRTMGP provides source functions at each level using the spectral mapping
-    !   of each adjacent layer. Combine these for two-stream calculations
-    !
+      !
+      ! RRTMGP provides source functions at each level using the spectral mapping
+      !   of each adjacent layer. Combine these for two-stream calculations
+      !
     call lw_combine_sources(ncol, nlay, ngpt, top_at_1, &
                             lev_source_inc, lev_source_dec, &
-                            lev_source)
-    !
-    ! Cell properties: reflection, transmission for diffuse radiation
-    !   Coupling coefficients needed for source function
-    !
+                              lev_source)
+      !
+      ! Cell properties: reflection, transmission for diffuse radiation
+      !   Coupling coefficients needed for source function
+      !
     call lw_two_stream(ncol, nlay, ngpt, &
                        tau , ssa, g,     &
-                       gamma1, gamma2, Rdif, Tdif)
+                         gamma1, gamma2, Rdif, Tdif)
 
-    !
-    ! Source function for diffuse radiation
-    !
+      !
+      ! Source function for diffuse radiation
+      !
     call lw_source_2str(ncol, nlay, ngpt, top_at_1, &
                         sfc_emis, sfc_src, &
                         lay_source, lev_source, &
                         gamma1, gamma2, Rdif, Tdif, tau, &
-                        source_dn, source_up, source_sfc)
+                          source_dn, source_up, source_sfc)
 
     !$acc  parallel loop collapse(2)
     do igpt = 1, ngpt
@@ -336,13 +337,13 @@ contains
         sfc_albedo(icol,igpt) = 1._wp - sfc_emis(icol,igpt)
       end do
     end do
-    !
-    ! Transport
-    !
+      !
+      ! Transport
+      !
     call adding(ncol, nlay, ngpt, top_at_1,        &
-                sfc_albedo,                        &
-                Rdif, Tdif,                        &
-                source_dn, source_up, source_sfc,  &
+                  sfc_albedo,                        &
+                  Rdif, Tdif,                        &
+                  source_dn, source_up, source_sfc,  &
                 flux_up, flux_dn)
     !$acc exit data delete(tau, ssa, g, lay_source, lev_source_inc, lev_source_dec, sfc_emis, sfc_src)
     !$acc exit data delete(Rdif, Tdif, gamma1, gamma2, sfc_albedo, lev_source, source_dn, source_up, source_sfc)
@@ -463,7 +464,6 @@ contains
     end do
     !$acc exit data copyout(flux_up, flux_dn, flux_dir)
     !$acc exit data delete (tau, ssa, g, mu0, sfc_alb_dir, sfc_alb_dif, Rdif, Tdif, Rdir, Tdir, Tnoscat, source_up, source_dn, source_srf)
-
   end subroutine sw_solver_2stream
 
   ! -------------------------------------------------------------------------------------------------
@@ -555,12 +555,12 @@ contains
                                  tau, trans, sfc_albedo, source_dn, source_up, source_sfc, &
                                  radn_up, radn_dn) bind(C, name="lw_transport_noscat")
     integer,                               intent(in   ) :: ncol, nlay, ngpt ! Number of columns, layers, g-points
-    logical(wl),                           intent(in   ) :: top_at_1   !
+    logical(wl),                      intent(in   ) :: top_at_1   !
     real(wp), dimension(ncol,nlay  ,ngpt), intent(in   ) :: tau, &     ! Absorption optical thickness, pre-divided by mu []
-                                                            trans      ! transmissivity = exp(-tau)
+                                                       trans      ! transmissivity = exp(-tau)
     real(wp), dimension(ncol       ,ngpt), intent(in   ) :: sfc_albedo ! Surface albedo
     real(wp), dimension(ncol,nlay  ,ngpt), intent(in   ) :: source_dn, &
-                                                            source_up  ! Diffuse radiation emitted by the layer
+                                                       source_up  ! Diffuse radiation emitted by the layer
     real(wp), dimension(ncol       ,ngpt), intent(in   ) :: source_sfc ! Surface source function [W/m2]
     real(wp), dimension(ncol,nlay+1,ngpt), intent(inout) :: radn_dn ! Radiances [W/m2-str]
     real(wp), dimension(ncol,nlay+1,ngpt), intent(  out) :: radn_up ! Radiances [W/m2-str]
@@ -576,16 +576,16 @@ contains
       !$acc  parallel loop collapse(2)
       do igpt = 1, ngpt
         do icol = 1, ncol
-          ! Downward propagation
-          do ilev = 2, nlay+1
+      ! Downward propagation
+      do ilev = 2, nlay+1
             radn_dn(icol,ilev,igpt) = trans(icol,ilev-1,igpt)*radn_dn(icol,ilev-1,igpt) + source_dn(icol,ilev-1,igpt)
-          end do
+      end do
 
-          ! Surface reflection and emission
+      ! Surface reflection and emission
           radn_up(icol,nlay+1,igpt) = radn_dn(icol,nlay+1,igpt)*sfc_albedo(icol,igpt) + source_sfc(icol,igpt)
 
-          ! Upward propagation
-          do ilev = nlay, 1, -1
+      ! Upward propagation
+      do ilev = nlay, 1, -1
             radn_up(icol,ilev,igpt) = trans(icol,ilev  ,igpt)*radn_up(icol,ilev+1,igpt) + source_up(icol,ilev,igpt)
           end do
         end do
@@ -597,16 +597,16 @@ contains
       !$acc  parallel loop collapse(2)
       do igpt = 1, ngpt
         do icol = 1, ncol
-          ! Downward propagation
-          do ilev = nlay, 1, -1
+      ! Downward propagation
+      do ilev = nlay, 1, -1
             radn_dn(icol,ilev,igpt) = trans(icol,ilev  ,igpt)*radn_dn(icol,ilev+1,igpt) + source_dn(icol,ilev,igpt)
-          end do
+      end do
 
-          ! Surface reflection and emission
+      ! Surface reflection and emission
           radn_up(icol,     1,igpt) = radn_dn(icol,     1,igpt)*sfc_albedo(icol,igpt) + source_sfc(icol,igpt)
 
-          ! Upward propagation
-          do ilev = 2, nlay+1
+      ! Upward propagation
+      do ilev = 2, nlay+1
             radn_up(icol,ilev,igpt) = trans(icol,ilev-1,igpt) * radn_up(icol,ilev-1,igpt) +  source_up(icol,ilev-1,igpt)
           end do
         end do
@@ -648,40 +648,40 @@ contains
     do igpt = 1, ngpt
       do ilay = 1, nlay
         do icol = 1, ncol
-          !
-          ! Coefficients differ from SW implementation because the phase function is more isotropic
-          !   Here we follow Fu et al. 1997, doi:10.1175/1520-0469(1997)054<2799:MSPITI>2.0.CO;2
-          !   and use a diffusivity sec of 1.66
-          !
+        !
+        ! Coefficients differ from SW implementation because the phase function is more isotropic
+        !   Here we follow Fu et al. 1997, doi:10.1175/1520-0469(1997)054<2799:MSPITI>2.0.CO;2
+        !   and use a diffusivity sec of 1.66
+        !
           gamma1(icol,ilay,igpt)= LW_diff_sec * (1._wp - 0.5_wp * w0(icol,ilay,igpt) * (1._wp + g(icol,ilay,igpt))) ! Fu et al. Eq 2.9
           gamma2(icol,ilay,igpt)= LW_diff_sec *          0.5_wp * w0(icol,ilay,igpt) * (1._wp - g(icol,ilay,igpt))  ! Fu et al. Eq 2.10
 
-          ! Written to encourage vectorization of exponential, square root
-          ! Eq 18;  k = SQRT(gamma1**2 - gamma2**2), limited below to avoid div by 0.
-          !   k = 0 for isotropic, conservative scattering; this lower limit on k
-          !   gives relative error with respect to conservative solution
-          !   of < 0.1% in Rdif down to tau = 10^-9
+      ! Written to encourage vectorization of exponential, square root
+      ! Eq 18;  k = SQRT(gamma1**2 - gamma2**2), limited below to avoid div by 0.
+      !   k = 0 for isotropic, conservative scattering; this lower limit on k
+      !   gives relative error with respect to conservative solution
+      !   of < 0.1% in Rdif down to tau = 10^-9
           k = sqrt(max((gamma1(icol,ilay,igpt) - gamma2(icol,ilay,igpt)) * &
                        (gamma1(icol,ilay,igpt) + gamma2(icol,ilay,igpt)),  &
-                       1.e-12_wp))
+                           1.e-12_wp))
           exp_minusktau = exp(-tau(icol,ilay,igpt)*k)
 
-          !
-          ! Diffuse reflection and transmission
-          !
+      !
+      ! Diffuse reflection and transmission
+      !
           exp_minus2ktau = exp_minusktau * exp_minusktau
 
-          ! Refactored to avoid rounding errors when k, gamma1 are of very different magnitudes
+        ! Refactored to avoid rounding errors when k, gamma1 are of very different magnitudes
           RT_term = 1._wp / (k * (1._wp + exp_minus2ktau)  + &
                     gamma1(icol,ilay,igpt) * (1._wp - exp_minus2ktau) )
 
-          ! Equation 25
+        ! Equation 25
           Rdif(icol,ilay,igpt) = RT_term * gamma2(icol,ilay,igpt) * (1._wp - exp_minus2ktau)
 
-          ! Equation 26
+        ! Equation 26
           Tdif(icol,ilay,igpt) = RT_term * 2._wp * k * exp_minusktau
-        end do
       end do
+    end do
     end do
     !$acc exit data delete (tau, w0, g)
     !$acc exit data copyout(gamma1, gamma2, Rdif, Tdif)
@@ -697,7 +697,7 @@ contains
   subroutine lw_combine_sources(ncol, nlay, ngpt, top_at_1, &
                                 lev_src_inc, lev_src_dec, lev_source) bind(C, name="lw_combine_sources")
     integer,                                 intent(in ) :: ncol, nlay, ngpt
-    logical(wl),                             intent(in ) :: top_at_1
+    logical(wl),                       intent(in ) :: top_at_1
     real(wp), dimension(ncol, nlay  , ngpt), intent(in ) :: lev_src_inc, lev_src_dec
     real(wp), dimension(ncol, nlay+1, ngpt), intent(out) :: lev_source
 
@@ -710,7 +710,7 @@ contains
     !$acc  parallel loop collapse(3)
     do igpt = 1, ngpt
       do ilay = 1, nlay+1
-        do icol = 1,ncol
+      do icol = 1,ncol
           if(ilay == 1) then
             lev_source(icol, ilay, igpt) =      lev_src_dec(icol, ilay,   igpt)
           else if (ilay == nlay+1) then
@@ -719,8 +719,8 @@ contains
             lev_source(icol, ilay, igpt) = sqrt(lev_src_dec(icol, ilay, igpt) * &
                                                 lev_src_inc(icol, ilay-1, igpt))
           end if
-        end do
       end do
+    end do
     end do
     !$acc exit data delete (lev_src_inc, lev_src_dec)
     !$acc exit data copyout(lev_source)
@@ -759,19 +759,19 @@ contains
 
     !$acc parallel loop collapse(3)
     do igpt = 1, ngpt
-      do ilay = 1, nlay
+    do ilay = 1, nlay
         do icol = 1, ncol
           if (tau(icol,ilay,ngpt) > 1.0e-8_wp) then
-            if(top_at_1) then
+      if(top_at_1) then
               lev_source_top = lev_source(icol,ilay  ,ngpt)
               lev_source_bot = lev_source(icol,ilay+1,ngpt)
-            else
+      else
               lev_source_top = lev_source(icol,ilay+1,ngpt)
               lev_source_bot = lev_source(icol,ilay  ,ngpt)
-            end if
-            !
-            ! Toon et al. (JGR 1989) Eqs 26-27
-            !
+      end if
+          !
+          ! Toon et al. (JGR 1989) Eqs 26-27
+          !
             Z = (lev_source_bot-lev_source_top) / (tau(icol,ilay,igpt)*(gamma1(icol,ilay,igpt)+gamma2(icol,ilay,igpt)))
             Zup_top        =  Z + lev_source_top
             Zup_bottom     =  Z + lev_source_bot
@@ -779,13 +779,13 @@ contains
             Zdn_bottom     = -Z + lev_source_bot
             source_up(icol,ilay,igpt) = pi * (Zup_top    - rdif(icol,ilay,igpt) * Zdn_top    - tdif(icol,ilay,igpt) * Zup_bottom)
             source_dn(icol,ilay,igpt) = pi * (Zdn_bottom - rdif(icol,ilay,igpt) * Zup_bottom - tdif(icol,ilay,igpt) * Zdn_top)
-          else
+        else
             source_up(icol,ilay,igpt) = 0._wp
             source_dn(icol,ilay,igpt) = 0._wp
-          end if
+        end if
           if(ilay == 1) source_sfc(icol,igpt) = pi * sfc_emis(icol,igpt) * sfc_src(icol,igpt)
-        end do
       end do
+    end do
     end do
     !$acc exit data delete(sfc_emis, sfc_src, lay_source, tau, gamma1, gamma2, rdif, tdif, lev_source)
     !$acc exit data copyout(source_dn, source_up, source_sfc)
@@ -804,25 +804,25 @@ contains
   !    doi:10.1175/1520-0469(1980)037<0630:TSATRT>2.0.CO;2
   !
     subroutine sw_two_stream(ncol, nlay, ngpt, mu0, tau, w0, g, &
-                                  Rdif, Tdif, Rdir, Tdir, Tnoscat) bind (C, name="sw_two_stream")
+                                Rdif, Tdif, Rdir, Tdir, Tnoscat) bind (C, name="sw_two_stream")
       integer,                             intent(in)  :: ncol, nlay, ngpt
-      real(wp), dimension(ncol),           intent(in)  :: mu0
+    real(wp), dimension(ncol),      intent(in)  :: mu0
       real(wp), dimension(ncol,nlay,ngpt), intent(in)  :: tau, w0, g
       real(wp), dimension(ncol,nlay,ngpt), intent(out) :: Rdif, Tdif, Rdir, Tdir, Tnoscat
 
-      ! -----------------------
+    ! -----------------------
       integer  :: icol,ilay,igpt
 
-      ! Variables used in Meador and Weaver
+    ! Variables used in Meador and Weaver
       real(wp) :: gamma1, gamma2, gamma3, gamma4
       real(wp) :: alpha1, alpha2, k
 
-      ! Ancillary variables
+    ! Ancillary variables
       real(wp) :: RT_term
       real(wp) :: exp_minusktau, exp_minus2ktau
-      real(wp) :: k_mu, k_gamma3, k_gamma4
-      real(wp) :: mu0_inv(ncol)
-      ! ---------------------------------
+    real(WP) :: k_mu, k_gamma3, k_gamma4
+    real(wp) :: mu0_inv(ncol)
+    ! ---------------------------------
       ! ---------------------------------
       !$acc enter data copyin (mu0, tau, w0, g)
       !$acc enter data create(Rdif, Tdif, Rdir, Tdir, Tnoscat, mu0_inv)
@@ -839,9 +839,9 @@ contains
       do igpt = 1, ngpt
         do ilay = 1, nlay
           do icol = 1, ncol
-            ! Zdunkowski Practical Improved Flux Method "PIFM"
-            !  (Zdunkowski et al., 1980;  Contributions to Atmospheric Physics 53, 147-66)
-            !
+        ! Zdunkowski Practical Improved Flux Method "PIFM"
+        !  (Zdunkowski et al., 1980;  Contributions to Atmospheric Physics 53, 147-66)
+        !
             gamma1= (8._wp - w0(icol,ilay,igpt) * (5._wp + 3._wp * g(icol,ilay,igpt))) * .25_wp
             gamma2=  3._wp *(w0(icol,ilay,igpt) * (1._wp -         g(icol,ilay,igpt))) * .25_wp
             gamma3= (2._wp - 3._wp * mu0(icol)  *                  g(icol,ilay,igpt) ) * .25_wp
@@ -849,73 +849,73 @@ contains
 
             alpha1 = gamma1 * gamma4 + gamma2 * gamma3           ! Eq. 16
             alpha2 = gamma1 * gamma3 + gamma2 * gamma4           ! Eq. 17
-            ! Written to encourage vectorization of exponential, square root
-            ! Eq 18;  k = SQRT(gamma1**2 - gamma2**2), limited below to avoid div by 0.
-            !   k = 0 for isotropic, conservative scattering; this lower limit on k
-            !   gives relative error with respect to conservative solution
-            !   of < 0.1% in Rdif down to tau = 10^-9
+      ! Written to encourage vectorization of exponential, square root
+      ! Eq 18;  k = SQRT(gamma1**2 - gamma2**2), limited below to avoid div by 0.
+      !   k = 0 for isotropic, conservative scattering; this lower limit on k
+      !   gives relative error with respect to conservative solution
+      !   of < 0.1% in Rdif down to tau = 10^-9
             k = sqrt(max((gamma1 - gamma2) * &
                          (gamma1 + gamma2),  &
-                         1.e-12_wp))
+                           1.e-12_wp))
             exp_minusktau = exp(-tau(icol,ilay,igpt)*k)
-            !
-            ! Diffuse reflection and transmission
-            !
+      !
+      ! Diffuse reflection and transmission
+      !
             exp_minus2ktau = exp_minusktau * exp_minusktau
 
-            ! Refactored to avoid rounding errors when k, gamma1 are of very different magnitudes
+        ! Refactored to avoid rounding errors when k, gamma1 are of very different magnitudes
             RT_term = 1._wp / (k      * (1._wp + exp_minus2ktau)  + &
                                gamma1 * (1._wp - exp_minus2ktau) )
 
-            ! Equation 25
+        ! Equation 25
             Rdif(icol,ilay,igpt) = RT_term * gamma2 * (1._wp - exp_minus2ktau)
 
-            ! Equation 26
+        ! Equation 26
             Tdif(icol,ilay,igpt) = RT_term * 2._wp * k * exp_minusktau
 
-            !
-            ! Transmittance of direct, unscattered beam. Also used below
-            !
+      !
+      ! Transmittance of direct, unscattered beam. Also used below
+      !
             Tnoscat(icol,ilay,igpt) = exp(-tau(icol,ilay,igpt)*mu0_inv(icol))
 
-            !
-            ! Direct reflect and transmission
-            !
+      !
+      ! Direct reflect and transmission
+      !
             k_mu     = k * mu0(icol)
             k_gamma3 = k * gamma3
             k_gamma4 = k * gamma4
 
-            !
-            ! Equation 14, multiplying top and bottom by exp(-k*tau)
-            !   and rearranging to avoid div by 0.
-            !
+        !
+        ! Equation 14, multiplying top and bottom by exp(-k*tau)
+        !   and rearranging to avoid div by 0.
+        !
             RT_term =  w0(icol,ilay,igpt) * RT_term/merge(1._wp - k_mu*k_mu, &
-                                                         epsilon(1._wp),    &
-                                                         abs(1._wp - k_mu*k_mu) >= epsilon(1._wp))
+                                                 epsilon(1._wp),    &
+                                                 abs(1._wp - k_mu*k_mu) >= epsilon(1._wp))
 
             Rdir(icol,ilay,igpt) = RT_term  *                                    &
                ((1._wp - k_mu) * (alpha2 + k_gamma3)                  - &
                 (1._wp + k_mu) * (alpha2 - k_gamma3) * exp_minus2ktau - &
                 2.0_wp * (k_gamma3 - alpha2 * k_mu)  * exp_minusktau  * Tnoscat(icol,ilay,igpt))
 
-            !
-            ! Equation 15, multiplying top and bottom by exp(-k*tau),
-            !   multiplying through by exp(-tau/mu0) to
-            !   prefer underflow to overflow
-            ! Omitting direct transmittance
-            !
+        !
+        ! Equation 15, multiplying top and bottom by exp(-k*tau),
+        !   multiplying through by exp(-tau/mu0) to
+        !   prefer underflow to overflow
+        ! Omitting direct transmittance
+        !
             Tdir(icol,ilay,igpt) = &
                      -RT_term * ((1._wp + k_mu) * (alpha1 + k_gamma4) * Tnoscat(icol,ilay,igpt) - &
                                  (1._wp - k_mu) * (alpha1 - k_gamma4) * exp_minus2ktau * Tnoscat(icol,ilay,igpt) - &
                                   2.0_wp * (k_gamma4 + alpha1 * k_mu)  * exp_minusktau )
 
-          end do
-        end do
+      end do
+    end do
       end do
       !$acc exit data delete (mu0, tau, w0, g, mu0_inv)
       !$acc exit data copyout(Rdif, Tdif, Rdir, Tdir, Tnoscat)
 
-    end subroutine sw_two_stream
+  end subroutine sw_two_stream
   ! ---------------------------------------------------------------
   !
   ! Direct beam source for diffuse radiation in layers and at surface;
@@ -924,7 +924,7 @@ contains
   subroutine sw_source_2str(ncol, nlay, ngpt, top_at_1, Rdir, Tdir, Tnoscat, sfc_albedo, &
                             source_up, source_dn, source_sfc, flux_dn_dir) bind(C, name="sw_source_2str")
     integer,                                 intent(in   ) :: ncol, nlay, ngpt
-    logical(wl),                             intent(in   ) :: top_at_1
+    logical(wl),                       intent(in   ) :: top_at_1
     real(wp), dimension(ncol, nlay  , ngpt), intent(in   ) :: Rdir, Tdir, Tnoscat ! Layer reflectance, transmittance for diffuse radiation
     real(wp), dimension(ncol        , ngpt), intent(in   ) :: sfc_albedo          ! surface albedo for direct radiation
     real(wp), dimension(ncol, nlay  , ngpt), intent(  out) :: source_dn, source_up
@@ -942,7 +942,7 @@ contains
       !$acc  parallel loop collapse(2)
       do igpt = 1, ngpt
         do icol = 1, ncol
-          do ilev = 1, nlay
+      do ilev = 1, nlay
             source_up(icol,ilev,igpt)     =    Rdir(icol,ilev,igpt) * flux_dn_dir(icol,ilev,igpt)
             source_dn(icol,ilev,igpt)     =    Tdir(icol,ilev,igpt) * flux_dn_dir(icol,ilev,igpt)
             flux_dn_dir(icol,ilev+1,igpt) = Tnoscat(icol,ilev,igpt) * flux_dn_dir(icol,ilev,igpt)
@@ -956,7 +956,7 @@ contains
       !$acc  parallel loop collapse(2)
       do igpt = 1, ngpt
         do icol = 1, ncol
-          do ilev = nlay, 1, -1
+      do ilev = nlay, 1, -1
             source_up(icol,ilev,igpt)   =    Rdir(icol,ilev,igpt) * flux_dn_dir(icol,ilev+1,igpt)
             source_dn(icol,ilev,igpt)   =    Tdir(icol,ilev,igpt) * flux_dn_dir(icol,ilev+1,igpt)
             flux_dn_dir(icol,ilev,igpt) = Tnoscat(icol,ilev,igpt) * flux_dn_dir(icol,ilev+1,igpt)
@@ -968,7 +968,7 @@ contains
     !$acc exit data copyout(source_dn, source_up, source_sfc, flux_dn_dir)
     !$acc exit data delete(Rdir, Tdir, Tnoscat, sfc_albedo)
 
-  end subroutine sw_source_2str
+end subroutine sw_source_2str
 ! ---------------------------------------------------------------
 !
 ! Transport of diffuse radiation through a vertically layered atmosphere.
@@ -977,22 +977,21 @@ contains
 !
 ! -------------------------------------------------------------------------------------------------
   subroutine adding(ncol, nlay, ngpt, top_at_1, &
-                    albedo_sfc,           &
-                    rdif, tdif,           &
-                    src_dn, src_up, src_sfc, &
-                    flux_up, flux_dn) bind(C, name="adding")
+                  albedo_sfc,           &
+                  rdif, tdif,           &
+                  src_dn, src_up, src_sfc, &
+                  flux_up, flux_dn) bind(C, name="adding")
     integer,                               intent(in   ) :: ncol, nlay, ngpt
-    logical(wl),                           intent(in   ) :: top_at_1
+  logical(wl),                      intent(in   ) :: top_at_1
     real(wp), dimension(ncol       ,ngpt), intent(in   ) :: albedo_sfc
     real(wp), dimension(ncol,nlay  ,ngpt), intent(in   ) :: rdif, tdif
     real(wp), dimension(ncol,nlay  ,ngpt), intent(in   ) :: src_dn, src_up
     real(wp), dimension(ncol       ,ngpt), intent(in   ) :: src_sfc
     real(wp), dimension(ncol,nlay+1,ngpt), intent(  out) :: flux_up
-    ! intent(inout) because top layer includes incident flux
+  ! intent(inout) because top layer includes incident flux
     real(wp), dimension(ncol,nlay+1,ngpt), intent(inout) :: flux_dn
-    ! ------------------
+  ! ------------------
     integer :: icol, ilev, igpt
-
     ! These arrays could be private per thread in OpenACC, with 1 dimension of size nlay (or nlay+1)
     ! However, current PGI (19.4) has a bug preventing it from properly handling such private arrays.
     ! So we explicitly create the temporary arrays of size nlay(+1) per each of the ncol*ngpt elements
@@ -1012,7 +1011,6 @@ contains
     !
     !$acc enter data copyin(albedo_sfc, rdif, tdif, src_dn, src_up, src_sfc, flux_dn)
     !$acc enter data create(flux_up, albedo, src, denom)
-
     if(top_at_1) then
       !$acc parallel loop gang vector collapse(2)
       do igpt = 1, ngpt
@@ -1046,10 +1044,10 @@ contains
           flux_up(icol,ilev,igpt) = flux_dn(icol,ilev,igpt) * albedo(icol,ilev,igpt) + & ! ... reflection of incident diffuse and
                                     src(icol,ilev,igpt)                                  ! emission from below
 
-          !
-          ! From the top of the atmosphere downward -- compute fluxes
-          !
-          do ilev = 2, nlay+1
+    !
+    ! From the top of the atmosphere downward -- compute fluxes
+    !
+    do ilev = 2, nlay+1
             flux_dn(icol,ilev,igpt) = (tdif(icol,ilev-1,igpt)*flux_dn(icol,ilev-1,igpt) + &  ! Equation 13
                                rdif(icol,ilev-1,igpt)*src(icol,ilev,igpt) +       &
                                src_dn(icol,ilev-1,igpt)) * denom(icol,ilev-1,igpt)
@@ -1092,110 +1090,109 @@ contains
           ilev = nlay+1
           flux_up(icol,ilev,igpt) = flux_dn(icol,ilev,igpt) * albedo(icol,ilev,igpt) + & ! ... reflection of incident diffuse and
                             src(icol,ilev,igpt)                          ! scattering by the direct beam below
-
-          !
-          ! From the top of the atmosphere downward -- compute fluxes
-          !
-          do ilev = nlay, 1, -1
+    !
+    ! From the top of the atmosphere downward -- compute fluxes
+    !
+    do ilev = nlay, 1, -1
             flux_dn(icol,ilev,igpt) = (tdif(icol,ilev,igpt)*flux_dn(icol,ilev+1,igpt) + &  ! Equation 13
                                rdif(icol,ilev,igpt)*src(icol,ilev,igpt) + &
                                src_dn(icol, ilev, igpt)) * denom(icol,ilev,igpt)
             flux_up(icol,ilev,igpt) = flux_dn(icol,ilev,igpt) * albedo(icol,ilev,igpt) + & ! Equation 12
                               src(icol,ilev,igpt)
 
-          end do
+    end do
         end do
       end do
-    end if
+  end if
     !$acc exit data delete(albedo_sfc, rdif, tdif, src_dn, src_up, src_sfc, albedo, src, denom)
     !$acc exit data copyout(flux_up, flux_dn)
-  end subroutine adding
+end subroutine adding
   ! ---------------------------------------------------------------
-  !
-  ! Upper boundary condition
-  !
+!
+! Upper boundary condition
+!
   ! ---------------------------------------------------------------
   subroutine apply_BC_gpt(ncol, nlay, ngpt, top_at_1, inc_flux, flux_dn) bind (C, name="apply_BC_gpt")
-    integer,                               intent(in   ) :: ncol, nlay, ngpt ! Number of columns, layers, g-points
-    logical(wl),                           intent(in   ) :: top_at_1
-    real(wp), dimension(ncol,       ngpt), intent(in   ) :: inc_flux         ! Flux at top of domain
-    real(wp), dimension(ncol,nlay+1,ngpt), intent(  out) :: flux_dn          ! Flux to be used as input to solvers below
+  integer,                               intent( in) :: ncol, nlay, ngpt ! Number of columns, layers, g-points
+  logical(wl),                           intent( in) :: top_at_1
+  real(wp), dimension(ncol,       ngpt), intent( in) :: inc_flux         ! Flux at top of domain
+  real(wp), dimension(ncol,nlay+1,ngpt), intent(out) :: flux_dn          ! Flux to be used as input to solvers below
 
     integer :: icol, igpt
     ! --------------
     ! --------------
-    !   Upper boundary condition
-    if(top_at_1) then
+  !   Upper boundary condition
+  if(top_at_1) then
       !$acc  parallel loop collapse(2)
       do igpt = 1, ngpt
         do icol = 1, ncol
           flux_dn(icol,      1, igpt)  = inc_flux(icol,igpt)
         end do
       end do
-    else
+  else
       !$acc  parallel loop collapse(2)
       do igpt = 1, ngpt
         do icol = 1, ncol
           flux_dn(icol, nlay+1, igpt)  = inc_flux(icol,igpt)
         end do
       end do
-    end if
-  end subroutine apply_BC_gpt
-  ! ---------------------
+  end if
+end subroutine apply_BC_gpt
+! ---------------------
   subroutine apply_BC_factor(ncol, nlay, ngpt, top_at_1, inc_flux, factor, flux_dn) bind (C, name="apply_BC_factor")
-    integer,                               intent(in   ) :: ncol, nlay, ngpt ! Number of columns, layers, g-points
-    logical(wl),                           intent(in   ) :: top_at_1
-    real(wp), dimension(ncol,       ngpt), intent(in   ) :: inc_flux         ! Flux at top of domain
-    real(wp), dimension(ncol            ), intent(in   ) :: factor           ! Factor to multiply incoming flux
-    real(wp), dimension(ncol,nlay+1,ngpt), intent(out  ) :: flux_dn          ! Flux to be used as input to solvers below
+  integer,                               intent( in) :: ncol, nlay, ngpt ! Number of columns, layers, g-points
+  logical(wl),                           intent( in) :: top_at_1
+  real(wp), dimension(ncol,       ngpt), intent( in) :: inc_flux         ! Flux at top of domain
+  real(wp), dimension(ncol            ), intent( in) :: factor           ! Factor to multiply incoming flux
+  real(wp), dimension(ncol,nlay+1,ngpt), intent(out) :: flux_dn          ! Flux to be used as input to solvers below
 
     integer :: icol, igpt
     ! --------------
     ! --------------
 
-    !   Upper boundary condition
-    if(top_at_1) then
+  !   Upper boundary condition
+  if(top_at_1) then
       !$acc  parallel loop collapse(2)
       do igpt = 1, ngpt
         do icol = 1, ncol
           flux_dn(icol,      1, igpt)  = inc_flux(icol,igpt) * factor(icol)
         end do
       end do
-    else
+  else
       !$acc  parallel loop collapse(2)
       do igpt = 1, ngpt
         do icol = 1, ncol
           flux_dn(icol, nlay+1, igpt)  = inc_flux(icol,igpt) * factor(icol)
         end do
       end do
-    end if
-  end subroutine apply_BC_factor
-  ! ---------------------
+  end if
+end subroutine apply_BC_factor
+! ---------------------
   subroutine apply_BC_0(ncol, nlay, ngpt, top_at_1, flux_dn) bind (C, name="apply_BC_0")
-    integer,                               intent(in   ) :: ncol, nlay, ngpt ! Number of columns, layers, g-points
-    logical(wl),                           intent(in   ) :: top_at_1
-    real(wp), dimension(ncol,nlay+1,ngpt), intent(  out) :: flux_dn          ! Flux to be used as input to solvers below
+  integer,                               intent( in) :: ncol, nlay, ngpt ! Number of columns, layers, g-points
+  logical(wl),                           intent( in) :: top_at_1
+  real(wp), dimension(ncol,nlay+1,ngpt), intent(out) :: flux_dn          ! Flux to be used as input to solvers below
 
     integer :: icol, igpt
     ! --------------
     ! --------------
 
-    !   Upper boundary condition
-    if(top_at_1) then
+  !   Upper boundary condition
+  if(top_at_1) then
       !$acc  parallel loop collapse(2)
       do igpt = 1, ngpt
         do icol = 1, ncol
           flux_dn(icol,      1, igpt)  = 0._wp
         end do
       end do
-    else
+  else
       !$acc  parallel loop collapse(2)
       do igpt = 1, ngpt
         do icol = 1, ncol
           flux_dn(icol, nlay+1, igpt)  = 0._wp
         end do
       end do
-    end if
-  end subroutine apply_BC_0
+  end if
+end subroutine apply_BC_0
 
 end module mo_rte_solver_kernels
