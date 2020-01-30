@@ -1,0 +1,36 @@
+
+#pragma once
+
+#include "const.h"
+
+// This code is part of
+// RRTM for GCM Applications - Parallel (RRTMGP)
+//
+// Eli Mlawer and Robert Pincus
+// Andre Wehe and Jennifer Delamere
+// email:  rrtmgp@aer.com
+//
+// Copyright 2015,  Atmospheric and Environmental Research and
+// Regents of the University of Colorado.  All right reserved.
+//
+// Use and duplication is permitted under the terms of the
+//    BSD 3-clause license, see http://opensource.org/licenses/BSD-3-Clause
+//
+// Description: Numeric calculations for gas optics. Absorption and Rayleigh optical depths,
+//   source functions.
+
+
+
+
+// Compute interpolation coefficients
+// for calculations of major optical depths, minor optical depths, Rayleigh,
+// and Planck fractions
+extern "C" void interpolation(int ncol, int nlay, int ngas, int nflav, int neta, int npres, int ntemp,
+                              int *flavor_p, real *press_ref_log_p, real *temp_ref_p, real press_ref_log_delta,
+                              real temp_ref_min, real temp_ref_delta, real press_ref_trop_log,
+                              real *vmr_ref_p, real *play_p, real *tlay_p, real *col_gas_p, int *jtemp_p,
+                              real *fmajor_p, real *fminor_p, real *col_mix_p, bool *tropo_p, int *jeta_p,
+                              int *jpress_p);
+
+
+

@@ -72,6 +72,7 @@ program rrtmgp_rfmip_lw
   !   Here we're just reporting broadband fluxes
   !
   use mo_fluxes,             only: ty_fluxes_broadband
+  use gator_mod, only: gator_init
   ! --------------------------------------------------
   !
   ! modules for reading and writing files
@@ -124,6 +125,9 @@ program rrtmgp_rfmip_lw
 #ifdef USE_TIMING
   integer :: ret, i
 #endif
+
+  call gator_init()
+
   ! -------------------------------------------------------------------------------------------------
   !
   ! Code starts

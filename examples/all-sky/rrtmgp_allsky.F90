@@ -45,6 +45,7 @@ program rte_rrtmgp_clouds
   use mo_load_cloud_coefficients, &
                              only: load_cld_lutcoeff, load_cld_padecoeff
   use mo_garand_atmos_io,    only: read_atmos, write_lw_fluxes, write_sw_fluxes
+  use gator_mod, only: gator_init
   implicit none
   ! ----------------------------------------------------------------------------------
   ! Variables
@@ -115,6 +116,9 @@ program rte_rrtmgp_clouds
   integer(kind=8)              :: start, finish, start_all, finish_all, clock_rate
   real(wp)                     :: avg
   integer(kind=8), allocatable :: elapsed(:)
+  
+  call gator_init()
+
   !$omp threadprivate( lw_sources, toa_flux, flux_up, flux_dn, flux_dir )
   ! ----------------------------------------------------------------------------------
   ! Code

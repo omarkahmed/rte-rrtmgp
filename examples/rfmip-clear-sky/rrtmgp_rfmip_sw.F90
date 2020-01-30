@@ -81,6 +81,7 @@ program rrtmgp_rfmip_sw
   use mo_load_coefficients,  only: load_and_init
   use mo_rfmip_io,           only: read_size, read_and_block_pt, read_and_block_gases_ty, unblock_and_write, &
                                    read_and_block_sw_bc, determine_gas_names
+  use gator_mod, only: gator_init
 #ifdef USE_TIMING
   !
   ! Timing library
@@ -127,6 +128,9 @@ program rrtmgp_rfmip_sw
 #ifdef USE_TIMING
   integer :: ret, i
 #endif
+
+  call gator_init()
+
   ! -------------------------------------------------------------------------------------------------
   !
   ! Code starts

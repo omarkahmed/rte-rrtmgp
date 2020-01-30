@@ -32,6 +32,54 @@ typedef yakl::Array<real,yakl::memHost> realHost5d;
 typedef yakl::Array<real,yakl::memHost> realHost6d;
 typedef yakl::Array<real,yakl::memHost> realHost7d;
 
+typedef yakl::Array<int,yakl::memDevice> umgInt1d;
+typedef yakl::Array<int,yakl::memDevice> umgInt2d;
+typedef yakl::Array<int,yakl::memDevice> umgInt3d;
+typedef yakl::Array<int,yakl::memDevice> umgInt4d;
+typedef yakl::Array<int,yakl::memDevice> umgInt5d;
+typedef yakl::Array<int,yakl::memDevice> umgInt6d;
+typedef yakl::Array<int,yakl::memDevice> umgInt7d;
+
+typedef yakl::Array<int,yakl::memDevice> int1d;
+typedef yakl::Array<int,yakl::memDevice> int2d;
+typedef yakl::Array<int,yakl::memDevice> int3d;
+typedef yakl::Array<int,yakl::memDevice> int4d;
+typedef yakl::Array<int,yakl::memDevice> int5d;
+typedef yakl::Array<int,yakl::memDevice> int6d;
+typedef yakl::Array<int,yakl::memDevice> int7d;
+
+typedef yakl::Array<int,yakl::memHost> intHost1d;
+typedef yakl::Array<int,yakl::memHost> intHost2d;
+typedef yakl::Array<int,yakl::memHost> intHost3d;
+typedef yakl::Array<int,yakl::memHost> intHost4d;
+typedef yakl::Array<int,yakl::memHost> intHost5d;
+typedef yakl::Array<int,yakl::memHost> intHost6d;
+typedef yakl::Array<int,yakl::memHost> intHost7d;
+
+typedef yakl::Array<bool,yakl::memDevice> umgBool1d;
+typedef yakl::Array<bool,yakl::memDevice> umgBool2d;
+typedef yakl::Array<bool,yakl::memDevice> umgBool3d;
+typedef yakl::Array<bool,yakl::memDevice> umgBool4d;
+typedef yakl::Array<bool,yakl::memDevice> umgBool5d;
+typedef yakl::Array<bool,yakl::memDevice> umgBool6d;
+typedef yakl::Array<bool,yakl::memDevice> umgBool7d;
+
+typedef yakl::Array<bool,yakl::memDevice> bool1d;
+typedef yakl::Array<bool,yakl::memDevice> bool2d;
+typedef yakl::Array<bool,yakl::memDevice> bool3d;
+typedef yakl::Array<bool,yakl::memDevice> bool4d;
+typedef yakl::Array<bool,yakl::memDevice> bool5d;
+typedef yakl::Array<bool,yakl::memDevice> bool6d;
+typedef yakl::Array<bool,yakl::memDevice> bool7d;
+
+typedef yakl::Array<bool,yakl::memHost> boolHost1d;
+typedef yakl::Array<bool,yakl::memHost> boolHost2d;
+typedef yakl::Array<bool,yakl::memHost> boolHost3d;
+typedef yakl::Array<bool,yakl::memHost> boolHost4d;
+typedef yakl::Array<bool,yakl::memHost> boolHost5d;
+typedef yakl::Array<bool,yakl::memHost> boolHost6d;
+typedef yakl::Array<bool,yakl::memHost> boolHost7d;
+
 
 template <class T> YAKL_INLINE  T max(T v1, T v2) { return v1 > v2 ? v1 : v2; }
 template <class T> YAKL_INLINE  T min(T v1, T v2) { return v1 < v2 ? v1 : v2; }
