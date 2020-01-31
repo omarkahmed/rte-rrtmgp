@@ -19,135 +19,135 @@ module mo_gas_optics_kernels
   implicit none
 
   interface
-    ! subroutine interpolation( &
-    !               ncol,nlay,ngas,nflav,neta, npres, ntemp, &
-    !               flavor,                                  &
-    !               press_ref_log, temp_ref,press_ref_log_delta,    &
-    !               temp_ref_min,temp_ref_delta,press_ref_trop_log, &
-    !               vmr_ref,                                        &
-    !               play,tlay,col_gas,                              &
-    !               jtemp,fmajor,fminor,col_mix,tropo,jeta,jpress) bind(C, name="interpolation")
-    !   use mo_rte_kind,      only : wp, wl
-    !   implicit none
-    !   integer, value,                     intent(in) :: ncol,nlay
-    !   integer, value,                     intent(in) :: ngas,nflav,neta,npres,ntemp
-    !   integer,     dimension(2,nflav),    intent(in) :: flavor
-    !   real(wp),    dimension(npres),      intent(in) :: press_ref_log
-    !   real(wp),    dimension(ntemp),      intent(in) :: temp_ref
-    !   real(wp), value,                    intent(in) :: press_ref_log_delta, &
-    !                                                     temp_ref_min, temp_ref_delta, &
-    !                                                     press_ref_trop_log
-    !   real(wp),    dimension(2,0:ngas,ntemp), intent(in) :: vmr_ref
-    !   real(wp),    dimension(ncol,nlay),        intent(in) :: play, tlay
-    !   real(wp),    dimension(ncol,nlay,0:ngas), intent(in) :: col_gas
-    !   integer,     dimension(ncol,nlay), intent(out) :: jtemp, jpress
-    !   logical(wl), dimension(ncol,nlay), intent(out) :: tropo
-    !   integer,     dimension(2,    nflav,ncol,nlay), intent(out) :: jeta
-    !   real(wp),    dimension(2,    nflav,ncol,nlay), intent(out) :: col_mix
-    !   real(wp),    dimension(2,2,2,nflav,ncol,nlay), intent(out) :: fmajor
-    !   real(wp),    dimension(2,2,  nflav,ncol,nlay), intent(out) :: fminor
-    ! end subroutine
+    subroutine interpolation( &
+                  ncol,nlay,ngas,nflav,neta, npres, ntemp, &
+                  flavor,                                  &
+                  press_ref_log, temp_ref,press_ref_log_delta,    &
+                  temp_ref_min,temp_ref_delta,press_ref_trop_log, &
+                  vmr_ref,                                        &
+                  play,tlay,col_gas,                              &
+                  jtemp,fmajor,fminor,col_mix,tropo,jeta,jpress) bind(C, name="interpolation")
+      use mo_rte_kind,      only : wp, wl
+      implicit none
+      integer, value,                     intent(in) :: ncol,nlay
+      integer, value,                     intent(in) :: ngas,nflav,neta,npres,ntemp
+      integer,     dimension(2,nflav),    intent(in) :: flavor
+      real(wp),    dimension(npres),      intent(in) :: press_ref_log
+      real(wp),    dimension(ntemp),      intent(in) :: temp_ref
+      real(wp), value,                    intent(in) :: press_ref_log_delta, &
+                                                        temp_ref_min, temp_ref_delta, &
+                                                        press_ref_trop_log
+      real(wp),    dimension(2,0:ngas,ntemp), intent(in) :: vmr_ref
+      real(wp),    dimension(ncol,nlay),        intent(in) :: play, tlay
+      real(wp),    dimension(ncol,nlay,0:ngas), intent(in) :: col_gas
+      integer,     dimension(ncol,nlay), intent(out) :: jtemp, jpress
+      logical(wl), dimension(ncol,nlay), intent(out) :: tropo
+      integer,     dimension(2,    nflav,ncol,nlay), intent(out) :: jeta
+      real(wp),    dimension(2,    nflav,ncol,nlay), intent(out) :: col_mix
+      real(wp),    dimension(2,2,2,nflav,ncol,nlay), intent(out) :: fmajor
+      real(wp),    dimension(2,2,  nflav,ncol,nlay), intent(out) :: fminor
+    end subroutine
   end interface
 contains
   ! --------------------------------------------------------------------------------------
   ! Compute interpolation coefficients
   ! for calculations of major optical depths, minor optical depths, Rayleigh,
   ! and Planck fractions
-  subroutine interpolation( &
-                ncol,nlay,ngas,nflav,neta, npres, ntemp, &
-                flavor,                                  &
-                press_ref_log, temp_ref,press_ref_log_delta,    &
-                temp_ref_min,temp_ref_delta,press_ref_trop_log, &
-                vmr_ref,                                        &
-                play,tlay,col_gas,                              &
-                jtemp,fmajor,fminor,col_mix,tropo,jeta,jpress)
-    ! input dimensions
-    integer,                            intent(in) :: ncol,nlay
-    integer,                            intent(in) :: ngas,nflav,neta,npres,ntemp
-    integer,     dimension(2,nflav),    intent(in) :: flavor
-    real(wp),    dimension(npres),      intent(in) :: press_ref_log
-    real(wp),    dimension(ntemp),      intent(in) :: temp_ref
-    real(wp),                           intent(in) :: press_ref_log_delta, &
-                                                      temp_ref_min, temp_ref_delta, &
-                                                      press_ref_trop_log
-    real(wp),    dimension(2,0:ngas,ntemp), intent(in) :: vmr_ref
+  ! subroutine interpolation( &
+  !               ncol,nlay,ngas,nflav,neta, npres, ntemp, &
+  !               flavor,                                  &
+  !               press_ref_log, temp_ref,press_ref_log_delta,    &
+  !               temp_ref_min,temp_ref_delta,press_ref_trop_log, &
+  !               vmr_ref,                                        &
+  !               play,tlay,col_gas,                              &
+  !               jtemp,fmajor,fminor,col_mix,tropo,jeta,jpress)
+  !   ! input dimensions
+  !   integer,                            intent(in) :: ncol,nlay
+  !   integer,                            intent(in) :: ngas,nflav,neta,npres,ntemp
+  !   integer,     dimension(2,nflav),    intent(in) :: flavor
+  !   real(wp),    dimension(npres),      intent(in) :: press_ref_log
+  !   real(wp),    dimension(ntemp),      intent(in) :: temp_ref
+  !   real(wp),                           intent(in) :: press_ref_log_delta, &
+  !                                                     temp_ref_min, temp_ref_delta, &
+  !                                                     press_ref_trop_log
+  !   real(wp),    dimension(2,0:ngas,ntemp), intent(in) :: vmr_ref
 
-    ! inputs from profile or parent function
-    real(wp),    dimension(ncol,nlay),        intent(in) :: play, tlay
-    real(wp),    dimension(ncol,nlay,0:ngas), intent(in) :: col_gas
+  !   ! inputs from profile or parent function
+  !   real(wp),    dimension(ncol,nlay),        intent(in) :: play, tlay
+  !   real(wp),    dimension(ncol,nlay,0:ngas), intent(in) :: col_gas
 
-    ! outputs
-    integer,     dimension(ncol,nlay), intent(out) :: jtemp, jpress
-    logical(wl), dimension(ncol,nlay), intent(out) :: tropo
-    integer,     dimension(2,    nflav,ncol,nlay), intent(out) :: jeta
-    real(wp),    dimension(2,    nflav,ncol,nlay), intent(out) :: col_mix
-    real(wp),    dimension(2,2,2,nflav,ncol,nlay), intent(out) :: fmajor
-    real(wp),    dimension(2,2,  nflav,ncol,nlay), intent(out) :: fminor
-    ! -----------------
-    ! local
-    real(wp), dimension(ncol,nlay) :: ftemp, fpress ! interpolation fraction for temperature, pressure
-    real(wp) :: locpress ! needed to find location in pressure grid
-    real(wp) :: ratio_eta_half ! ratio of vmrs of major species that defines eta=0.5
-                               ! for given flavor and reference temperature level
-    real(wp) :: eta, feta      ! binary_species_parameter, interpolation variable for eta
-    real(wp) :: loceta         ! needed to find location in eta grid
-    real(wp) :: ftemp_term
-    ! -----------------
-    ! local indexes
-    integer :: icol, ilay, iflav, igases(2), itropo, itemp
+  !   ! outputs
+  !   integer,     dimension(ncol,nlay), intent(out) :: jtemp, jpress
+  !   logical(wl), dimension(ncol,nlay), intent(out) :: tropo
+  !   integer,     dimension(2,    nflav,ncol,nlay), intent(out) :: jeta
+  !   real(wp),    dimension(2,    nflav,ncol,nlay), intent(out) :: col_mix
+  !   real(wp),    dimension(2,2,2,nflav,ncol,nlay), intent(out) :: fmajor
+  !   real(wp),    dimension(2,2,  nflav,ncol,nlay), intent(out) :: fminor
+  !   ! -----------------
+  !   ! local
+  !   real(wp), dimension(ncol,nlay) :: ftemp, fpress ! interpolation fraction for temperature, pressure
+  !   real(wp) :: locpress ! needed to find location in pressure grid
+  !   real(wp) :: ratio_eta_half ! ratio of vmrs of major species that defines eta=0.5
+  !                              ! for given flavor and reference temperature level
+  !   real(wp) :: eta, feta      ! binary_species_parameter, interpolation variable for eta
+  !   real(wp) :: loceta         ! needed to find location in eta grid
+  !   real(wp) :: ftemp_term
+  !   ! -----------------
+  !   ! local indexes
+  !   integer :: icol, ilay, iflav, igases(2), itropo, itemp
 
-    do ilay = 1, nlay
-      do icol = 1, ncol
-        ! index and factor for temperature interpolation
-        jtemp(icol,ilay) = int((tlay(icol,ilay) - (temp_ref_min - temp_ref_delta)) / temp_ref_delta)
-        jtemp(icol,ilay) = min(ntemp - 1, max(1, jtemp(icol,ilay))) ! limit the index range
-        ftemp(icol,ilay) = (tlay(icol,ilay) - temp_ref(jtemp(icol,ilay))) / temp_ref_delta
+  !   do ilay = 1, nlay
+  !     do icol = 1, ncol
+  !       ! index and factor for temperature interpolation
+  !       jtemp(icol,ilay) = int((tlay(icol,ilay) - (temp_ref_min - temp_ref_delta)) / temp_ref_delta)
+  !       jtemp(icol,ilay) = min(ntemp - 1, max(1, jtemp(icol,ilay))) ! limit the index range
+  !       ftemp(icol,ilay) = (tlay(icol,ilay) - temp_ref(jtemp(icol,ilay))) / temp_ref_delta
 
-        ! index and factor for pressure interpolation
-        locpress = 1._wp + (log(play(icol,ilay)) - press_ref_log(1)) / press_ref_log_delta
-        jpress(icol,ilay) = min(npres-1, max(1, int(locpress)))
-        fpress(icol,ilay) = locpress - float(jpress(icol,ilay))
+  !       ! index and factor for pressure interpolation
+  !       locpress = 1._wp + (log(play(icol,ilay)) - press_ref_log(1)) / press_ref_log_delta
+  !       jpress(icol,ilay) = min(npres-1, max(1, int(locpress)))
+  !       fpress(icol,ilay) = locpress - float(jpress(icol,ilay))
 
-        ! determine if in lower or upper part of atmosphere
-        tropo(icol,ilay) = log(play(icol,ilay)) > press_ref_trop_log
-      end do
-    end do
+  !       ! determine if in lower or upper part of atmosphere
+  !       tropo(icol,ilay) = log(play(icol,ilay)) > press_ref_trop_log
+  !     end do
+  !   end do
 
-    do ilay = 1, nlay
-      do icol = 1, ncol
-        ! itropo = 1 lower atmosphere; itropo = 2 upper atmosphere
-        itropo = merge(1,2,tropo(icol,ilay))
-        ! loop over implemented combinations of major species
-        do iflav = 1, nflav
-          igases(:) = flavor(:,iflav)
-          do itemp = 1, 2
-            ! compute interpolation fractions needed for lower, then upper reference temperature level
-            ! compute binary species parameter (eta) for flavor and temperature and
-            !  associated interpolation index and factors
-            ratio_eta_half = vmr_ref(itropo,igases(1),(jtemp(icol,ilay)+itemp-1)) / &
-                             vmr_ref(itropo,igases(2),(jtemp(icol,ilay)+itemp-1))
-            col_mix(itemp,iflav,icol,ilay) = col_gas(icol,ilay,igases(1)) + ratio_eta_half * col_gas(icol,ilay,igases(2))
-            eta = merge(col_gas(icol,ilay,igases(1)) / col_mix(itemp,iflav,icol,ilay), 0.5_wp, &
-                        col_mix(itemp,iflav,icol,ilay) > 2._wp * tiny(col_mix))
-            loceta = eta * float(neta-1)
-            jeta(itemp,iflav,icol,ilay) = min(int(loceta)+1, neta-1)
-            feta = mod(loceta, 1.0_wp)
-            ! compute interpolation fractions needed for minor species
-            ! ftemp_term = (1._wp-ftemp(icol,ilay)) for itemp = 1, ftemp(icol,ilay) for itemp=2
-            ftemp_term = (real(2-itemp, wp) + real(2*itemp-3, wp) * ftemp(icol,ilay))
-            fminor(1,itemp,iflav,icol,ilay) = (1._wp-feta) * ftemp_term
-            fminor(2,itemp,iflav,icol,ilay) =        feta  * ftemp_term
-            ! compute interpolation fractions needed for major species
-            fmajor(1,1,itemp,iflav,icol,ilay) = (1._wp-fpress(icol,ilay)) * fminor(1,itemp,iflav,icol,ilay)
-            fmajor(2,1,itemp,iflav,icol,ilay) = (1._wp-fpress(icol,ilay)) * fminor(2,itemp,iflav,icol,ilay)
-            fmajor(1,2,itemp,iflav,icol,ilay) =        fpress(icol,ilay)  * fminor(1,itemp,iflav,icol,ilay)
-            fmajor(2,2,itemp,iflav,icol,ilay) =        fpress(icol,ilay)  * fminor(2,itemp,iflav,icol,ilay)
-          end do ! reference temperatures
-        end do ! iflav
-      end do ! icol,ilay
-    end do
+  !   do ilay = 1, nlay
+  !     do icol = 1, ncol
+  !       ! itropo = 1 lower atmosphere; itropo = 2 upper atmosphere
+  !       itropo = merge(1,2,tropo(icol,ilay))
+  !       ! loop over implemented combinations of major species
+  !       do iflav = 1, nflav
+  !         igases(:) = flavor(:,iflav)
+  !         do itemp = 1, 2
+  !           ! compute interpolation fractions needed for lower, then upper reference temperature level
+  !           ! compute binary species parameter (eta) for flavor and temperature and
+  !           !  associated interpolation index and factors
+  !           ratio_eta_half = vmr_ref(itropo,igases(1),(jtemp(icol,ilay)+itemp-1)) / &
+  !                            vmr_ref(itropo,igases(2),(jtemp(icol,ilay)+itemp-1))
+  !           col_mix(itemp,iflav,icol,ilay) = col_gas(icol,ilay,igases(1)) + ratio_eta_half * col_gas(icol,ilay,igases(2))
+  !           eta = merge(col_gas(icol,ilay,igases(1)) / col_mix(itemp,iflav,icol,ilay), 0.5_wp, &
+  !                       col_mix(itemp,iflav,icol,ilay) > 2._wp * tiny(col_mix))
+  !           loceta = eta * float(neta-1)
+  !           jeta(itemp,iflav,icol,ilay) = min(int(loceta)+1, neta-1)
+  !           feta = mod(loceta, 1.0_wp)
+  !           ! compute interpolation fractions needed for minor species
+  !           ! ftemp_term = (1._wp-ftemp(icol,ilay)) for itemp = 1, ftemp(icol,ilay) for itemp=2
+  !           ftemp_term = (real(2-itemp, wp) + real(2*itemp-3, wp) * ftemp(icol,ilay))
+  !           fminor(1,itemp,iflav,icol,ilay) = (1._wp-feta) * ftemp_term
+  !           fminor(2,itemp,iflav,icol,ilay) =        feta  * ftemp_term
+  !           ! compute interpolation fractions needed for major species
+  !           fmajor(1,1,itemp,iflav,icol,ilay) = (1._wp-fpress(icol,ilay)) * fminor(1,itemp,iflav,icol,ilay)
+  !           fmajor(2,1,itemp,iflav,icol,ilay) = (1._wp-fpress(icol,ilay)) * fminor(2,itemp,iflav,icol,ilay)
+  !           fmajor(1,2,itemp,iflav,icol,ilay) =        fpress(icol,ilay)  * fminor(1,itemp,iflav,icol,ilay)
+  !           fmajor(2,2,itemp,iflav,icol,ilay) =        fpress(icol,ilay)  * fminor(2,itemp,iflav,icol,ilay)
+  !         end do ! reference temperatures
+  !       end do ! iflav
+  !     end do ! icol,ilay
+  !   end do
 
-  end subroutine interpolation
+  ! end subroutine interpolation
   ! --------------------------------------------------------------------------------------
   !
   ! Compute minor and major species opitcal depth from pre-computed interpolation coefficients

@@ -39,9 +39,9 @@ extern "C" void interpolation(int ncol, int nlay, int ngas, int nflav, int neta,
       ftemp(icol,ilay) = (tlay(icol,ilay) - temp_ref(jtemp(icol,ilay))) / temp_ref_delta;
 
       // index and factor for pressure interpolation
-      real locpress = 1. + (log(play(icol,ilay)) - press_ref_log(1)) / press_ref_log_delta;
+      real locpress = 1._wp + (log(play(icol,ilay)) - press_ref_log(1)) / press_ref_log_delta;
       jpress(icol,ilay) = min(npres-1, max(1, (int)(locpress)));
-      fpress(icol,ilay) = locpress - float(jpress(icol,ilay));
+      fpress(icol,ilay) = locpress - (real)(jpress(icol,ilay));
 
       // determine if in lower or upper part of atmosphere
       tropo(icol,ilay) = log(play(icol,ilay)) > press_ref_trop_log;
@@ -65,20 +65,20 @@ extern "C" void interpolation(int ncol, int nlay, int ngas, int nflav, int neta,
           real ratio_eta_half = vmr_ref(itropo,igases(0),(jtemp(icol,ilay)+itemp-1)) / 
                                 vmr_ref(itropo,igases(1),(jtemp(icol,ilay)+itemp-1));
           col_mix(itemp,iflav,icol,ilay) = col_gas(icol,ilay,igases(0)) + ratio_eta_half * col_gas(icol,ilay,igases(1));
-          real eta = merge(col_gas(icol,ilay,igases(0)) / col_mix(itemp,iflav,icol,ilay), 0.5, 
-                      col_mix(itemp,iflav,icol,ilay) > 2. * tiny);
-          real loceta = eta * (real) (neta-1);
+          real eta = merge(col_gas(icol,ilay,igases(0)) / col_mix(itemp,iflav,icol,ilay), 0.5_wp, 
+                           col_mix(itemp,iflav,icol,ilay) > 2._wp * tiny);
+          real loceta = eta * (neta-1.0_wp);
           jeta(itemp,iflav,icol,ilay) = min((int)(loceta)+1, neta-1);
-          real feta = fmod(loceta, 1.0);
+          real feta = fmod(loceta, 1.0_wp);
           // compute interpolation fractions needed for minor species
-          real ftemp_term = ((real)(2-itemp) + (real)(2*itemp-3) * ftemp(icol,ilay));
-          fminor(1,itemp,iflav,icol,ilay) = (1.-feta) * ftemp_term;
-          fminor(2,itemp,iflav,icol,ilay) =     feta  * ftemp_term;
+          real ftemp_term = ((2.0_wp-itemp) + (2.0_wp*itemp-3.0_wp) * ftemp(icol,ilay));
+          fminor(1,itemp,iflav,icol,ilay) = (1._wp-feta) * ftemp_term;
+          fminor(2,itemp,iflav,icol,ilay) =        feta  * ftemp_term;
           // compute interpolation fractions needed for major species
-          fmajor(1,1,itemp,iflav,icol,ilay) = (1.-fpress(icol,ilay)) * fminor(1,itemp,iflav,icol,ilay);
-          fmajor(2,1,itemp,iflav,icol,ilay) = (1.-fpress(icol,ilay)) * fminor(2,itemp,iflav,icol,ilay);
-          fmajor(1,2,itemp,iflav,icol,ilay) =     fpress(icol,ilay)  * fminor(1,itemp,iflav,icol,ilay);
-          fmajor(2,2,itemp,iflav,icol,ilay) =     fpress(icol,ilay)  * fminor(2,itemp,iflav,icol,ilay);
+          fmajor(1,1,itemp,iflav,icol,ilay) = (1._wp-fpress(icol,ilay)) * fminor(1,itemp,iflav,icol,ilay);
+          fmajor(2,1,itemp,iflav,icol,ilay) = (1._wp-fpress(icol,ilay)) * fminor(2,itemp,iflav,icol,ilay);
+          fmajor(1,2,itemp,iflav,icol,ilay) =        fpress(icol,ilay)  * fminor(1,itemp,iflav,icol,ilay);
+          fmajor(2,2,itemp,iflav,icol,ilay) =        fpress(icol,ilay)  * fminor(2,itemp,iflav,icol,ilay);
         }
       }
     }

@@ -4,8 +4,13 @@
 #include "YAKL.h"
 #include "FArray.h"
 #include "SArray.h"
+#include <iostream>
 
 typedef double real;
+
+YAKL_INLINE real constexpr operator"" _wp( long double x ) {
+  return static_cast<real>(x);
+}
 
 
 typedef yakl::FArray<real,yakl::memDevice> umgReal1d;
@@ -85,6 +90,7 @@ template <class T> YAKL_INLINE  T max(T v1, T v2) { return v1 > v2 ? v1 : v2; }
 template <class T> YAKL_INLINE  T min(T v1, T v2) { return v1 < v2 ? v1 : v2; }
 
 template <class T> YAKL_INLINE  T merge(T t, T f, bool cond) { return cond ? t : f; }
+
 
 
 
