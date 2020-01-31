@@ -4,6 +4,7 @@
 #include "YAKL.h"
 #include "FArray.h"
 #include "SArray.h"
+#include "FSArray.h"
 #include <iostream>
 
 typedef double real;
