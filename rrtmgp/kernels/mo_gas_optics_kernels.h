@@ -33,4 +33,36 @@ extern "C" void interpolation(int ncol, int nlay, int ngas, int nflav, int neta,
                               int *jpress_p);
 
 
+// ----------------------------------------------------------
+//
+// Combine absoprtion and Rayleigh optical depths for total tau, ssa, g
+//
+extern "C" void combine_and_reorder_2str(int ncol, int nlay, int ngpt, real *tau_abs_p, real *tau_rayleigh_p,
+                                         real *tau_p,  real *ssa_p, real *g_p);
+
+
+
+//  ----------------------------------------------------------
+//  interpolation in temperature, pressure, and eta
+extern "C" real interpolate3D(real *scaling_p, real *fmajor_p, real *k_p, int igpt, int *jeta_p,
+                              int jtemp, int jpress, int ngpt, int neta, int npres, int ntemp);
+
+
+
+// ------------
+//   This function returns a single value from a subset (in gpoint) of the k table
+//
+extern "C" real interpolate2D(real *fminor_p, real *k_p, int igpt, int *jeta_p, int jtemp,
+                              int ngpt, int neta, int ntemp);
+
+
+
+// ----------------------------------------------------------
+//
+// One dimensional interpolation -- return all values along second table dimension
+//
+extern "C" void interpolate1D(real val, real offset, real delta, real *table_p,
+                              real *res_p, int tab_d1, int tab_d2);
+
+
 

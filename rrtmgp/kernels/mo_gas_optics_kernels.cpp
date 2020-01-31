@@ -4,6 +4,8 @@
 
 using yakl::bnd;
 
+
+
 extern "C" void interpolation(int ncol, int nlay, int ngas, int nflav, int neta, int npres, int ntemp,
                               int *flavor_p, real *press_ref_log_p, real *temp_ref_p, real press_ref_log_delta,
                               real temp_ref_min, real temp_ref_delta, real press_ref_trop_log,
@@ -84,4 +86,219 @@ extern "C" void interpolation(int ncol, int nlay, int ngas, int nflav, int neta,
     }
   }
 }
+
+
+
+extern "C" void combine_and_reorder_2str(int ncol, int nlay, int ngpt, real *tau_abs_p, real *tau_rayleigh_p,
+                                         real *tau_p,  real *ssa_p, real *g_p) {
+
+  umgReal3d tau_abs     ("tau_abs"     ,tau_abs_p     ,ngpt,nlay,ncol);
+  umgReal3d tau_rayleigh("tau_rayleigh",tau_rayleigh_p,ngpt,nlay,ncol);
+  umgReal3d tau         ("tau"         ,tau_p         ,ncol,nlay,ngpt);
+  umgReal3d ssa         ("ssa"         ,ssa_p         ,ncol,nlay,ngpt);
+  umgReal3d g           ("g"           ,g_p           ,ncol,nlay,ngpt);
+
+  real tiny = std::numeric_limits<real>::min();
+
+  for (int icol=1; icol<=ncol; icol++) {
+    for (int ilay=1; ilay<=nlay; ilay++) {
+      for (int igpt=1; igpt<=ngpt; igpt++) {
+         real t = tau_abs(igpt,ilay,icol) + tau_rayleigh(igpt,ilay,icol);
+         tau(icol,ilay,igpt) = t;
+         g  (icol,ilay,igpt) = 0._wp;
+         if(t > 2._wp * tiny) {
+           ssa(icol,ilay,igpt) = tau_rayleigh(igpt,ilay,icol) / t;
+         } else {
+           ssa(icol,ilay,igpt) = 0._wp;
+         }
+      }
+    }
+  }
+}
+
+
+
+// ----------------------------------------------------------
+// interpolation in temperature, pressure, and eta
+extern "C" real interpolate3D(real *scaling_p, real *fmajor_p, real *k_p, int igpt, int *jeta_p,
+                              int jtemp, int jpress, int ngpt, int neta, int npres, int ntemp) {
+  
+  umgReal1d scaling("scaling",scaling_p,2);
+  umgReal3d fmajor ("fmajor" ,fmajor_p ,2,2,2);
+  umgReal4d k      ("k"      ,k_p      ,ngpt,neta,npres+1,ntemp);
+  umgInt1d  jeta   ("jeta"   ,jeta_p   ,2);
+
+  // each code block is for a different reference temperature
+  real ret = scaling(1) * ( fmajor(1,1,1) * k(igpt, jeta(1)  , jpress-1, jtemp  ) + 
+                            fmajor(2,1,1) * k(igpt, jeta(1)+1, jpress-1, jtemp  ) + 
+                            fmajor(1,2,1) * k(igpt, jeta(1)  , jpress  , jtemp  ) + 
+                            fmajor(2,2,1) * k(igpt, jeta(1)+1, jpress  , jtemp  ) ) + 
+             scaling(2) * ( fmajor(1,1,2) * k(igpt, jeta(2)  , jpress-1, jtemp+1) + 
+                            fmajor(2,1,2) * k(igpt, jeta(2)+1, jpress-1, jtemp+1) + 
+                            fmajor(1,2,2) * k(igpt, jeta(2)  , jpress  , jtemp+1) + 
+                            fmajor(2,2,2) * k(igpt, jeta(2)+1, jpress  , jtemp+1) );
+
+  return ret;
+}
+
+
+
+// ------------
+//   This function returns a single value from a subset (in gpoint) of the k table
+//
+extern "C" real interpolate2D(real *fminor_p, real *k_p, int igpt, int *jeta_p, int jtemp,
+                              int ngpt, int neta, int ntemp) {
+
+  umgReal2d fminor("fminor",fminor_p,2,2);
+  umgReal3d k     ("k"     ,k_p     ,ngpt,neta,ntemp);
+  umgInt1d  jeta  ("jeta"  ,jeta_p  ,2);
+
+  return fminor(1,1) * k(igpt, jeta(1)  , jtemp  ) + 
+         fminor(2,1) * k(igpt, jeta(1)+1, jtemp  ) + 
+         fminor(1,2) * k(igpt, jeta(2)  , jtemp+1) + 
+         fminor(2,2) * k(igpt, jeta(2)+1, jtemp+1);
+}
+
+
+
+// ----------------------------------------------------------
+//
+// One dimensional interpolation -- return all values along second table dimension
+//
+extern "C" void interpolate1D(real val, real offset, real delta, real *table_p,
+                              real *res_p, int tab_d1, int tab_d2) {
+
+  umgReal2d table("table",table_p,tab_d1,tab_d2);
+  umgReal1d res  ("res"  ,res_p  ,tab_d2);
+
+  real val0 = (val - offset) / delta;
+  real frac = val0 - int(val0); // get fractional part
+  int index = min(tab_d1-1, max(1, (int)(val0)+1)); // limit the index range
+  for (int i=1; i<=tab_d2; i++) {
+    res(i) = table(index,i) + frac * (table(index+1,i) - table(index,i));
+  }
+}
+
+
+#if 0
+
+! ----------------------------------------------------------
+extern "C" void compute_Planck_source(int ncol, int nlay, int nbnd, int ngpt, int nflav, int neta,
+                                      int npres, int ntemp, int nPlanckTemp, real *tlay_p, real *tlev_p,
+                                      real *tsfc_p, int sfc_lay, real *fmajor_p, int *jeta_p, bool *tropo_p,
+                                      int *jtemp_p, int *jpress_p, int *gpoint_bands_p, int *band_lims_gpt_p,           
+                                      real *pfracin_p, real temp_ref_min, real totplnk_delta, real *totplnk_p,
+                                      int *gpoint_flavor_p, real *sfc_src_p, real *lay_src_p, real *lev_src_inc_p,
+                                      real *lev_src_dec_p) {
+
+  umgReal2d tlay          ("tlay"          ,tlay_p          ,ncol,nlay);
+  umgReal2d tlev          ("tlev"          ,tlev_p          ,ncol,nlay+1);
+  umgReal1d tsfc          ("tsfc"          ,tsfc_p          ,ncol);
+  umgReal6d fmajor        ("fmajor"        ,fmajor_p        ,2,2,2,nflav,ncol,nlay);
+  umgInt4d  jeta          ("jeta"          ,jeta_p          ,2,    nflav,ncol,nlay);
+  umgBool2d tropo         ("tropo"         ,tropo_p         ,ncol,nlay);
+  umgInt2d  jtemp         ("jtemp"         ,jtemp_p         ,ncol,nlay);
+  umgInt2d  jpress        ("jpress"        ,jpress_p        ,ncol,nlay);
+  umgInt1d  gpoint_bands  ("gpoint_bands"  ,gpoint_bands_p  ,ngpt);
+  umgInt2d  band_lims_gpt ("band_lims_gpt" ,band_lims_gpt_p ,2,nbnd);
+  umgReal4d pfracin       ("pfracin"       ,pfracin_p       ,ngpt,neta,npres+1,ntemp);
+  umgReal2d totplnk       ("totplnk"       ,totplnk_p       ,nPlanckTemp,nbnd);
+  umgInt2d  gpoint_flavor ("gpoint_flavor" ,gpoint_flavor_p ,2,ngpt);
+  umgReal2d sfc_src       ("sfc_src"       ,sfc_src_p       ,ngpt,    ,ncol);
+  umgReal3d lay_src       ("lay_src"       ,lay_src_p       ,ngpt,nlay,ncol);
+  umgReal3d lev_src_inc   ("lev_src_inc"   ,lev_src_inc_p   ,ngpt,nlay,ncol);
+  umgReal3d lev_src_dec   ("lev_src_dec"   ,lev_src_dec_p   ,ngpt,nlay,ncol);
+
+  real3d pfrac          ("pfrac",ngpt,nlay,ncol);
+  real3d planck_function("pfrac",nbnd,nlay+1,ncol);
+
+  FSArray<real,bnd<1,2>> one;
+  one(1) = 1;
+  one(2) = 1;
+
+  // Calculation of fraction of band's Planck irradiance associated with each g-point
+  for (int icol=1; icol<=ncol; icol++) {
+    for (int ilay=1; ilay<=nlay; ilay++) {
+      for (int igpt=1; igpt<=ngpt; igpt++) {
+        // itropo = 1 lower atmosphere; itropo = 2 upper atmosphere
+        int itropo = merge(1,2,tropo(icol,ilay));  //WS moved itropo inside loop for GPU
+        int iflav = gpoint_flavor(itropo, igpt); //eta interpolation depends on band's flavor
+        pfrac(igpt,ilay,icol) = 
+          // interpolation in temperature, pressure, and eta
+          interpolate3D(one, fmajor(:,:,:,iflav,icol,ilay), pfracin, 
+                        igpt, jeta(:,iflav,icol,ilay), jtemp(icol,ilay),jpress(icol,ilay)+itropo,ngpt,neta,npres,ntemp)
+      }
+    }
+  }
+
+  //
+  // Planck function by band for the surface
+  // Compute surface source irradiance for g-point, equals band irradiance x fraction for g-point
+  //
+  do icol = 1, ncol
+    call interpolate1D(tsfc(icol), temp_ref_min, totplnk_delta, totplnk, planck_function(1:nbnd,1,icol),nPlanckTemp,nbnd)
+  end do
+  //
+  // Map to g-points
+  //
+  do igpt = 1, ngpt
+    do icol = 1, ncol
+      sfc_src(igpt,icol) = pfrac(igpt,sfc_lay,icol) * planck_function(gpoint_bands(igpt), 1, icol)
+    end do
+  end do // icol
+
+  do icol = 1, ncol
+    do ilay = 1, nlay
+      // Compute layer source irradiance for g-point, equals band irradiance x fraction for g-point
+      call interpolate1D(tlay(icol,ilay), temp_ref_min, totplnk_delta, totplnk, planck_function(1:nbnd,ilay,icol),nPlanckTemp,nbnd)
+    end do
+  end do
+  //
+  // Map to g-points
+  //
+  // Explicitly unroll a time-consuming loop here to increase instruction-level parallelism on a GPU
+  // Helps to achieve higher bandwidth
+  //
+  do icol = 1, ncol, 2
+    do ilay = 1, nlay
+      do igpt = 1, ngpt
+        lay_src(igpt,ilay,icol  ) = pfrac(igpt,ilay,icol  ) * planck_function(gpoint_bands(igpt),ilay,icol)
+        if (icol < ncol) 
+        lay_src(igpt,ilay,icol+1) = pfrac(igpt,ilay,icol+1) * planck_function(gpoint_bands(igpt),ilay,icol+1)
+      end do
+    end do // ilay
+  end do // icol
+
+  // compute level source irradiances for each g-point, one each for upward and downward paths
+  do icol = 1, ncol
+    call interpolate1D(tlev(icol,     1), temp_ref_min, totplnk_delta, totplnk, planck_function(1:nbnd,       1,icol),nPlanckTemp,nbnd)
+  end do
+
+  do icol = 1, ncol
+    do ilay = 2, nlay+1
+      call interpolate1D(tlev(icol,ilay), temp_ref_min, totplnk_delta, totplnk, planck_function(1:nbnd,ilay,icol),nPlanckTemp,nbnd)
+    end do
+  end do
+
+  //
+  // Map to g-points
+  //
+  // Same unrolling as mentioned before
+  //
+  do icol = 1, ncol, 2
+    do ilay = 1, nlay
+      do igpt = 1, ngpt
+        lev_src_dec(igpt,ilay,icol  ) = pfrac(igpt,ilay,icol  ) * planck_function(gpoint_bands(igpt),ilay,  icol  )
+        lev_src_inc(igpt,ilay,icol  ) = pfrac(igpt,ilay,icol  ) * planck_function(gpoint_bands(igpt),ilay+1,icol  )
+        if (icol < ncol) then
+        lev_src_dec(igpt,ilay,icol+1) = pfrac(igpt,ilay,icol+1) * planck_function(gpoint_bands(igpt),ilay,  icol+1)
+        lev_src_inc(igpt,ilay,icol+1) = pfrac(igpt,ilay,icol+1) * planck_function(gpoint_bands(igpt),ilay+1,icol+1)
+        end if
+      end do
+    end do // ilay
+  end do // icol
+
+}
+
+#endif
 
