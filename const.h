@@ -84,5 +84,7 @@ typedef yakl::FArray<bool,yakl::memHost> boolHost7d;
 template <class T> YAKL_INLINE  T max(T v1, T v2) { return v1 > v2 ? v1 : v2; }
 template <class T> YAKL_INLINE  T min(T v1, T v2) { return v1 < v2 ? v1 : v2; }
 
+template <class T> YAKL_INLINE  T merge(T t, T f, bool cond) { return cond ? t : f; }
+
 
 
