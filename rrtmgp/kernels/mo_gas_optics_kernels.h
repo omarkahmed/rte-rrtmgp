@@ -80,3 +80,5 @@ extern "C" void compute_Planck_source(int ncol, int nlay, int nbnd, int ngpt, in
                                       real *pfracin_p, real temp_ref_min, real totplnk_delta, real *totplnk_p,
                                       int *gpoint_flavor_p, real *sfc_src_p, real *lay_src_p, real *lev_src_inc_p,
                                       real *lev_src_dec_p);
+
+

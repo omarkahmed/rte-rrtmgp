@@ -325,18 +325,6 @@ extern "C" void compute_Planck_source(int ncol, int nlay, int nbnd, int ngpt, in
       }
     }
   }
-  // do icol = 1, ncol, 2
-  //   do ilay = 1, nlay
-  //     do igpt = 1, ngpt
-  //       lev_src_dec(igpt,ilay,icol  ) = pfrac(igpt,ilay,icol  ) * planck_function(gpoint_bands(igpt),ilay,  icol  )
-  //       lev_src_inc(igpt,ilay,icol  ) = pfrac(igpt,ilay,icol  ) * planck_function(gpoint_bands(igpt),ilay+1,icol  )
-  //       if (icol < ncol) then
-  //       lev_src_dec(igpt,ilay,icol+1) = pfrac(igpt,ilay,icol+1) * planck_function(gpoint_bands(igpt),ilay,  icol+1)
-  //       lev_src_inc(igpt,ilay,icol+1) = pfrac(igpt,ilay,icol+1) * planck_function(gpoint_bands(igpt),ilay+1,icol+1)
-  //       end if
-  //     end do
-  //   end do ! ilay
-  // end do ! icol
 
 }
 
