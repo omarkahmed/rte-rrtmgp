@@ -46,6 +46,8 @@ extern "C" void combine_and_reorder_2str(int ncol, int nlay, int ngpt, real *tau
 //  interpolation in temperature, pressure, and eta
 extern "C" real interpolate3D(real *scaling_p, real *fmajor_p, real *k_p, int igpt, int *jeta_p,
                               int jtemp, int jpress, int ngpt, int neta, int npres, int ntemp);
+real interpolate3D(real1d scaling, real3d fmajor, real4d k, int igpt, int1d jeta,
+                   int jtemp, int jpress, int ngpt, int neta, int npres, int ntemp);
 
 
 
@@ -54,6 +56,8 @@ extern "C" real interpolate3D(real *scaling_p, real *fmajor_p, real *k_p, int ig
 //
 extern "C" real interpolate2D(real *fminor_p, real *k_p, int igpt, int *jeta_p, int jtemp,
                               int ngpt, int neta, int ntemp);
+real interpolate2D(real2d fminor, real3d k, int igpt, int1d jeta, int jtemp,
+                   int ngpt, int neta, int ntemp);
 
 
 
@@ -63,6 +67,16 @@ extern "C" real interpolate2D(real *fminor_p, real *k_p, int igpt, int *jeta_p, 
 //
 extern "C" void interpolate1D(real val, real offset, real delta, real *table_p,
                               real *res_p, int tab_d1, int tab_d2);
+void interpolate1D(real val, real offset, real delta, real2d table,
+                   real2d res, int tab_d1, int tab_d2);
 
 
 
+
+extern "C" void compute_Planck_source(int ncol, int nlay, int nbnd, int ngpt, int nflav, int neta,
+                                      int npres, int ntemp, int nPlanckTemp, real *tlay_p, real *tlev_p,
+                                      real *tsfc_p, int sfc_lay, real *fmajor_p, int *jeta_p, bool *tropo_p,
+                                      int *jtemp_p, int *jpress_p, int *gpoint_bands_p, int *band_lims_gpt_p,           
+                                      real *pfracin_p, real temp_ref_min, real totplnk_delta, real *totplnk_p,
+                                      int *gpoint_flavor_p, real *sfc_src_p, real *lay_src_p, real *lev_src_inc_p,
+                                      real *lev_src_dec_p);
