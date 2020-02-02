@@ -119,98 +119,6 @@ extern "C" void combine_and_reorder_2str(int ncol, int nlay, int ngpt, real *tau
 
 
 
-// ----------------------------------------------------------
-// interpolation in temperature, pressure, and eta
-extern "C" real interpolate3D(real *scaling_p, real *fmajor_p, real *k_p, int igpt, int *jeta_p,
-                              int jtemp, int jpress, int ngpt, int neta, int npres, int ntemp) {
-  
-  umgReal1d scaling("scaling",scaling_p,2);
-  umgReal3d fmajor ("fmajor" ,fmajor_p ,2,2,2);
-  umgReal4d k      ("k"      ,k_p      ,ngpt,neta,npres+1,ntemp);
-  umgInt1d  jeta   ("jeta"   ,jeta_p   ,2);
-
-  // each code block is for a different reference temperature
-  real ret = scaling(1) * ( fmajor(1,1,1) * k(igpt, jeta(1)  , jpress-1, jtemp  ) + 
-                            fmajor(2,1,1) * k(igpt, jeta(1)+1, jpress-1, jtemp  ) + 
-                            fmajor(1,2,1) * k(igpt, jeta(1)  , jpress  , jtemp  ) + 
-                            fmajor(2,2,1) * k(igpt, jeta(1)+1, jpress  , jtemp  ) ) + 
-             scaling(2) * ( fmajor(1,1,2) * k(igpt, jeta(2)  , jpress-1, jtemp+1) + 
-                            fmajor(2,1,2) * k(igpt, jeta(2)+1, jpress-1, jtemp+1) + 
-                            fmajor(1,2,2) * k(igpt, jeta(2)  , jpress  , jtemp+1) + 
-                            fmajor(2,2,2) * k(igpt, jeta(2)+1, jpress  , jtemp+1) );
-
-  return ret;
-}
-real interpolate3D(real1d scaling, real3d fmajor, real4d k, int igpt, int1d jeta,
-                   int jtemp, int jpress, int ngpt, int neta, int npres, int ntemp) {
-  // each code block is for a different reference temperature
-  real ret = scaling(1) * ( fmajor(1,1,1) * k(igpt, jeta(1)  , jpress-1, jtemp  ) + 
-                            fmajor(2,1,1) * k(igpt, jeta(1)+1, jpress-1, jtemp  ) + 
-                            fmajor(1,2,1) * k(igpt, jeta(1)  , jpress  , jtemp  ) + 
-                            fmajor(2,2,1) * k(igpt, jeta(1)+1, jpress  , jtemp  ) ) + 
-             scaling(2) * ( fmajor(1,1,2) * k(igpt, jeta(2)  , jpress-1, jtemp+1) + 
-                            fmajor(2,1,2) * k(igpt, jeta(2)+1, jpress-1, jtemp+1) + 
-                            fmajor(1,2,2) * k(igpt, jeta(2)  , jpress  , jtemp+1) + 
-                            fmajor(2,2,2) * k(igpt, jeta(2)+1, jpress  , jtemp+1) );
-  return ret;
-}
-
-
-
-// ------------
-//   This function returns a single value from a subset (in gpoint) of the k table
-//
-extern "C" real interpolate2D(real *fminor_p, real *k_p, int igpt, int *jeta_p, int jtemp,
-                              int ngpt, int neta, int ntemp) {
-
-  umgReal2d fminor("fminor",fminor_p,2,2);
-  umgReal3d k     ("k"     ,k_p     ,ngpt,neta,ntemp);
-  umgInt1d  jeta  ("jeta"  ,jeta_p  ,2);
-
-  return fminor(1,1) * k(igpt, jeta(1)  , jtemp  ) + 
-         fminor(2,1) * k(igpt, jeta(1)+1, jtemp  ) + 
-         fminor(1,2) * k(igpt, jeta(2)  , jtemp+1) + 
-         fminor(2,2) * k(igpt, jeta(2)+1, jtemp+1);
-}
-real interpolate2D(real2d fminor, real3d k, int igpt, int1d jeta, int jtemp,
-                   int ngpt, int neta, int ntemp) {
-  return fminor(1,1) * k(igpt, jeta(1)  , jtemp  ) + 
-         fminor(2,1) * k(igpt, jeta(1)+1, jtemp  ) + 
-         fminor(1,2) * k(igpt, jeta(2)  , jtemp+1) + 
-         fminor(2,2) * k(igpt, jeta(2)+1, jtemp+1);
-}
-
-
-
-// ----------------------------------------------------------
-//
-// One dimensional interpolation -- return all values along second table dimension
-//
-extern "C" void interpolate1D(real val, real offset, real delta, real *table_p,
-                              real *res_p, int tab_d1, int tab_d2) {
-
-  umgReal2d table("table",table_p,tab_d1,tab_d2);
-  umgReal1d res  ("res"  ,res_p  ,tab_d2);
-
-  real val0 = (val - offset) / delta;
-  real frac = val0 - int(val0); // get fractional part
-  int index = min(tab_d1-1, max(1, (int)(val0)+1)); // limit the index range
-  for (int i=1; i<=tab_d2; i++) {
-    res(i) = table(index,i) + frac * (table(index+1,i) - table(index,i));
-  }
-}
-void interpolate1D(real val, real offset, real delta, real2d table,
-                   real2d res, int tab_d1, int tab_d2) {
-  real val0 = (val - offset) / delta;
-  real frac = val0 - int(val0); // get fractional part
-  int index = min(tab_d1-1, max(1, (int)(val0)+1)); // limit the index range
-  for (int i=1; i<=tab_d2; i++) {
-    res(i) = table(index,i) + frac * (table(index+1,i) - table(index,i));
-  }
-}
-
-
-
 extern "C" void compute_Planck_source(int ncol, int nlay, int nbnd, int ngpt, int nflav, int neta,
                                       int npres, int ntemp, int nPlanckTemp, real *tlay_p, real *tlev_p,
                                       real *tsfc_p, int sfc_lay, real *fmajor_p, int *jeta_p, bool *tropo_p,
@@ -237,8 +145,8 @@ extern "C" void compute_Planck_source(int ncol, int nlay, int nbnd, int ngpt, in
   umgReal3d lev_src_inc   ("lev_src_inc"   ,lev_src_inc_p   ,ngpt,nlay,ncol);
   umgReal3d lev_src_dec   ("lev_src_dec"   ,lev_src_dec_p   ,ngpt,nlay,ncol);
 
-  real3d pfrac          ("pfrac",ngpt,nlay,ncol);
-  real3d planck_function("pfrac",nbnd,nlay+1,ncol);
+  real3d pfrac          ("pfrac"          ,ngpt,nlay,ncol);
+  real3d planck_function("planck_function",nbnd,nlay+1,ncol);
   real1d one("one",2);
   one(1) = 1;
   one(2) = 1;
@@ -263,7 +171,8 @@ extern "C" void compute_Planck_source(int ncol, int nlay, int nbnd, int ngpt, in
   // Compute surface source irradiance for g-point, equals band irradiance x fraction for g-point
   //
   for (int icol=1; icol<=ncol; icol++) {
-    interpolate1D(tsfc(icol), temp_ref_min, totplnk_delta, totplnk, planck_function.slice(COLON,1,icol),nPlanckTemp,nbnd);
+    auto planck_function_slice = planck_function.slice(COLON,1,icol); // Necessary to create a temporary because we're writing to it
+    interpolate1D(tsfc(icol), temp_ref_min, totplnk_delta, totplnk, planck_function_slice,nPlanckTemp,nbnd);
   }
   //
   // Map to g-points
@@ -277,7 +186,8 @@ extern "C" void compute_Planck_source(int ncol, int nlay, int nbnd, int ngpt, in
   for (int icol=1; icol<=ncol; icol++) {
     for (int ilay=1; ilay<=nlay; ilay++) {
       // Compute layer source irradiance for g-point, equals band irradiance x fraction for g-point
-      interpolate1D(tlay(icol,ilay), temp_ref_min, totplnk_delta, totplnk, planck_function.slice(COLON,ilay,icol),nPlanckTemp,nbnd);
+      auto planck_function_slice = planck_function.slice(COLON,ilay,icol); // Necessary to create a temporary because we're writing to it
+      interpolate1D(tlay(icol,ilay), temp_ref_min, totplnk_delta, totplnk, planck_function_slice,nPlanckTemp,nbnd);
     }
   }
   //
@@ -299,12 +209,14 @@ extern "C" void compute_Planck_source(int ncol, int nlay, int nbnd, int ngpt, in
 
   // compute level source irradiances for each g-point, one each for upward and downward paths
   for (int icol=1; icol<=ncol; icol++) {
-    interpolate1D(tlev(icol,1), temp_ref_min, totplnk_delta, totplnk, planck_function.slice(COLON,1,icol),nPlanckTemp,nbnd);
+    auto planck_function_slice = planck_function.slice(COLON,1,icol); // Necessary to create a temporary because we're writing to it
+    interpolate1D(tlev(icol,1), temp_ref_min, totplnk_delta, totplnk, planck_function_slice,nPlanckTemp,nbnd);
   }
 
   for (int icol=1; icol<=ncol; icol++) {
     for (int ilay=2; ilay<=nlay+1; ilay++) {
-      interpolate1D(tlev(icol,ilay), temp_ref_min, totplnk_delta, totplnk, planck_function.slice(COLON,ilay,icol),nPlanckTemp,nbnd);
+      auto planck_function_slice = planck_function.slice(COLON,ilay,icol); // Necessary to create a temporary because we're writing to it
+      interpolate1D(tlev(icol,ilay), temp_ref_min, totplnk_delta, totplnk, planck_function_slice,nPlanckTemp,nbnd);
     }
   }
 
@@ -327,4 +239,356 @@ extern "C" void compute_Planck_source(int ncol, int nlay, int nbnd, int ngpt, in
   }
 
 }
+
+
+
+// ----------------------------------------------------------
+//
+// compute Rayleigh scattering optical depths
+//
+extern "C" void compute_tau_rayleigh(int ncol, int nlay, int nbnd, int ngpt, int ngas, int nflav, int neta,
+                                     int npres, int ntemp, int *gpoint_flavor_p, int *band_lims_gpt_p, 
+                                     real *krayl_p, int idx_h2o, real *col_dry_p, real *col_gas_p,
+                                     real *fminor_p, int *jeta_p, bool *tropo_p, int *jtemp_p,
+                                     real *tau_rayleigh_p) {
+
+  umgInt2d  gpoint_flavor("gpoint_flavor",gpoint_flavor_p,2,ngpt);
+  umgInt2d  band_lims_gpt("band_lims_gpt",band_lims_gpt_p,2,nbnd);
+  umgReal4d krayl        ("krayl"        ,krayl_p        ,ngpt,neta,ntemp,2);
+  umgReal2d col_dry      ("col_dry"      ,col_dry_p      ,ncol,nlay);
+  umgReal2d col_gas      ("col_gas"      ,col_gas_p      ,{1,ncol},{1,nlay},{0,ngas});
+  umgReal5d fminor       ("fminor"       ,fminor_p       ,2,2,nflav,ncol,nlay);
+  umgInt4d  jeta         ("jeta"         ,jeta_p         ,2,  nflav,ncol,nlay);
+  umgBool2d tropo        ("tropo"        ,tropo_p        ,ncol,nlay);
+  umgInt2d  jtemp        ("jtemp"        ,jtemp_p        ,ncol,nlay);
+  umgReal3d tau_rayleigh ("tau_rayleigh" ,tau_rayleigh_p ,ngpt,nlay,ncol);
+
+  for (int ilay=1; ilay<=nlay; ilay++) {
+    for (int icol=1; icol<=ncol; icol++) {
+      for (int igpt=1; igpt<=ngpt; igpt++) {
+        int itropo = merge(1,2,tropo(icol,ilay)); // itropo = 1 lower atmosphere; itropo = 2 upper atmosphere
+        int iflav = gpoint_flavor(itropo, igpt);
+        real k = interpolate2D(fminor.slice(COLON,COLON,iflav,icol,ilay), 
+                               krayl.slice(COLON,COLON,COLON,itropo),      
+                               igpt, jeta.slice(COLON,iflav,icol,ilay), jtemp(icol,ilay), ngpt, neta, ntemp);
+        tau_rayleigh(igpt,ilay,icol) =  k * (col_gas(icol,ilay,idx_h2o)+col_dry(icol,ilay));
+      }
+    }
+  }
+}
+
+
+
+// ----------------------------------------------------------
+//
+// compute minor species optical depths
+//
+void gas_optical_depths_minor(int ncol, int nlay, int ngpt, int ngas, int nflav, int ntemp, int neta,
+                              int nminor, int nminork, int idx_h2o, int idx_tropo, int2d &gpt_flv,
+                              real3d &kminor, int2d &minor_limits_gpt, bool1d &minor_scales_with_density,
+                              bool1d &scale_by_complement, int1d &idx_minor, int1d &idx_minor_scaling,
+                              int1d &kminor_start, real2d &play, real2d &tlay, real3d &col_gas, real5d &fminor,
+                              int4d &jeta, int2d &layer_limits, int2d &jtemp, real3d &tau) {
+  real constexpr PaTohPa = 0.01;
+
+  int extent = nminor;
+
+  // Find the largest number of g-points per band
+  int max_gpt_diff = minor_limits_gpt(2,1) - minor_limits_gpt(1,1);
+  for (int i=2; i<=nminor; i++) {
+    max_gpt_diff = max( max_gpt_diff , minor_limits_gpt(2,i) - minor_limits_gpt(1,i) );
+  }
+
+  for (int ilay=1; ilay<=nlay; ilay++) {
+    for (int icol=1; icol<=ncol; icol++) {
+      for (int igpt0=0; igpt0<=max_gpt_diff; igpt0++) {
+        //
+        // This check skips individual columns with no pressures in range
+        //
+        if ( layer_limits(icol,1) <= 0 || ilay < layer_limits(icol,1) || ilay > layer_limits(icol,2) ) {
+          continue;
+        }
+
+        real myplay  = play (icol,ilay);
+        real mytlay  = tlay (icol,ilay);
+        real myjtemp = jtemp(icol,ilay);
+        real mycol_gas_h2o = col_gas(icol,ilay,idx_h2o);
+        real mycol_gas_0   = col_gas(icol,ilay,0);
+
+        for (int imnr=1; imnr<=extent; imnr++) {
+
+          real scaling = col_gas(icol,ilay,idx_minor(imnr));
+          if (minor_scales_with_density(imnr)) {
+            //
+            // NOTE: P needed in hPa to properly handle density scaling.
+            //
+            scaling = scaling * (PaTohPa * myplay/mytlay);
+
+            if (idx_minor_scaling(imnr) > 0) {  // there is a second gas that affects this gas's absorption
+              real mycol_gas_imnr = col_gas(icol,ilay,idx_minor_scaling(imnr));
+              real vmr_fact = 1._wp / mycol_gas_0;
+              real dry_fact = 1._wp / (1._wp + mycol_gas_h2o * vmr_fact);
+              // scale by density of special gas
+              if (scale_by_complement(imnr)) { // scale by densities of all gases but the special one
+                scaling = scaling * (1._wp - mycol_gas_imnr * vmr_fact * dry_fact);
+              } else {
+                scaling = scaling *          mycol_gas_imnr * vmr_fact * dry_fact;
+              }
+            }
+          } // minor_scalse_with_density(imnr)
+
+          //
+          // Interpolation of absorption coefficient and calculation of optical depth
+          //
+          // Which gpoint range does this minor gas affect?
+          int gptS = minor_limits_gpt(1,imnr);
+          int gptE = minor_limits_gpt(2,imnr);
+
+          // Find the actual g-point to work on
+          int igpt = igpt0 + gptS;
+
+          // Proceed only if the g-point is within the correct range
+          if (igpt <= gptE) {
+            // What is the starting point in the stored array of minor absorption coefficients?
+            int minor_start = kminor_start(imnr);
+
+            real tau_minor = 0._wp;
+            int iflav = gpt_flv(idx_tropo,igpt); // eta interpolation depends on flavor
+            int minor_loc = minor_start + (igpt - gptS); // add offset to starting point
+            real kminor_loc = interpolate2D(fminor.slice(COLON,COLON,iflav,icol,ilay), kminor, minor_loc,  
+                                            jeta.slice(COLON,iflav,icol,ilay), myjtemp, nminork, neta, ntemp);
+            tau_minor = kminor_loc * scaling;
+
+            yakl::atomicAdd( tau(igpt,ilay,icol) , tau_minor );
+          }  // igpt <= gptE
+        } // imnr
+      } // igpt0
+    } // icol
+  } // ilay
+}
+
+
+
+// --------------------------------------------------------------------------------------
+//
+// compute minor species optical depths
+//
+void gas_optical_depths_major(int ncol, int nlay, int nbnd, int ngpt, int nflav, int neta, int npres,
+                              int ntemp, int2d &gpoint_flavor, int2d &band_lims_gpt, real4d &kmajor,                         
+                              real4d &col_mix, real6d &fmajor, int4d &jeta, bool2d &tropo, 
+                              int2d &jtemp, int2d &jpress, real3d &tau) {
+  // optical depth calculation for major species
+  for (int ilay=1; ilay<=nlay; ilay++) {
+    for (int icol=1; icol<=ncol; icol++) {
+      // optical depth calculation for major species
+      for (int igpt=1; igpt<=ngpt; igpt++) {
+        // itropo = 1 lower atmosphere; itropo = 2 upper atmosphere
+        int itropo = merge(1,2,tropo(icol,ilay));  // WS: moved inside innermost loop
+
+        // binary species parameter (eta) and col_mix depend on band flavor
+        int iflav = gpoint_flavor(itropo, igpt);
+        real tau_major = 
+          // interpolation in temperature, pressure, and eta
+          interpolate3D(col_mix.slice(COLON,iflav,icol,ilay), 
+                        fmajor.slice(COLON,COLON,COLON,iflav,icol,ilay), kmajor, 
+                        igpt, jeta.slice(COLON,iflav,icol,ilay), jtemp(icol,ilay),jpress(icol,ilay)+itropo,ngpt,neta,npres,ntemp);
+        tau(igpt,ilay,icol) = tau(igpt,ilay,icol) + tau_major;
+      }
+    }
+  }
+}
+
+
+
+// --------------------------------------------------------------------------------------
+//
+// Compute minor and major species opitcal depth from pre-computed interpolation coefficients
+//   (jeta,jtemp,jpress)
+//
+extern "C" void compute_tau_absorption(int ncol, int nlay, int nbnd, int ngpt, int ngas, int nflav, int neta, int npres,
+                                       int ntemp, int nminorlower, int nminorklower, int nminorupper, int nminorkupper,          
+                                       int idx_h2o, int *gpoint_flavor_p, int *band_lims_gpt_p, real *kmajor_p,
+                                       real *kminor_lower_p, real *kminor_upper_p, int *minor_limits_gpt_lower_p,
+                                       int *minor_limits_gpt_upper_p, bool *minor_scales_with_density_lower_p,    
+                                       bool *minor_scales_with_density_upper_p, bool *scale_by_complement_lower_p,          
+                                       bool *scale_by_complement_upper_p, int *idx_minor_lower_p,                    
+                                       int *idx_minor_upper_p, int *idx_minor_scaling_lower_p,            
+                                       int *idx_minor_scaling_upper_p, int *kminor_start_lower_p,                 
+                                       int *kminor_start_upper_p, bool *tropo_p, real *col_mix_p, real *fmajor_p,
+                                       real *fminor_p, real *play_p, real *tlay_p, real *col_gas_p, int *jeta_p,
+                                       int *jtemp_p, int *jpress_p, real *tau_p) {
+
+  umgInt2d   gpoint_flavor                  ( "gpoint_flavor                  " , gpoint_flavor_p                   ,   2,ngpt                      );
+  umgInt2d   band_lims_gpt                  ( "band_lims_gpt                  " , band_lims_gpt_p                   ,   2,nbnd                      );
+  umgReal4d  kmajor                         ( "kmajor                         " , kmajor_p                          ,   ngpt,neta,npres+1,ntemp     );
+  umgReal3d  kminor_lower                   ( "kminor_lower                   " , kminor_lower_p                    ,   nminorklower,neta,ntemp     );
+  umgReal3d  kminor_upper                   ( "kminor_upper                   " , kminor_upper_p                    ,   nminorkupper,neta,ntemp     );
+  umgInt2d   minor_limits_gpt_lower         ( "minor_limits_gpt_lower         " , minor_limits_gpt_lower_p          ,   2,nminorlower               );
+  umgInt2d   minor_limits_gpt_upper         ( "minor_limits_gpt_upper         " , minor_limits_gpt_upper_p          ,   2,nminorupper               );
+  umgBool1d  minor_scales_with_density_lower( "minor_scales_with_density_lower" , minor_scales_with_density_lower_p ,     nminorlower               );
+  umgBool1d  minor_scales_with_density_upper( "minor_scales_with_density_upper" , minor_scales_with_density_upper_p ,     nminorupper               );
+  umgBool1d  scale_by_complement_lower      ( "scale_by_complement_lower      " , scale_by_complement_lower_p       ,     nminorlower               );
+  umgBool1d  scale_by_complement_upper      ( "scale_by_complement_upper      " , scale_by_complement_upper_p       ,     nminorupper               );
+  umgInt1d   idx_minor_lower                ( "idx_minor_lower                " , idx_minor_lower_p                 ,     nminorlower               );
+  umgInt1d   idx_minor_upper                ( "idx_minor_upper                " , idx_minor_upper_p                 ,     nminorupper               );
+  umgInt1d   idx_minor_scaling_lower        ( "idx_minor_scaling_lower        " , idx_minor_scaling_lower_p         ,     nminorlower               );
+  umgInt1d   idx_minor_scaling_upper        ( "idx_minor_scaling_upper        " , idx_minor_scaling_upper_p         ,     nminorupper               );
+  umgInt1d   kminor_start_lower             ( "kminor_start_lower             " , kminor_start_lower_p              ,     nminorlower               );
+  umgInt1d   kminor_start_upper             ( "kminor_start_upper             " , kminor_start_upper_p              ,     nminorupper               );
+  umgBool2d  tropo                          ( "tropo                          " , tropo_p                           ,   ncol,nlay                   );
+  umgReal4d  col_mix                        ( "col_mix                        " , col_mix_p                         ,   2,    nflav,ncol,nlay       );
+  umgReal6d  fmajor                         ( "fmajor                         " , fmajor_p                          ,   2,2,2,nflav,ncol,nlay       );
+  umgReal5d  fminor                         ( "fminor                         " , fminor_p                          ,   2,2,  nflav,ncol,nlay       );
+  umgReal2d  play                           ( "play                           " , play_p                            ,               ncol,nlay       );
+  umgReal2d  tlay                           ( "tlay                           " , tlay_p                            ,               ncol,nlay       );
+  umgReal3d  col_gas                        ( "col_gas                        " , col_gas_p                         , {1,ncol},{1,nlay},{0,ngas}    );
+  umgInt4d   jeta                           ( "jeta                           " , jeta_p                            ,   2,    nflav,ncol,nlay       );
+  umgInt2d   jtemp                          ( "jtemp                          " , jtemp_p                           ,               ncol,nlay       );
+  umgInt2d   jpress                         ( "jpress                         " , jpress_p                          ,               ncol,nlay       );
+  umgReal3d  tau                            ( "tau                            " , tau_p                             ,   ngpt,nlay,ncol              );
+
+  int2d itropo_lower("itropo_lower",ncol,2);
+  int2d itropo_upper("itropo_upper",ncol,2);
+
+  int huge  = std::numeric_limits<int>::max();
+  int small = std::numeric_limits<int>::min();
+
+  // ---------------------
+  // Layer limits of upper, lower atmospheres
+  // ---------------------
+  bool top_at_1 = play(1,1) < play(1, nlay);
+
+  if(top_at_1) {
+
+    for (int icol=1; icol<=ncol; icol++){
+      itropo_lower(icol,2) = nlay;
+      // itropo_lower(icol,1) = minloc(play(icol,:), dim=1, mask=tropo(icol,:))
+      {
+        int minloc = huge;
+        real mn = (real) huge;
+        for (int i=1; i<=nlay; i++) {
+          if ( tropo(icol,i) ) {
+            if (play(icol,i) < mn) {
+              minloc = i;
+            }
+            mn = min(mn,play(icol,i));
+          }
+        }
+        itropo_lower(icol,1) = minloc;
+      }
+
+      itropo_upper(icol,1) = 1;
+      // itropo_upper(icol,2) = maxloc(play(icol,:), dim=1, mask=(.not. tropo(icol,:)))
+      {
+        int maxloc = small;
+        real mx = (real) small;
+        for (int i=1; i<=nlay; i++) {
+          if ( !tropo(icol,i) ) {
+            if (play(icol,i) > mx) {
+              maxloc = i;
+            }
+            mx = max(mx,play(icol,i));
+          }
+        }
+        itropo_upper(icol,2) = maxloc;
+      }
+    }
+
+  } else {
+
+    for (int icol=1; icol<=ncol; icol++){
+      itropo_lower(icol,1) = 1;
+      // itropo_lower(icol,2) = minloc(play(icol,:), dim=1, mask=tropo(icol,:))
+      {
+        int minloc = huge;
+        real mn = (real) huge;
+        for (int i=1; i<=nlay; i++) {
+          if ( tropo(icol,i) ) {
+            if (play(icol,i) < mn) {
+              minloc = i;
+            }
+            mn = min(mn,play(icol,i));
+          }
+        }
+        itropo_lower(icol,2) = minloc;
+      }
+
+      itropo_upper(icol,2) = nlay;
+      // itropo_upper(icol,1) = maxloc(play(icol,:), dim=1, mask=(.not.tropo(icol,:)))
+      {
+        int maxloc = small;
+        real mx = (real) small;
+        for (int i=1; i<=nlay; i++) {
+          if ( !tropo(icol,i) ) {
+            if (play(icol,i) > mx) {
+              maxloc = i;
+            }
+            mx = max(mx,play(icol,i));
+          }
+        }
+        itropo_upper(icol,1) = maxloc;
+      }
+
+    }
+  }
+  // ---------------------
+  // Major Species
+  // ---------------------
+  gas_optical_depths_major(   
+   ncol,nlay,nbnd,ngpt,       
+   nflav,neta,npres,ntemp,    
+   gpoint_flavor,             
+   band_lims_gpt,             
+   kmajor,                    
+   col_mix,fmajor,            
+   jeta,tropo,jtemp,jpress,   
+   tau);
+  // ---------------------
+  // Minor Species - lower
+  // ---------------------
+  int idx_tropo = 1;
+  gas_optical_depths_minor(     
+    ncol,nlay,ngpt,             
+    ngas,nflav,ntemp,neta,      
+    nminorlower,nminorklower,   
+    idx_h2o,idx_tropo,          
+    gpoint_flavor,              
+    kminor_lower,               
+    minor_limits_gpt_lower,     
+    minor_scales_with_density_lower,
+    scale_by_complement_lower,  
+    idx_minor_lower,            
+    idx_minor_scaling_lower,    
+    kminor_start_lower,         
+    play, tlay,                 
+    col_gas,fminor,jeta,        
+    itropo_lower,jtemp,         
+    tau);
+  // ---------------------
+  // Minor Species - upper
+  // ---------------------
+  idx_tropo = 2;
+  gas_optical_depths_minor(     
+    ncol,nlay,ngpt,             
+    ngas,nflav,ntemp,neta,      
+    nminorupper,nminorkupper,   
+    idx_h2o,idx_tropo,          
+    gpoint_flavor,              
+    kminor_upper,               
+    minor_limits_gpt_upper,     
+    minor_scales_with_density_upper, 
+    scale_by_complement_upper,  
+    idx_minor_upper,            
+    idx_minor_scaling_upper,    
+    kminor_start_upper,         
+    play, tlay,                 
+    col_gas,fminor,jeta,        
+    itropo_upper,jtemp,         
+    tau);
+
+}
+
+
+
+
 
