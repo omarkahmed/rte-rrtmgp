@@ -4,7 +4,7 @@
 
 using yakl::bnd;
 using yakl::COLON;
-
+using yakl::Bounds;
 
 
 extern "C" void interpolation(int ncol, int nlay, int ngas, int nflav, int neta, int npres, int ntemp,
@@ -34,58 +34,62 @@ extern "C" void interpolation(int ncol, int nlay, int ngas, int nflav, int neta,
 
   real tiny = std::numeric_limits<real>::min();
 
-  for (int ilay=1; ilay<=nlay; ilay++) {
-    for (int icol=1; icol<=ncol; icol++) {
-      // index and factor for temperature interpolation
-      jtemp(icol,ilay) = (int) ((tlay(icol,ilay) - (temp_ref_min - temp_ref_delta)) / temp_ref_delta);
-      jtemp(icol,ilay) = min(ntemp - 1, max(1, jtemp(icol,ilay))); // limit the index range
-      ftemp(icol,ilay) = (tlay(icol,ilay) - temp_ref(jtemp(icol,ilay))) / temp_ref_delta;
+  // for (int ilay=1; ilay<=nlay; ilay++) {
+  //   for (int icol=1; icol<=ncol; icol++) {
+  yakl::parallel_for_cpu_serial( Bounds({1,nlay},{1,ncol}) , YAKL_LAMBDA (int indices[]) {
+    int ilay, icol;
+    yakl::storeIndices( indices , ilay,icol );
 
-      // index and factor for pressure interpolation
-      real locpress = 1._wp + (log(play(icol,ilay)) - press_ref_log(1)) / press_ref_log_delta;
-      jpress(icol,ilay) = min(npres-1, max(1, (int)(locpress)));
-      fpress(icol,ilay) = locpress - (real)(jpress(icol,ilay));
+    // index and factor for temperature interpolation
+    jtemp(icol,ilay) = (int) ((tlay(icol,ilay) - (temp_ref_min - temp_ref_delta)) / temp_ref_delta);
+    jtemp(icol,ilay) = min(ntemp - 1, max(1, jtemp(icol,ilay))); // limit the index range
+    ftemp(icol,ilay) = (tlay(icol,ilay) - temp_ref(jtemp(icol,ilay))) / temp_ref_delta;
 
-      // determine if in lower or upper part of atmosphere
-      tropo(icol,ilay) = log(play(icol,ilay)) > press_ref_trop_log;
-    }
-  }
+    // index and factor for pressure interpolation
+    real locpress = 1._wp + (log(play(icol,ilay)) - press_ref_log(1)) / press_ref_log_delta;
+    jpress(icol,ilay) = min(npres-1, max(1, (int)(locpress)));
+    fpress(icol,ilay) = locpress - (real)(jpress(icol,ilay));
 
-  for (int ilay=1; ilay<=nlay; ilay++) {
-    for (int icol=1; icol<=ncol; icol++) {
-      for (int iflav=1; iflav<=nflav; iflav++) {   // loop over implemented combinations of major species
-        for (int itemp=1; itemp<=2; itemp++) {
-          yakl::FSArray<int,bnd<1,2>> igases;
+    // determine if in lower or upper part of atmosphere
+    tropo(icol,ilay) = log(play(icol,ilay)) > press_ref_trop_log;
+  });
 
-          // itropo = 1 lower atmosphere; itropo = 2 upper atmosphere
-          int itropo = merge(1,2,tropo(icol,ilay));
-          igases(1) = flavor(1,iflav);
-          igases(2) = flavor(2,iflav);
+  // for (int ilay=1; ilay<=nlay; ilay++) {
+  //   for (int icol=1; icol<=ncol; icol++) {
+  //     for (int iflav=1; iflav<=nflav; iflav++) {   // loop over implemented combinations of major species
+  //       for (int itemp=1; itemp<=2; itemp++) {
+  yakl::parallel_for_cpu_serial( Bounds({1,nlay},{1,ncol},{1,nflav},{1,2}) , YAKL_LAMBDA ( int indices[]) {
+    int ilay, icol, iflav, itemp;
+    yakl::storeIndices( indices , ilay,icol,iflav,itemp );
 
-          // compute interpolation fractions needed for lower, then upper reference temperature level
-          // compute binary species parameter (eta) for flavor and temperature and
-          //  associated interpolation index and factors
-          real ratio_eta_half = vmr_ref(itropo,igases(1),(jtemp(icol,ilay)+itemp-1)) / 
-                                vmr_ref(itropo,igases(2),(jtemp(icol,ilay)+itemp-1));
-          col_mix(itemp,iflav,icol,ilay) = col_gas(icol,ilay,igases(1)) + ratio_eta_half * col_gas(icol,ilay,igases(2));
-          real eta = merge(col_gas(icol,ilay,igases(1)) / col_mix(itemp,iflav,icol,ilay), 0.5_wp, 
-                           col_mix(itemp,iflav,icol,ilay) > 2._wp * tiny);
-          real loceta = eta * (neta-1.0_wp);
-          jeta(itemp,iflav,icol,ilay) = min((int)(loceta)+1, neta-1);
-          real feta = fmod(loceta, 1.0_wp);
-          // compute interpolation fractions needed for minor species
-          real ftemp_term = ((2.0_wp-itemp) + (2.0_wp*itemp-3.0_wp) * ftemp(icol,ilay));
-          fminor(1,itemp,iflav,icol,ilay) = (1._wp-feta) * ftemp_term;
-          fminor(2,itemp,iflav,icol,ilay) =        feta  * ftemp_term;
-          // compute interpolation fractions needed for major species
-          fmajor(1,1,itemp,iflav,icol,ilay) = (1._wp-fpress(icol,ilay)) * fminor(1,itemp,iflav,icol,ilay);
-          fmajor(2,1,itemp,iflav,icol,ilay) = (1._wp-fpress(icol,ilay)) * fminor(2,itemp,iflav,icol,ilay);
-          fmajor(1,2,itemp,iflav,icol,ilay) =        fpress(icol,ilay)  * fminor(1,itemp,iflav,icol,ilay);
-          fmajor(2,2,itemp,iflav,icol,ilay) =        fpress(icol,ilay)  * fminor(2,itemp,iflav,icol,ilay);
-        }
-      }
-    }
-  }
+    yakl::FSArray<int,bnd<1,2>> igases;
+
+    // itropo = 1 lower atmosphere; itropo = 2 upper atmosphere
+    int itropo = merge(1,2,tropo(icol,ilay));
+    igases(1) = flavor(1,iflav);
+    igases(2) = flavor(2,iflav);
+
+    // compute interpolation fractions needed for lower, then upper reference temperature level
+    // compute binary species parameter (eta) for flavor and temperature and
+    //  associated interpolation index and factors
+    real ratio_eta_half = vmr_ref(itropo,igases(1),(jtemp(icol,ilay)+itemp-1)) / 
+                          vmr_ref(itropo,igases(2),(jtemp(icol,ilay)+itemp-1));
+    col_mix(itemp,iflav,icol,ilay) = col_gas(icol,ilay,igases(1)) + ratio_eta_half * col_gas(icol,ilay,igases(2));
+    real eta = merge(col_gas(icol,ilay,igases(1)) / col_mix(itemp,iflav,icol,ilay), 0.5_wp, 
+                     col_mix(itemp,iflav,icol,ilay) > 2._wp * tiny);
+    real loceta = eta * (neta-1.0_wp);
+    jeta(itemp,iflav,icol,ilay) = min((int)(loceta)+1, neta-1);
+    real feta = fmod(loceta, 1.0_wp);
+    // compute interpolation fractions needed for minor species
+    real ftemp_term = ((2.0_wp-itemp) + (2.0_wp*itemp-3.0_wp) * ftemp(icol,ilay));
+    fminor(1,itemp,iflav,icol,ilay) = (1._wp-feta) * ftemp_term;
+    fminor(2,itemp,iflav,icol,ilay) =        feta  * ftemp_term;
+    // compute interpolation fractions needed for major species
+    fmajor(1,1,itemp,iflav,icol,ilay) = (1._wp-fpress(icol,ilay)) * fminor(1,itemp,iflav,icol,ilay);
+    fmajor(2,1,itemp,iflav,icol,ilay) = (1._wp-fpress(icol,ilay)) * fminor(2,itemp,iflav,icol,ilay);
+    fmajor(1,2,itemp,iflav,icol,ilay) =        fpress(icol,ilay)  * fminor(1,itemp,iflav,icol,ilay);
+    fmajor(2,2,itemp,iflav,icol,ilay) =        fpress(icol,ilay)  * fminor(2,itemp,iflav,icol,ilay);
+  });
 }
 
 
@@ -101,20 +105,21 @@ extern "C" void combine_and_reorder_2str(int ncol, int nlay, int ngpt, real *tau
 
   real tiny = std::numeric_limits<real>::min();
 
-  for (int icol=1; icol<=ncol; icol++) {
-    for (int ilay=1; ilay<=nlay; ilay++) {
-      for (int igpt=1; igpt<=ngpt; igpt++) {
-         real t = tau_abs(igpt,ilay,icol) + tau_rayleigh(igpt,ilay,icol);
-         tau(icol,ilay,igpt) = t;
-         g  (icol,ilay,igpt) = 0._wp;
-         if(t > 2._wp * tiny) {
-           ssa(icol,ilay,igpt) = tau_rayleigh(igpt,ilay,icol) / t;
-         } else {
-           ssa(icol,ilay,igpt) = 0._wp;
-         }
-      }
-    }
-  }
+  // for (int icol=1; icol<=ncol; icol++) {
+  //   for (int ilay=1; ilay<=nlay; ilay++) {
+  //     for (int igpt=1; igpt<=ngpt; igpt++) {
+  yakl::parallel_for_cpu_serial( Bounds({1,ncol},{1,nlay},{1,ngpt}) , YAKL_LAMBDA ( int indices[] ) {
+    int icol,ilay,igpt;
+    yakl::storeIndices( indices , icol,ilay,igpt );
+     real t = tau_abs(igpt,ilay,icol) + tau_rayleigh(igpt,ilay,icol);
+     tau(icol,ilay,igpt) = t;
+     g  (icol,ilay,igpt) = 0._wp;
+     if(t > 2._wp * tiny) {
+       ssa(icol,ilay,igpt) = tau_rayleigh(igpt,ilay,icol) / t;
+     } else {
+       ssa(icol,ilay,igpt) = 0._wp;
+     }
+  });
 }
 
 
@@ -152,91 +157,107 @@ extern "C" void compute_Planck_source(int ncol, int nlay, int nbnd, int ngpt, in
   one(2) = 1;
 
   // Calculation of fraction of band's Planck irradiance associated with each g-point
-  for (int icol=1; icol<=ncol; icol++) {
-    for (int ilay=1; ilay<=nlay; ilay++) {
-      for (int igpt=1; igpt<=ngpt; igpt++) {
-        // itropo = 1 lower atmosphere; itropo = 2 upper atmosphere
-        int itropo = merge(1,2,tropo(icol,ilay));  //WS moved itropo inside loop for GPU
-        int iflav = gpoint_flavor(itropo, igpt); //eta interpolation depends on band's flavor
-        pfrac(igpt,ilay,icol) = 
-          // interpolation in temperature, pressure, and eta
-          interpolate3D(one, fmajor.slice(COLON,COLON,COLON,iflav,icol,ilay), pfracin, 
-                        igpt, jeta.slice(COLON,iflav,icol,ilay), jtemp(icol,ilay),jpress(icol,ilay)+itropo,ngpt,neta,npres,ntemp);
-      }
-    }
-  }
+  // for (int icol=1; icol<=ncol; icol++) {
+  //   for (int ilay=1; ilay<=nlay; ilay++) {
+  //     for (int igpt=1; igpt<=ngpt; igpt++) {
+  yakl::parallel_for_cpu_serial( Bounds({1,ncol},{1,nlay},{1,ngpt}) , YAKL_LAMBDA ( int indices[] ) {
+    int icol, ilay, igpt;
+    yakl::storeIndices( indices , icol,ilay,igpt );
+
+    // itropo = 1 lower atmosphere; itropo = 2 upper atmosphere
+    int itropo = merge(1,2,tropo(icol,ilay));  //WS moved itropo inside loop for GPU
+    int iflav = gpoint_flavor(itropo, igpt); //eta interpolation depends on band's flavor
+    pfrac(igpt,ilay,icol) = 
+      // interpolation in temperature, pressure, and eta
+      interpolate3D(one, fmajor.slice(COLON,COLON,COLON,iflav,icol,ilay), pfracin, 
+                    igpt, jeta.slice(COLON,iflav,icol,ilay), jtemp(icol,ilay),jpress(icol,ilay)+itropo,ngpt,neta,npres,ntemp);
+  });
 
   //
   // Planck function by band for the surface
   // Compute surface source irradiance for g-point, equals band irradiance x fraction for g-point
   //
-  for (int icol=1; icol<=ncol; icol++) {
+  // for (int icol=1; icol<=ncol; icol++) {
+  yakl::parallel_for_cpu_serial( Bounds({1,ncol}) , YAKL_LAMBDA ( int indices[] ) {
+    int icol = indices[0];
     auto planck_function_slice = planck_function.slice(COLON,1,icol); // Necessary to create a temporary because we're writing to it
     interpolate1D(tsfc(icol), temp_ref_min, totplnk_delta, totplnk, planck_function_slice,nPlanckTemp,nbnd);
-  }
+  });
   //
   // Map to g-points
   //
-  for (int igpt=1; igpt<=ngpt; igpt++) {
-    for (int icol=1; icol<=ncol; icol++) {
-      sfc_src(igpt,icol) = pfrac(igpt,sfc_lay,icol) * planck_function(gpoint_bands(igpt), 1, icol);
-    }
-  }
+  // for (int igpt=1; igpt<=ngpt; igpt++) {
+  //   for (int icol=1; icol<=ncol; icol++) {
+  yakl::parallel_for_cpu_serial( Bounds({1,ngpt},{1,ncol}) , YAKL_LAMBDA ( int indices[] ) {
+    int igpt, icol;
+    yakl::storeIndices( indices , igpt,icol );
 
-  for (int icol=1; icol<=ncol; icol++) {
-    for (int ilay=1; ilay<=nlay; ilay++) {
-      // Compute layer source irradiance for g-point, equals band irradiance x fraction for g-point
-      auto planck_function_slice = planck_function.slice(COLON,ilay,icol); // Necessary to create a temporary because we're writing to it
-      interpolate1D(tlay(icol,ilay), temp_ref_min, totplnk_delta, totplnk, planck_function_slice,nPlanckTemp,nbnd);
-    }
-  }
+    sfc_src(igpt,icol) = pfrac(igpt,sfc_lay,icol) * planck_function(gpoint_bands(igpt), 1, icol);
+  });
+
+  // for (int icol=1; icol<=ncol; icol++) {
+  //   for (int ilay=1; ilay<=nlay; ilay++) {
+  yakl::parallel_for_cpu_serial( Bounds({1,ncol},{1,nlay}) , YAKL_LAMBDA ( int indices[] ) {
+    int icol, ilay;
+    yakl::storeIndices( indices , icol,ilay );
+
+    // Compute layer source irradiance for g-point, equals band irradiance x fraction for g-point
+    auto planck_function_slice = planck_function.slice(COLON,ilay,icol); // Necessary to create a temporary because we're writing to it
+    interpolate1D(tlay(icol,ilay), temp_ref_min, totplnk_delta, totplnk, planck_function_slice,nPlanckTemp,nbnd);
+  });
   //
   // Map to g-points
   //
   // Explicitly unroll a time-consuming loop here to increase instruction-level parallelism on a GPU
   // Helps to achieve higher bandwidth
   //
-  for (int icol=1; icol<=ncol; icol+=2) {
-    for (int ilay=1; ilay<=nlay; ilay++) {
-      for (int igpt=1; igpt<=ngpt; igpt++) {
-        lay_src(igpt,ilay,icol  ) = pfrac(igpt,ilay,icol  ) * planck_function(gpoint_bands(igpt),ilay,icol);
-        if (icol < ncol) {
-          lay_src(igpt,ilay,icol+1) = pfrac(igpt,ilay,icol+1) * planck_function(gpoint_bands(igpt),ilay,icol+1);
-        }
-      }
-    }
-  }
+  // for (int icol=1; icol<=ncol; icol++) {
+  //   for (int ilay=1; ilay<=nlay; ilay++) {
+  //     for (int igpt=1; igpt<=ngpt; igpt++) {
+  yakl::parallel_for_cpu_serial( Bounds({1,ncol},{1,nlay},{1,ngpt}) , YAKL_LAMBDA ( int indices[] ) {
+    int icol, ilay, igpt;
+    yakl::storeIndices( indices , icol,ilay,igpt );
+
+    lay_src(igpt,ilay,icol  ) = pfrac(igpt,ilay,icol  ) * planck_function(gpoint_bands(igpt),ilay,icol);
+  });
 
   // compute level source irradiances for each g-point, one each for upward and downward paths
-  for (int icol=1; icol<=ncol; icol++) {
+  // for (int icol=1; icol<=ncol; icol++) {
+  yakl::parallel_for_cpu_serial( Bounds({1,ncol}) , YAKL_LAMBDA ( int indices[] ) {
+    int icol = indices[0];
     auto planck_function_slice = planck_function.slice(COLON,1,icol); // Necessary to create a temporary because we're writing to it
     interpolate1D(tlev(icol,1), temp_ref_min, totplnk_delta, totplnk, planck_function_slice,nPlanckTemp,nbnd);
-  }
+  });
 
-  for (int icol=1; icol<=ncol; icol++) {
-    for (int ilay=2; ilay<=nlay+1; ilay++) {
-      auto planck_function_slice = planck_function.slice(COLON,ilay,icol); // Necessary to create a temporary because we're writing to it
-      interpolate1D(tlev(icol,ilay), temp_ref_min, totplnk_delta, totplnk, planck_function_slice,nPlanckTemp,nbnd);
-    }
-  }
+  // for (int icol=1; icol<=ncol; icol++) {
+  //   for (int ilay=2; ilay<=nlay+1; ilay++) {
+  yakl::parallel_for_cpu_serial( Bounds({1,ncol},{2,nlay+1}) , YAKL_LAMBDA ( int indices[] ) {
+    int icol, ilay;
+    yakl::storeIndices( indices , icol,ilay );
+
+    auto planck_function_slice = planck_function.slice(COLON,ilay,icol); // Necessary to create a temporary because we're writing to it
+    interpolate1D(tlev(icol,ilay), temp_ref_min, totplnk_delta, totplnk, planck_function_slice,nPlanckTemp,nbnd);
+  });
 
   //
   // Map to g-points
   //
   // Same unrolling as mentioned before
   //
-  for (int icol=1; icol<=ncol; icol+=2) {
-    for (int ilay=1; ilay<=nlay; ilay++) {
-      for (int igpt=1; igpt<=ngpt; igpt++) {
-        lev_src_dec(igpt,ilay,icol  ) = pfrac(igpt,ilay,icol  ) * planck_function(gpoint_bands(igpt),ilay,  icol  );
-        lev_src_inc(igpt,ilay,icol  ) = pfrac(igpt,ilay,icol  ) * planck_function(gpoint_bands(igpt),ilay+1,icol  );
-        if (icol < ncol) {
-          lev_src_dec(igpt,ilay,icol+1) = pfrac(igpt,ilay,icol+1) * planck_function(gpoint_bands(igpt),ilay,  icol+1);
-          lev_src_inc(igpt,ilay,icol+1) = pfrac(igpt,ilay,icol+1) * planck_function(gpoint_bands(igpt),ilay+1,icol+1);
-        }
-      }
+  // for (int icol=1; icol<=ncol; icol+=2) {
+  //   for (int ilay=1; ilay<=nlay; ilay++) {
+  //     for (int igpt=1; igpt<=ngpt; igpt++) {
+  yakl::parallel_for_cpu_serial( Bounds({1,ncol},{1,nlay},{1,ngpt}) , YAKL_LAMBDA ( int indices[] ) {
+    int icol, ilay, igpt;
+    yakl::storeIndices( indices , icol,ilay,igpt );
+
+    lev_src_dec(igpt,ilay,icol  ) = pfrac(igpt,ilay,icol  ) * planck_function(gpoint_bands(igpt),ilay,  icol  );
+    lev_src_inc(igpt,ilay,icol  ) = pfrac(igpt,ilay,icol  ) * planck_function(gpoint_bands(igpt),ilay+1,icol  );
+    if (icol < ncol) {
+      lev_src_dec(igpt,ilay,icol+1) = pfrac(igpt,ilay,icol+1) * planck_function(gpoint_bands(igpt),ilay,  icol+1);
+      lev_src_inc(igpt,ilay,icol+1) = pfrac(igpt,ilay,icol+1) * planck_function(gpoint_bands(igpt),ilay+1,icol+1);
     }
-  }
+  });
 
 }
 
@@ -263,18 +284,20 @@ extern "C" void compute_tau_rayleigh(int ncol, int nlay, int nbnd, int ngpt, int
   umgInt2d  jtemp        ("jtemp"        ,jtemp_p        ,ncol,nlay);
   umgReal3d tau_rayleigh ("tau_rayleigh" ,tau_rayleigh_p ,ngpt,nlay,ncol);
 
-  for (int ilay=1; ilay<=nlay; ilay++) {
-    for (int icol=1; icol<=ncol; icol++) {
-      for (int igpt=1; igpt<=ngpt; igpt++) {
-        int itropo = merge(1,2,tropo(icol,ilay)); // itropo = 1 lower atmosphere; itropo = 2 upper atmosphere
-        int iflav = gpoint_flavor(itropo, igpt);
-        real k = interpolate2D(fminor.slice(COLON,COLON,iflav,icol,ilay), 
-                               krayl.slice(COLON,COLON,COLON,itropo),      
-                               igpt, jeta.slice(COLON,iflav,icol,ilay), jtemp(icol,ilay), ngpt, neta, ntemp);
-        tau_rayleigh(igpt,ilay,icol) =  k * (col_gas(icol,ilay,idx_h2o)+col_dry(icol,ilay));
-      }
-    }
-  }
+  // for (int ilay=1; ilay<=nlay; ilay++) {
+  //   for (int icol=1; icol<=ncol; icol++) {
+  //     for (int igpt=1; igpt<=ngpt; igpt++) {
+  yakl::parallel_for_cpu_serial( Bounds({1,nlay},{1,ncol},{1,ngpt}) , YAKL_LAMBDA ( int indices[] ) {
+    int ilay, icol, igpt;
+    yakl::storeIndices( indices , ilay,icol,igpt );
+
+    int itropo = merge(1,2,tropo(icol,ilay)); // itropo = 1 lower atmosphere; itropo = 2 upper atmosphere
+    int iflav = gpoint_flavor(itropo, igpt);
+    real k = interpolate2D(fminor.slice(COLON,COLON,iflav,icol,ilay), 
+                           krayl.slice(COLON,COLON,COLON,itropo),      
+                           igpt, jeta.slice(COLON,iflav,icol,ilay), jtemp(icol,ilay), ngpt, neta, ntemp);
+    tau_rayleigh(igpt,ilay,icol) =  k * (col_gas(icol,ilay,idx_h2o)+col_dry(icol,ilay));
+  });
 }
 
 
@@ -299,72 +322,72 @@ void gas_optical_depths_minor(int ncol, int nlay, int ngpt, int ngas, int nflav,
     max_gpt_diff = max( max_gpt_diff , minor_limits_gpt(2,i) - minor_limits_gpt(1,i) );
   }
 
-  for (int ilay=1; ilay<=nlay; ilay++) {
-    for (int icol=1; icol<=ncol; icol++) {
-      for (int igpt0=0; igpt0<=max_gpt_diff; igpt0++) {
-        //
-        // This check skips individual columns with no pressures in range
-        //
-        if ( layer_limits(icol,1) <= 0 || ilay < layer_limits(icol,1) || ilay > layer_limits(icol,2) ) {
-          continue;
-        }
+  // for (int ilay=1; ilay<=nlay; ilay++) {
+  //   for (int icol=1; icol<=ncol; icol++) {
+  //     for (int igpt0=0; igpt0<=max_gpt_diff; igpt0++) {
+  yakl::parallel_for_cpu_serial( Bounds({1,nlay},{1,ncol},{0,max_gpt_diff}) , YAKL_LAMBDA ( int indices[] ) {
+    int ilay, icol, igpt0;
+    yakl::storeIndices( indices , ilay,icol,igpt0 );
+    
+    // This check skips individual columns with no pressures in range
+    //
+    if ( layer_limits(icol,1) <= 0 || ilay < layer_limits(icol,1) || ilay > layer_limits(icol,2) ) {
+    } else {
+      real myplay  = play (icol,ilay);
+      real mytlay  = tlay (icol,ilay);
+      real myjtemp = jtemp(icol,ilay);
+      real mycol_gas_h2o = col_gas(icol,ilay,idx_h2o);
+      real mycol_gas_0   = col_gas(icol,ilay,0);
 
-        real myplay  = play (icol,ilay);
-        real mytlay  = tlay (icol,ilay);
-        real myjtemp = jtemp(icol,ilay);
-        real mycol_gas_h2o = col_gas(icol,ilay,idx_h2o);
-        real mycol_gas_0   = col_gas(icol,ilay,0);
+      for (int imnr=1; imnr<=extent; imnr++) {
 
-        for (int imnr=1; imnr<=extent; imnr++) {
+        real scaling = col_gas(icol,ilay,idx_minor(imnr));
+        if (minor_scales_with_density(imnr)) {
+          //
+          // NOTE: P needed in hPa to properly handle density scaling.
+          //
+          scaling = scaling * (PaTohPa * myplay/mytlay);
 
-          real scaling = col_gas(icol,ilay,idx_minor(imnr));
-          if (minor_scales_with_density(imnr)) {
-            //
-            // NOTE: P needed in hPa to properly handle density scaling.
-            //
-            scaling = scaling * (PaTohPa * myplay/mytlay);
-
-            if (idx_minor_scaling(imnr) > 0) {  // there is a second gas that affects this gas's absorption
-              real mycol_gas_imnr = col_gas(icol,ilay,idx_minor_scaling(imnr));
-              real vmr_fact = 1._wp / mycol_gas_0;
-              real dry_fact = 1._wp / (1._wp + mycol_gas_h2o * vmr_fact);
-              // scale by density of special gas
-              if (scale_by_complement(imnr)) { // scale by densities of all gases but the special one
-                scaling = scaling * (1._wp - mycol_gas_imnr * vmr_fact * dry_fact);
-              } else {
-                scaling = scaling *          mycol_gas_imnr * vmr_fact * dry_fact;
-              }
+          if (idx_minor_scaling(imnr) > 0) {  // there is a second gas that affects this gas's absorption
+            real mycol_gas_imnr = col_gas(icol,ilay,idx_minor_scaling(imnr));
+            real vmr_fact = 1._wp / mycol_gas_0;
+            real dry_fact = 1._wp / (1._wp + mycol_gas_h2o * vmr_fact);
+            // scale by density of special gas
+            if (scale_by_complement(imnr)) { // scale by densities of all gases but the special one
+              scaling = scaling * (1._wp - mycol_gas_imnr * vmr_fact * dry_fact);
+            } else {
+              scaling = scaling *          mycol_gas_imnr * vmr_fact * dry_fact;
             }
-          } // minor_scalse_with_density(imnr)
+          }
+        } // minor_scalse_with_density(imnr)
 
-          //
-          // Interpolation of absorption coefficient and calculation of optical depth
-          //
-          // Which gpoint range does this minor gas affect?
-          int gptS = minor_limits_gpt(1,imnr);
-          int gptE = minor_limits_gpt(2,imnr);
+        //
+        // Interpolation of absorption coefficient and calculation of optical depth
+        //
+        // Which gpoint range does this minor gas affect?
+        int gptS = minor_limits_gpt(1,imnr);
+        int gptE = minor_limits_gpt(2,imnr);
 
-          // Find the actual g-point to work on
-          int igpt = igpt0 + gptS;
+        // Find the actual g-point to work on
+        int igpt = igpt0 + gptS;
 
-          // Proceed only if the g-point is within the correct range
-          if (igpt <= gptE) {
-            // What is the starting point in the stored array of minor absorption coefficients?
-            int minor_start = kminor_start(imnr);
+        // Proceed only if the g-point is within the correct range
+        if (igpt <= gptE) {
+          // What is the starting point in the stored array of minor absorption coefficients?
+          int minor_start = kminor_start(imnr);
 
-            real tau_minor = 0._wp;
-            int iflav = gpt_flv(idx_tropo,igpt); // eta interpolation depends on flavor
-            int minor_loc = minor_start + (igpt - gptS); // add offset to starting point
-            real kminor_loc = interpolate2D(fminor.slice(COLON,COLON,iflav,icol,ilay), kminor, minor_loc,  
-                                            jeta.slice(COLON,iflav,icol,ilay), myjtemp, nminork, neta, ntemp);
-            tau_minor = kminor_loc * scaling;
+          real tau_minor = 0._wp;
+          int iflav = gpt_flv(idx_tropo,igpt); // eta interpolation depends on flavor
+          int minor_loc = minor_start + (igpt - gptS); // add offset to starting point
+          real kminor_loc = interpolate2D(fminor.slice(COLON,COLON,iflav,icol,ilay), kminor, minor_loc,  
+                                          jeta.slice(COLON,iflav,icol,ilay), myjtemp, nminork, neta, ntemp);
+          tau_minor = kminor_loc * scaling;
 
-            yakl::atomicAdd( tau(igpt,ilay,icol) , tau_minor );
-          }  // igpt <= gptE
-        } // imnr
-      } // igpt0
-    } // icol
-  } // ilay
+          yakl::atomicAdd( tau(igpt,ilay,icol) , tau_minor );
+        }  // igpt <= gptE
+      }
+    }
+  });
 }
 
 
@@ -378,24 +401,26 @@ void gas_optical_depths_major(int ncol, int nlay, int nbnd, int ngpt, int nflav,
                               real4d &col_mix, real6d &fmajor, int4d &jeta, bool2d &tropo, 
                               int2d &jtemp, int2d &jpress, real3d &tau) {
   // optical depth calculation for major species
-  for (int ilay=1; ilay<=nlay; ilay++) {
-    for (int icol=1; icol<=ncol; icol++) {
-      // optical depth calculation for major species
-      for (int igpt=1; igpt<=ngpt; igpt++) {
-        // itropo = 1 lower atmosphere; itropo = 2 upper atmosphere
-        int itropo = merge(1,2,tropo(icol,ilay));  // WS: moved inside innermost loop
+  // for (int ilay=1; ilay<=nlay; ilay++) {
+  //   for (int icol=1; icol<=ncol; icol++) {
+  //     // optical depth calculation for major species
+  //     for (int igpt=1; igpt<=ngpt; igpt++) {
+  yakl::parallel_for_cpu_serial( Bounds({1,nlay},{1,ncol},{1,ngpt}) , YAKL_LAMBDA ( int indices[] ) {
+    int ilay, icol, igpt;
+    yakl::storeIndices( indices , ilay,icol,igpt );
 
-        // binary species parameter (eta) and col_mix depend on band flavor
-        int iflav = gpoint_flavor(itropo, igpt);
-        real tau_major = 
-          // interpolation in temperature, pressure, and eta
-          interpolate3D(col_mix.slice(COLON,iflav,icol,ilay), 
-                        fmajor.slice(COLON,COLON,COLON,iflav,icol,ilay), kmajor, 
-                        igpt, jeta.slice(COLON,iflav,icol,ilay), jtemp(icol,ilay),jpress(icol,ilay)+itropo,ngpt,neta,npres,ntemp);
-        tau(igpt,ilay,icol) = tau(igpt,ilay,icol) + tau_major;
-      }
-    }
-  }
+    // itropo = 1 lower atmosphere; itropo = 2 upper atmosphere
+    int itropo = merge(1,2,tropo(icol,ilay));  // WS: moved inside innermost loop
+
+    // binary species parameter (eta) and col_mix depend on band flavor
+    int iflav = gpoint_flavor(itropo, igpt);
+    real tau_major = 
+      // interpolation in temperature, pressure, and eta
+      interpolate3D(col_mix.slice(COLON,iflav,icol,ilay), 
+                    fmajor.slice(COLON,COLON,COLON,iflav,icol,ilay), kmajor, 
+                    igpt, jeta.slice(COLON,iflav,icol,ilay), jtemp(icol,ilay),jpress(icol,ilay)+itropo,ngpt,neta,npres,ntemp);
+    tau(igpt,ilay,icol) = tau(igpt,ilay,icol) + tau_major;
+  });
 }
 
 
@@ -460,7 +485,10 @@ extern "C" void compute_tau_absorption(int ncol, int nlay, int nbnd, int ngpt, i
 
   if(top_at_1) {
 
-    for (int icol=1; icol<=ncol; icol++){
+    // for (int icol=1; icol<=ncol; icol++){
+    yakl::parallel_for_cpu_serial( Bounds({1,ncol}) , YAKL_LAMBDA ( int indices[] ) {
+      int icol = indices[0];
+
       itropo_lower(icol,2) = nlay;
       // itropo_lower(icol,1) = minloc(play(icol,:), dim=1, mask=tropo(icol,:))
       {
@@ -492,11 +520,14 @@ extern "C" void compute_tau_absorption(int ncol, int nlay, int nbnd, int ngpt, i
         }
         itropo_upper(icol,2) = maxloc;
       }
-    }
+    });
 
-  } else {
+  } else {  // top_at_1
 
-    for (int icol=1; icol<=ncol; icol++){
+    // for (int icol=1; icol<=ncol; icol++){
+    yakl::parallel_for_cpu_serial( Bounds({1,ncol}) , YAKL_LAMBDA ( int indices[] ) {
+      int icol = indices[0];
+
       itropo_lower(icol,1) = 1;
       // itropo_lower(icol,2) = minloc(play(icol,:), dim=1, mask=tropo(icol,:))
       {
@@ -529,8 +560,10 @@ extern "C" void compute_tau_absorption(int ncol, int nlay, int nbnd, int ngpt, i
         itropo_upper(icol,1) = maxloc;
       }
 
-    }
-  }
+    });
+
+  }  // top_at_1
+
   // ---------------------
   // Major Species
   // ---------------------
