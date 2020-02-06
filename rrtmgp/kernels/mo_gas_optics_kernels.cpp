@@ -258,7 +258,6 @@ extern "C" void compute_Planck_source(int ncol, int nlay, int nbnd, int ngpt, in
       lev_src_inc(igpt,ilay,icol+1) = pfrac(igpt,ilay,icol+1) * planck_function(gpoint_bands(igpt),ilay+1,icol+1);
     }
   });
-
 }
 
 
@@ -618,7 +617,6 @@ extern "C" void compute_tau_absorption(int ncol, int nlay, int nbnd, int ngpt, i
     col_gas,fminor,jeta,        
     itropo_upper,jtemp,         
     tau);
-
 }
 
 

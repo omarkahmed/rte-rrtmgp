@@ -58,6 +58,7 @@ extern "C" void net_broadband_full(int ncol, int nlev, int ngpt, real *spectral_
     real diff = spectral_flux_dn(icol, ilev, igpt) - spectral_flux_up(icol, ilev, igpt);
     yakl::atomicAdd( broadband_flux_net(icol,ilev) , diff );
   });
+  std::cout << "WARNING: THIS ISN'T TESTED!\n";
   std::cout << __FILE__ << ": " << __LINE__ << std::endl;
 }
 
@@ -81,6 +82,7 @@ extern "C" void net_broadband_precalc(int ncol, int nlev, real *flux_dn_p, real 
 
      broadband_flux_net(icol,ilev) = flux_dn(icol,ilev) - flux_up(icol,ilev);
   });
+  std::cout << "WARNING: THIS ISN'T TESTED!\n";
   std::cout << __FILE__ << ": " << __LINE__ << std::endl;
 }
 
