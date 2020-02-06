@@ -32,6 +32,7 @@ extern "C" void sum_broadband(int ncol, int nlev, int ngpt, real *spectral_flux_
 //
 // Net flux: Spectral reduction over all points
 //
+// WARNING: THIS ISN'T TESTED!
 extern "C" void net_broadband_full(int ncol, int nlev, int ngpt, real *spectral_flux_dn_p, real *spectral_flux_up_p, real *broadband_flux_net_p) {
   umgReal3d spectral_flux_dn  ("spectral_flux_dn"  ,spectral_flux_dn_p  ,ncol,nlev,ngpt);
   umgReal3d spectral_flux_up  ("spectral_flux_up"  ,spectral_flux_up_p  ,ncol,nlev,ngpt);
@@ -57,6 +58,7 @@ extern "C" void net_broadband_full(int ncol, int nlev, int ngpt, real *spectral_
     real diff = spectral_flux_dn(icol, ilev, igpt) - spectral_flux_up(icol, ilev, igpt);
     yakl::atomicAdd( broadband_flux_net(icol,ilev) , diff );
   });
+  std::cout << __FILE__ << ": " << __LINE__ << std::endl;
 }
 
 
@@ -65,6 +67,7 @@ extern "C" void net_broadband_full(int ncol, int nlev, int ngpt, real *spectral_
 //
 // Net flux when bradband flux up and down are already available
 //
+// WARNING: THIS ISN'T TESTED!
 extern "C" void net_broadband_precalc(int ncol, int nlev, real *flux_dn_p, real *flux_up_p, real *broadband_flux_net_p) {
   umgReal2d flux_dn           ("flux_dn"           ,flux_dn_p           ,ncol,nlev);
   umgReal2d flux_up           ("flux_up"           ,flux_up_p           ,ncol,nlev);
@@ -78,5 +81,6 @@ extern "C" void net_broadband_precalc(int ncol, int nlev, real *flux_dn_p, real 
 
      broadband_flux_net(icol,ilev) = flux_dn(icol,ilev) - flux_up(icol,ilev);
   });
+  std::cout << __FILE__ << ": " << __LINE__ << std::endl;
 }
 
