@@ -26,6 +26,7 @@ contains
   !
   ! (x,y,z) -> (z,x,y)
   !
+  ! WARNING: THIS ISN'T TESTED
   subroutine reorder123x312(array, array_out)
     real(wp), dimension(:,:,:), intent(in ) :: array
     real(wp), dimension(:,:,:), intent(out) :: array_out
@@ -36,11 +37,12 @@ contains
   !
   ! (x,y,z) -> (z,y,x)
   !
-  subroutine reorder123x321(array, array_out)
-    real(wp), dimension(:,:,:), intent(in ) :: array
-    real(wp), dimension(:,:,:), intent(out) :: array_out
+  subroutine reorder123x321(d1, d2, d3, array, array_out)
+    integer :: d1, d2, d3
+    real(wp), dimension(d1,d2,d3), intent(in ) :: array
+    real(wp), dimension(d1,d2,d3), intent(out) :: array_out
 
-    call reorder_123x321_kernel(size(array,dim=1), size(array,dim=2), size(array,dim=3), array, array_out)
+    call reorder_123x321_kernel(d1, d2, d3, array, array_out)
   end subroutine reorder123x321
   ! -------------------------------------------------------------------------------------------------
 end module

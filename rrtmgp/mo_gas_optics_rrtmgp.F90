@@ -682,9 +682,9 @@ contains
         sources%sfc_source(icol,igpt) = sfc_source_t(igpt,icol)
       end do
     end do
-    call reorder123x321(lay_source_t, sources%lay_source)
-    call reorder123x321(lev_source_inc_t, sources%lev_source_inc)
-    call reorder123x321(lev_source_dec_t, sources%lev_source_dec)
+    call reorder123x321(ngpt, nlay, ncol, lay_source_t    , sources%lay_source    )
+    call reorder123x321(ngpt, nlay, ncol, lev_source_inc_t, sources%lev_source_inc)
+    call reorder123x321(ngpt, nlay, ncol, lev_source_dec_t, sources%lev_source_dec)
     !$acc exit data delete(sfc_source_t, lay_source_t, lev_source_inc_t, lev_source_dec_t) detach(tlev_wk)
     !$acc exit data copyout(sources%lay_source, sources%lev_source_inc, sources%lev_source_dec, sources%sfc_source)
     !$acc exit data copyout(sources)
@@ -1607,7 +1607,7 @@ contains
       ! index reorder (ngpt, nlay, ncol) -> (ncol,nlay,gpt)
       !$acc enter data copyin(tau)
       !$acc enter data create(optical_props%tau)
-      call reorder123x321(tau, optical_props%tau)
+      call reorder123x321(ngpt, nlay, ncol, tau, optical_props%tau)
       select type(optical_props)
         type is (ty_optical_props_2str)
           !$acc enter data create(optical_props%ssa, optical_props%g)
@@ -1630,7 +1630,7 @@ contains
         type is (ty_optical_props_1scl)
           ! User is asking for absorption optical depth
           !$acc enter data create(optical_props%tau)
-          call reorder123x321(tau, optical_props%tau)
+          call reorder123x321(ngpt, nlay, ncol, tau, optical_props%tau)
           !$acc exit data copyout(optical_props%tau)
         type is (ty_optical_props_2str)
           !$acc enter data create(optical_props%tau, optical_props%ssa, optical_props%g)

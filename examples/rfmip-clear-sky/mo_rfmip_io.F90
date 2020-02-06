@@ -203,25 +203,25 @@ contains
     character(len=32), dimension(11) :: &
       chem_name = ['co   ', &
                    'ch4  ', &
-        				   'o2   ', &
-        				   'n2o  ', &
-        				   'n2   ', &
-        				   'co2  ', &
-        				   'CCl4 ', &
-        				   'ch4  ', &
-        				   'CH3Br', &
-   			           'CH3Cl', &
+                   'o2   ', &
+                   'n2o  ', &
+                   'n2   ', &
+                   'co2  ', &
+                   'CCl4 ', &
+                   'ch4  ', &
+                   'CH3Br', &
+                   'CH3Cl', &
                    'cfc22'], &
       conc_name = ['carbon_monoxide     ', &
                    'methane             ', &
                    'oxygen              ', &
-          			   'nitrous_oxide       ', &
-          			   'nitrogen            ', &
-        				   'carbon_dioxide      ', &
-        				   'carbon_tetrachloride', &
-        				   'methane             ', &
-        				   'methyl_bromide      ', &
-        				   'methyl_chloride     ', &
+                   'nitrous_oxide       ', &
+                   'nitrogen            ', &
+                   'carbon_dioxide      ', &
+                   'carbon_tetrachloride', &
+                   'methane             ', &
+                   'methyl_bromide      ', &
+                   'methyl_chloride     ', &
                    'hcfc22              ']
     ! ----------------
     select case (forcing_index)
@@ -229,7 +229,7 @@ contains
       call read_kdist_gas_names(kdistFile, names_in_kdist)
       allocate(names_in_file(size(names_in_kdist)))
       do i = 1, size(names_in_kdist)
-        names_in_file(i) = trim(lower_case(names_in_kdist(i)))
+        names_in_file(i) = trim( lower_case( names_in_kdist(i) ) )
         !
         ! Use a mapping between chemical formula and name if it exists
         !
