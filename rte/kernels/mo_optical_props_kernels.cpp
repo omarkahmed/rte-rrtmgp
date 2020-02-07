@@ -6,7 +6,7 @@ using yakl::Bounds;
 
 // ---------------------------------
 // increment 2stream by 2stream
-extern "C" void inc_2stream_by_2stream_bybnd(int ncol, int nlay, int ngpt, 
+extern "C" void inc_2stream_by_2stream_bybnd(int ncol, int nlay, int ngpt,
                                              real *tau1_p, real *ssa1_p, real *g1_p,
                                              real *tau2_p, real *ssa2_p, real *g2_p,
                                              int nbnd, int *gpt_lims_p) {
