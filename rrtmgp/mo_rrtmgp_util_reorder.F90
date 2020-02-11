@@ -15,35 +15,22 @@
 !
 ! -------------------------------------------------------------------------------------------------
 module mo_rrtmgp_util_reorder
-  use mo_rte_kind, only: wp
-  use mo_rrtmgp_util_reorder_kernels, &
-                   only: reorder_123x312_kernel, reorder_123x321_kernel
   implicit none
-  private
-  public :: reorder123x312, reorder123x321
-contains
-  ! -------------------------------------------------------------------------------------------------
-  !
-  ! (x,y,z) -> (z,x,y)
-  !
-  ! WARNING: THIS ISN'T TESTED
-  subroutine reorder123x312(d1, d2, d3, array, array_out)
-    integer, intent(in) :: d1, d2, d3
-    real(wp), dimension(d1,d2,d3), intent(in ) :: array
-    real(wp), dimension(d1,d2,d3), intent(out) :: array_out
+  interface
 
-    call reorder_123x312_kernel(d1, d2, d3, array, array_out)
-  end subroutine reorder123x312
-  ! -------------------------------------------------------------------------------------------------
-  !
-  ! (x,y,z) -> (z,y,x)
-  !
-  subroutine reorder123x321(d1, d2, d3, array, array_out)
-    integer, intent(in) :: d1, d2, d3
-    real(wp), dimension(d1,d2,d3), intent(in ) :: array
-    real(wp), dimension(d1,d2,d3), intent(out) :: array_out
+    subroutine reorder123x312(d1, d2, d3, array, array_out) bind(C,name="reorder123x312")
+      use mo_rte_kind, only: wp
+      integer, value, intent(in) :: d1, d2, d3
+      real(wp), dimension(d1,d2,d3), intent(in ) :: array
+      real(wp), dimension(d1,d2,d3), intent(out) :: array_out
+    end subroutine
 
-    call reorder_123x321_kernel(d1, d2, d3, array, array_out)
-  end subroutine reorder123x321
-  ! -------------------------------------------------------------------------------------------------
+    subroutine reorder123x321(d1, d2, d3, array, array_out) bind(C,name="reorder123x321")
+      use mo_rte_kind, only: wp
+      integer, value, intent(in) :: d1, d2, d3
+      real(wp), dimension(d1,d2,d3), intent(in ) :: array
+      real(wp), dimension(d1,d2,d3), intent(out) :: array_out
+    end subroutine
+    
+  end interface
 end module

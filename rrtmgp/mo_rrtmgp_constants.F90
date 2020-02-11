@@ -43,23 +43,19 @@ module mo_rrtmgp_constants
   !   might be different on e.g. other planets
 
   ! molecular weight of dry air [kg/mol]
-  real(wp), protected :: m_dry = 0.028964_wp
+  real(wp), bind(C) :: m_dry = 0.028964_wp
 
   ! Gravity at Earth's surface [m/s2]
-  real(wp), protected :: grav = 9.80665_wp
+  real(wp), bind(C) :: grav = 9.80665_wp
 
   ! Specific heat at constant pressure for dry air [J/(K kg)]
-  real(wp), protected :: cp_dry = 1004.64_wp
+  real(wp), bind(C) :: cp_dry = 1004.64_wp
 
-contains
-  ! -----------------------------------------
-  subroutine init_constants(gravity, mol_weight_dry_air, heat_capacity_dry_air)
-    real(wp), optional, intent(in) :: gravity, mol_weight_dry_air, heat_capacity_dry_air
+  interface
+    subroutine init_constants(gravity, mol_weight_dry_air, heat_capacity_dry_air) bind(C, name="init_constants")
+      use mo_rte_kind, only: wp
+      real(wp), value, intent(in) :: gravity, mol_weight_dry_air, heat_capacity_dry_air
+    end subroutine
+  end interface
 
-    if(present(gravity))               grav   = gravity
-    if(present(mol_weight_dry_air))    m_dry  = mol_weight_dry_air
-    if(present(heat_capacity_dry_air)) cp_dry = heat_capacity_dry_air
-
-  end subroutine init_constants
-  ! -----------------------------------------
 end module mo_rrtmgp_constants
