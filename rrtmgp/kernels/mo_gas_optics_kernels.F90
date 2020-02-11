@@ -175,47 +175,16 @@ module mo_gas_optics_kernels
       real(wp), dimension(ngpt,nlay,ncol), intent(inout) :: tau
     end subroutine
 
+    subroutine combine_and_reorder_nstr(ncol, nlay, ngpt, nmom, tau_abs, tau_rayleigh, tau, ssa, p) &
+        bind(C, name="combine_and_reorder_nstr")
+      use mo_rte_kind,      only : wp, wl
+      integer, value, intent(in) :: ncol, nlay, ngpt, nmom
+      real(wp), dimension(ngpt,nlay,ncol), intent(in ) :: tau_abs, tau_rayleigh
+      real(wp), dimension(ncol,nlay,ngpt), intent(inout) :: tau, ssa
+      real(wp), dimension(ncol,nlay,ngpt,nmom), &
+                                           intent(inout) :: p
+    end subroutine
+
   end interface
 
-
-contains
-
-
-  ! ----------------------------------------------------------
-  !
-  ! Combine absoprtion and Rayleigh optical depths for total tau, ssa, p
-  !   using Rayleigh scattering phase function
-  !
-  subroutine combine_and_reorder_nstr(ncol, nlay, ngpt, nmom, tau_abs, tau_rayleigh, tau, ssa, p) &
-      bind(C, name="combine_and_reorder_nstr")
-    integer, intent(in) :: ncol, nlay, ngpt, nmom
-    real(wp), dimension(ngpt,nlay,ncol), intent(in ) :: tau_abs, tau_rayleigh
-    real(wp), dimension(ncol,nlay,ngpt), intent(inout) :: tau, ssa
-    real(wp), dimension(ncol,nlay,ngpt,nmom), &
-                                         intent(inout) :: p
-    ! -----------------------
-    integer :: icol, ilay, igpt, imom
-    real(wp) :: t
-    ! -----------------------
-    !$acc parallel loop collapse(3) &
-    !$acc&     copy(tau, ssa, p) &
-    !$acc&     copyin(tau_rayleigh(:ngpt,:nlay,:ncol),tau_abs(:ngpt,:nlay,:ncol))
-    do icol = 1, ncol
-      do ilay = 1, nlay
-        do igpt = 1, ngpt
-          t = tau_abs(igpt,ilay,icol) + tau_rayleigh(igpt,ilay,icol)
-          tau(icol,ilay,igpt) = t
-          if(t > 2._wp * tiny(t)) then
-            ssa(icol,ilay,igpt) = tau_rayleigh(igpt,ilay,icol) / t
-          else
-            ssa(icol,ilay,igpt) = 0._wp
-          end if
-          do imom = 1, nmom
-            p(imom,icol,ilay,igpt) = 0.0_wp
-          end do
-          if(nmom >= 2) p(2,icol,ilay,igpt) = 0.1_wp
-        end do
-      end do
-    end do
-  end subroutine combine_and_reorder_nstr
 end module mo_gas_optics_kernels

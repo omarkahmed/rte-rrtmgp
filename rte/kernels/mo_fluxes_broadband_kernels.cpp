@@ -3,10 +3,7 @@
 #include "mo_fluxes_broadband_kernels.h"
 
 
-// ----------------------------------------------------------------------------
-//
 // Spectral reduction over all points
-//
 extern "C" void sum_broadband(int ncol, int nlev, int ngpt, real *spectral_flux_p, real *broadband_flux_p) {
   umgReal3d spectral_flux ("spectral_flux" ,spectral_flux_p ,ncol,nlev,ngpt);
   umgReal2d broadband_flux("broadband_flux",broadband_flux_p,ncol,nlev);
@@ -27,11 +24,7 @@ extern "C" void sum_broadband(int ncol, int nlev, int ngpt, real *spectral_flux_
 
 
 
-// ----------------------------------------------------------------------------
-//
 // Net flux: Spectral reduction over all points
-//
-// WARNING: THIS ISN'T TESTED!
 extern "C" void net_broadband_full(int ncol, int nlev, int ngpt, real *spectral_flux_dn_p, real *spectral_flux_up_p, real *broadband_flux_net_p) {
   umgReal3d spectral_flux_dn  ("spectral_flux_dn"  ,spectral_flux_dn_p  ,ncol,nlev,ngpt);
   umgReal3d spectral_flux_up  ("spectral_flux_up"  ,spectral_flux_up_p  ,ncol,nlev,ngpt);
@@ -63,11 +56,7 @@ extern "C" void net_broadband_full(int ncol, int nlev, int ngpt, real *spectral_
 
 
 
-// ----------------------------------------------------------------------------
-//
 // Net flux when bradband flux up and down are already available
-//
-// WARNING: THIS ISN'T TESTED!
 extern "C" void net_broadband_precalc(int ncol, int nlev, real *flux_dn_p, real *flux_up_p, real *broadband_flux_net_p) {
   umgReal2d flux_dn           ("flux_dn"           ,flux_dn_p           ,ncol,nlev);
   umgReal2d flux_up           ("flux_up"           ,flux_up_p           ,ncol,nlev);

@@ -55,5 +55,4 @@ module mo_fluxes_broadband_kernels
   end interface net_broadband
 
 
-contains
 end module mo_fluxes_broadband_kernels
