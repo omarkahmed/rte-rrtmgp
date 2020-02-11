@@ -79,6 +79,7 @@ contains
     class(ty_gas_concs),            intent(inout) :: this
     character(len=*), dimension(:), intent(in   ) :: gas_names
     character(len=128)                            :: error_msg
+    character(len=64) :: tmpstri, tmpstrj
     ! ---------
     integer :: i, j, ngas
     ! ---------
@@ -92,7 +93,9 @@ contains
 
     do i = 1, ngas-1
       do j = i+1, ngas
-        if (lower_case(trim(gas_names(i))) == lower_case(trim(gas_names(j)))) then
+        call lower_case( trim(gas_names(i)) , tmpstri );
+        call lower_case( trim(gas_names(j)) , tmpstrj );
+        if ( trim(tmpstri) == trim(tmpstrj) ) then
           error_msg = "ty_gas_concs%init(): duplicate gas names aren't allowed"
           exit
         end if
@@ -471,11 +474,14 @@ contains
     integer                         :: find_gas
     ! -----------------
     integer :: igas
+    character(len=64) :: tmpstr1, tmpstr2
     ! -----------------
     find_gas = GAS_NOT_IN_LIST
     if(.not. allocated(this%gas_name)) return
     do igas = 1, size(this%gas_name)
-      if (lower_case(trim(this%gas_name(igas))) == lower_case(trim(gas))) then
+      call lower_case( trim(this%gas_name(igas)) , tmpstr1 )
+      call lower_case( trim(gas)                 , tmpstr2 )
+      if ( trim(tmpstr1) == trim(tmpstr2) ) then
         find_gas = igas
       end if
     end do

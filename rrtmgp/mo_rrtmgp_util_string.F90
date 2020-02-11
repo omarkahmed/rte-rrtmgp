@@ -27,9 +27,9 @@ module mo_rrtmgp_util_string
 
 contains
   ! -------------------------------------------------------------------------------------------------
-  pure function lower_case( input_string ) result( output_string )
+  subroutine lower_case( input_string , output_string )
     character(len=*), intent(in) :: input_string
-    character(len=len(input_string)) :: output_string
+    character(len=*) :: output_string
     integer :: i, n
 
     ! Copy input string
@@ -40,23 +40,25 @@ contains
       n = index(UPPER_CASE_CHARS, output_string(i:i))
       if ( n /= 0 ) output_string(i:i) = LOWER_CASE_CHARS(n:n)
     end do
-  end function
+  end subroutine
   ! --------------------------------------------------------------------------------------
   !
   ! Is string somewhere in array?
   !
-  pure function string_in_array(string, array)
+  function string_in_array(string, array)
     character(len=*),               intent(in) :: string
     character(len=*), dimension(:), intent(in) :: array
     logical                                    :: string_in_array
 
     integer :: i
     character(len=len_trim(string)) :: lc_string
+    character(len=64) :: tmpstr
 
     string_in_array = .false.
-    lc_string = lower_case(trim(string))
+    call lower_case(trim(string) , lc_string)
     do i = 1, size(array)
-      if(lc_string == lower_case(trim(array(i)))) then
+      call lower_case(trim(array(i)) , tmpstr)
+      if (lc_string == trim(tmpstr)) then
         string_in_array = .true.
         exit
       end if
@@ -66,18 +68,20 @@ contains
   !
   ! Is string somewhere in array?
   !
-  pure function string_loc_in_array(string, array)
+  function string_loc_in_array(string, array)
     character(len=*),               intent(in) :: string
     character(len=*), dimension(:), intent(in) :: array
     integer                                    :: string_loc_in_array
 
     integer :: i
     character(len=len_trim(string)) :: lc_string
+    character(len=64) :: tmpstr
 
     string_loc_in_array = -1
-    lc_string = lower_case(trim(string))
+    call lower_case(trim(string) , lc_string)
     do i = 1, size(array)
-      if(lc_string == lower_case(trim(array(i)))) then
+      call lower_case( trim(array(i)) , tmpstr )
+      if ( lc_string == trim(tmpstr) ) then
         string_loc_in_array = i
         exit
       end if

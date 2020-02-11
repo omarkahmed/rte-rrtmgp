@@ -200,6 +200,7 @@ contains
     character(len=32), dimension(:), allocatable, intent(inout) :: names_in_kdist, names_in_file
     ! ----------------
     integer :: num_gases, i
+    character(len=32) :: tmpstr
     character(len=32), dimension(11) :: &
       chem_name = ['co   ', &
                    'ch4  ', &
@@ -229,7 +230,8 @@ contains
       call read_kdist_gas_names(kdistFile, names_in_kdist)
       allocate(names_in_file(size(names_in_kdist)))
       do i = 1, size(names_in_kdist)
-        names_in_file(i) = trim( lower_case( names_in_kdist(i) ) )
+        call lower_case( names_in_kdist(i) , tmpstr )
+        names_in_file(i) = trim( tmpstr )
         !
         ! Use a mapping between chemical formula and name if it exists
         !

@@ -411,10 +411,11 @@ contains
                                                           ! index(3) : flavor
                                                           ! index(4) : layer
     integer :: ngas, nflav, neta, npres, ntemp
-    integer :: icol, ilay, igas
+    integer :: icol, ilay, igas, igas2
     integer :: idx_h2o ! index of water vapor
     integer :: nminorlower, nminorklower,nminorupper, nminorkupper
     logical :: use_rayl
+    character(len=64) :: tmpstr
     ! ----------------------------------------------------------
     !
     ! Error checking
@@ -479,10 +480,13 @@ contains
       !
       ! Get vmr if  gas is provided in ty_gas_concs
       !
-      if (any (lower_case(this%gas_names(igas)) == gas_desc%gas_name(:))) then
-         error_msg = gas_desc%get_vmr(this%gas_names(igas), vmr(:,:,igas))
-         if (error_msg /= '') return
-      endif
+      do igas2 = lbound(gas_desc%gas_name,1) , ubound(gas_desc%gas_name,1)
+        call lower_case(this%gas_names(igas) , tmpstr)
+        if ( trim(tmpstr) == gas_desc%gas_name(igas2) ) then
+           error_msg = gas_desc%get_vmr(this%gas_names(igas), vmr(:,:,igas))
+           if (error_msg /= '') return
+        endif
+      enddo
     end do
 
     !
@@ -1114,12 +1118,15 @@ contains
     ! Local variables
     character(len=32), dimension(count(this%is_key(:)  )) :: key_gas_names
     integer                                               :: igas
+    character(len=64) :: tmpstr
     ! --------------------------------------
     error_msg = ""
     key_gas_names = pack(this%gas_names, mask=this%is_key)
     do igas = 1, size(key_gas_names)
-      if(.not. string_in_array(key_gas_names(igas), gas_desc%gas_name)) &
-        error_msg = ' ' // trim(lower_case(key_gas_names(igas))) // trim(error_msg)
+      if (.not. string_in_array(key_gas_names(igas), gas_desc%gas_name)) then
+        call lower_case(key_gas_names(igas) , tmpstr)
+        error_msg = ' ' // trim(tmpstr) // trim(error_msg)
+      endif
     end do
     if(len_trim(error_msg) > 0) error_msg = "gas_optics: required gases" // trim(error_msg) // " are not provided"
 
