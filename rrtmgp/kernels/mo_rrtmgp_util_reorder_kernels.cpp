@@ -1,7 +1,7 @@
 
 #include "mo_rrtmgp_util_reorder_kernels.h"
 
-extern "C" void reorder_123x321_kernel(int d1, int d2, int d3, real * __restrict__ array_in_p, real * __restrict__ array_out_p) {
+extern "C" void reorder_123x321_kernel(int d1, int d2, int d3, real *array_in_p, real *array_out_p) {
   umgReal3d array_in ( "array_in"  , array_in_p  , d1 , d2 , d3 );
   umgReal3d array_out( "array_out" , array_out_p , d3 , d2 , d1 );
 

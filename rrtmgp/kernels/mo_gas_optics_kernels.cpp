@@ -166,8 +166,8 @@ extern "C" void compute_Planck_source(int ncol, int nlay, int nbnd, int ngpt, in
     // itropo = 1 lower atmosphere; itropo = 2 upper atmosphere
     int itropo = merge(1,2,tropo(icol,ilay));  //WS moved itropo inside loop for GPU
     int iflav = gpoint_flavor(itropo, igpt); //eta interpolation depends on band's flavor
+    // interpolation in temperature, pressure, and eta
     pfrac(igpt,ilay,icol) = 
-      // interpolation in temperature, pressure, and eta
       interpolate3D(one, fmajor.slice({COLON,COLON,COLON,iflav,icol,ilay}), pfracin, 
                     igpt, jeta.slice({COLON,iflav,icol,ilay}), jtemp(icol,ilay),jpress(icol,ilay)+itropo,ngpt,neta,npres,ntemp);
   });
