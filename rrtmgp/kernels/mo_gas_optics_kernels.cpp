@@ -2,9 +2,8 @@
 #include "mo_gas_optics_kernels.h"
 #include <limits>
 
-using yakl::bnd;
+using yakl::SBnd;
 using yakl::COLON;
-using yakl::Bounds;
 
 
 extern "C" void interpolation(int ncol, int nlay, int ngas, int nflav, int neta, int npres, int ntemp,
@@ -36,9 +35,9 @@ extern "C" void interpolation(int ncol, int nlay, int ngas, int nflav, int neta,
 
   // for (int ilay=1; ilay<=nlay; ilay++) {
   //   for (int icol=1; icol<=ncol; icol++) {
-  yakl::parallel_for_cpu_serial( Bounds<2>({1,nlay},{1,ncol}) , YAKL_LAMBDA (int indices[]) {
+  parallel_for_cpu_serial( Bounds<2>({1,nlay},{1,ncol}) , YAKL_LAMBDA (int indices[]) {
     int ilay, icol;
-    yakl::storeIndices( indices , ilay,icol );
+    storeIndices( indices , ilay,icol );
 
     // index and factor for temperature interpolation
     jtemp(icol,ilay) = (int) ((tlay(icol,ilay) - (temp_ref_min - temp_ref_delta)) / temp_ref_delta);
@@ -58,11 +57,11 @@ extern "C" void interpolation(int ncol, int nlay, int ngas, int nflav, int neta,
   //   for (int icol=1; icol<=ncol; icol++) {
   //     for (int iflav=1; iflav<=nflav; iflav++) {   // loop over implemented combinations of major species
   //       for (int itemp=1; itemp<=2; itemp++) {
-  yakl::parallel_for_cpu_serial( Bounds<4>({1,nlay},{1,ncol},{1,nflav},{1,2}) , YAKL_LAMBDA ( int indices[]) {
+  parallel_for_cpu_serial( Bounds<4>({1,nlay},{1,ncol},{1,nflav},{1,2}) , YAKL_LAMBDA ( int indices[]) {
     int ilay, icol, iflav, itemp;
-    yakl::storeIndices( indices , ilay,icol,iflav,itemp );
+    storeIndices( indices , ilay,icol,iflav,itemp );
 
-    yakl::FSArray<int,bnd<1,2>> igases;
+    yakl::FSArray<int,SBnd<1,2>> igases;
 
     // itropo = 1 lower atmosphere; itropo = 2 upper atmosphere
     int itropo = merge(1,2,tropo(icol,ilay));
@@ -108,9 +107,9 @@ extern "C" void combine_and_reorder_2str(int ncol, int nlay, int ngpt, real *tau
   // for (int icol=1; icol<=ncol; icol++) {
   //   for (int ilay=1; ilay<=nlay; ilay++) {
   //     for (int igpt=1; igpt<=ngpt; igpt++) {
-  yakl::parallel_for_cpu_serial( Bounds<3>({1,ncol},{1,nlay},{1,ngpt}) , YAKL_LAMBDA ( int indices[] ) {
+  parallel_for_cpu_serial( Bounds<3>({1,ncol},{1,nlay},{1,ngpt}) , YAKL_LAMBDA ( int indices[] ) {
     int icol,ilay,igpt;
-    yakl::storeIndices( indices , icol,ilay,igpt );
+    storeIndices( indices , icol,ilay,igpt );
      real t = tau_abs(igpt,ilay,icol) + tau_rayleigh(igpt,ilay,icol);
      tau(icol,ilay,igpt) = t;
      g  (icol,ilay,igpt) = 0._wp;
@@ -160,9 +159,9 @@ extern "C" void compute_Planck_source(int ncol, int nlay, int nbnd, int ngpt, in
   // for (int icol=1; icol<=ncol; icol++) {
   //   for (int ilay=1; ilay<=nlay; ilay++) {
   //     for (int igpt=1; igpt<=ngpt; igpt++) {
-  yakl::parallel_for_cpu_serial( Bounds<3>({1,ncol},{1,nlay},{1,ngpt}) , YAKL_LAMBDA ( int indices[] ) {
+  parallel_for_cpu_serial( Bounds<3>({1,ncol},{1,nlay},{1,ngpt}) , YAKL_LAMBDA ( int indices[] ) {
     int icol, ilay, igpt;
-    yakl::storeIndices( indices , icol,ilay,igpt );
+    storeIndices( indices , icol,ilay,igpt );
 
     // itropo = 1 lower atmosphere; itropo = 2 upper atmosphere
     int itropo = merge(1,2,tropo(icol,ilay));  //WS moved itropo inside loop for GPU
@@ -178,7 +177,7 @@ extern "C" void compute_Planck_source(int ncol, int nlay, int nbnd, int ngpt, in
   // Compute surface source irradiance for g-point, equals band irradiance x fraction for g-point
   //
   // for (int icol=1; icol<=ncol; icol++) {
-  yakl::parallel_for_cpu_serial( Bounds<1>({1,ncol}) , YAKL_LAMBDA ( int indices[] ) {
+  parallel_for_cpu_serial( Bounds<1>({1,ncol}) , YAKL_LAMBDA ( int indices[] ) {
     int icol = indices[0];
     auto planck_function_slice = planck_function.slice({COLON,1,icol}); // Necessary to create a temporary because we're writing to it
     interpolate1D(tsfc(icol), temp_ref_min, totplnk_delta, totplnk, planck_function_slice,nPlanckTemp,nbnd);
@@ -188,18 +187,18 @@ extern "C" void compute_Planck_source(int ncol, int nlay, int nbnd, int ngpt, in
   //
   // for (int igpt=1; igpt<=ngpt; igpt++) {
   //   for (int icol=1; icol<=ncol; icol++) {
-  yakl::parallel_for_cpu_serial( Bounds<2>({1,ngpt},{1,ncol}) , YAKL_LAMBDA ( int indices[] ) {
+  parallel_for_cpu_serial( Bounds<2>({1,ngpt},{1,ncol}) , YAKL_LAMBDA ( int indices[] ) {
     int igpt, icol;
-    yakl::storeIndices( indices , igpt,icol );
+    storeIndices( indices , igpt,icol );
 
     sfc_src(igpt,icol) = pfrac(igpt,sfc_lay,icol) * planck_function(gpoint_bands(igpt), 1, icol);
   });
 
   // for (int icol=1; icol<=ncol; icol++) {
   //   for (int ilay=1; ilay<=nlay; ilay++) {
-  yakl::parallel_for_cpu_serial( Bounds<2>({1,ncol},{1,nlay}) , YAKL_LAMBDA ( int indices[] ) {
+  parallel_for_cpu_serial( Bounds<2>({1,ncol},{1,nlay}) , YAKL_LAMBDA ( int indices[] ) {
     int icol, ilay;
-    yakl::storeIndices( indices , icol,ilay );
+    storeIndices( indices , icol,ilay );
 
     // Compute layer source irradiance for g-point, equals band irradiance x fraction for g-point
     auto planck_function_slice = planck_function.slice({COLON,ilay,icol}); // Necessary to create a temporary because we're writing to it
@@ -214,16 +213,16 @@ extern "C" void compute_Planck_source(int ncol, int nlay, int nbnd, int ngpt, in
   // for (int icol=1; icol<=ncol; icol++) {
   //   for (int ilay=1; ilay<=nlay; ilay++) {
   //     for (int igpt=1; igpt<=ngpt; igpt++) {
-  yakl::parallel_for_cpu_serial( Bounds<3>({1,ncol},{1,nlay},{1,ngpt}) , YAKL_LAMBDA ( int indices[] ) {
+  parallel_for_cpu_serial( Bounds<3>({1,ncol},{1,nlay},{1,ngpt}) , YAKL_LAMBDA ( int indices[] ) {
     int icol, ilay, igpt;
-    yakl::storeIndices( indices , icol,ilay,igpt );
+    storeIndices( indices , icol,ilay,igpt );
 
     lay_src(igpt,ilay,icol  ) = pfrac(igpt,ilay,icol  ) * planck_function(gpoint_bands(igpt),ilay,icol);
   });
 
   // compute level source irradiances for each g-point, one each for upward and downward paths
   // for (int icol=1; icol<=ncol; icol++) {
-  yakl::parallel_for_cpu_serial( Bounds<1>({1,ncol}) , YAKL_LAMBDA ( int indices[] ) {
+  parallel_for_cpu_serial( Bounds<1>({1,ncol}) , YAKL_LAMBDA ( int indices[] ) {
     int icol = indices[0];
     auto planck_function_slice = planck_function.slice({COLON,1,icol}); // Necessary to create a temporary because we're writing to it
     interpolate1D(tlev(icol,1), temp_ref_min, totplnk_delta, totplnk, planck_function_slice,nPlanckTemp,nbnd);
@@ -231,9 +230,9 @@ extern "C" void compute_Planck_source(int ncol, int nlay, int nbnd, int ngpt, in
 
   // for (int icol=1; icol<=ncol; icol++) {
   //   for (int ilay=2; ilay<=nlay+1; ilay++) {
-  yakl::parallel_for_cpu_serial( Bounds<2>({1,ncol},{2,nlay+1}) , YAKL_LAMBDA ( int indices[] ) {
+  parallel_for_cpu_serial( Bounds<2>({1,ncol},{2,nlay+1}) , YAKL_LAMBDA ( int indices[] ) {
     int icol, ilay;
-    yakl::storeIndices( indices , icol,ilay );
+    storeIndices( indices , icol,ilay );
 
     auto planck_function_slice = planck_function.slice({COLON,ilay,icol}); // Necessary to create a temporary because we're writing to it
     interpolate1D(tlev(icol,ilay), temp_ref_min, totplnk_delta, totplnk, planck_function_slice,nPlanckTemp,nbnd);
@@ -247,9 +246,9 @@ extern "C" void compute_Planck_source(int ncol, int nlay, int nbnd, int ngpt, in
   // for (int icol=1; icol<=ncol; icol+=2) {
   //   for (int ilay=1; ilay<=nlay; ilay++) {
   //     for (int igpt=1; igpt<=ngpt; igpt++) {
-  yakl::parallel_for_cpu_serial( Bounds<3>({1,ncol},{1,nlay},{1,ngpt}) , YAKL_LAMBDA ( int indices[] ) {
+  parallel_for_cpu_serial( Bounds<3>({1,ncol},{1,nlay},{1,ngpt}) , YAKL_LAMBDA ( int indices[] ) {
     int icol, ilay, igpt;
-    yakl::storeIndices( indices , icol,ilay,igpt );
+    storeIndices( indices , icol,ilay,igpt );
 
     lev_src_dec(igpt,ilay,icol  ) = pfrac(igpt,ilay,icol  ) * planck_function(gpoint_bands(igpt),ilay,  icol  );
     lev_src_inc(igpt,ilay,icol  ) = pfrac(igpt,ilay,icol  ) * planck_function(gpoint_bands(igpt),ilay+1,icol  );
@@ -286,9 +285,9 @@ extern "C" void compute_tau_rayleigh(int ncol, int nlay, int nbnd, int ngpt, int
   // for (int ilay=1; ilay<=nlay; ilay++) {
   //   for (int icol=1; icol<=ncol; icol++) {
   //     for (int igpt=1; igpt<=ngpt; igpt++) {
-  yakl::parallel_for_cpu_serial( Bounds<3>({1,nlay},{1,ncol},{1,ngpt}) , YAKL_LAMBDA ( int indices[] ) {
+  parallel_for_cpu_serial( Bounds<3>({1,nlay},{1,ncol},{1,ngpt}) , YAKL_LAMBDA ( int indices[] ) {
     int ilay, icol, igpt;
-    yakl::storeIndices( indices , ilay,icol,igpt );
+    storeIndices( indices , ilay,icol,igpt );
 
     int itropo = merge(1,2,tropo(icol,ilay)); // itropo = 1 lower atmosphere; itropo = 2 upper atmosphere
     int iflav = gpoint_flavor(itropo, igpt);
@@ -324,9 +323,9 @@ void gas_optical_depths_minor(int ncol, int nlay, int ngpt, int ngas, int nflav,
   // for (int ilay=1; ilay<=nlay; ilay++) {
   //   for (int icol=1; icol<=ncol; icol++) {
   //     for (int igpt0=0; igpt0<=max_gpt_diff; igpt0++) {
-  yakl::parallel_for_cpu_serial( Bounds<3>({1,nlay},{1,ncol},{0,max_gpt_diff}) , YAKL_LAMBDA ( int indices[] ) {
+  parallel_for_cpu_serial( Bounds<3>({1,nlay},{1,ncol},{0,max_gpt_diff}) , YAKL_LAMBDA ( int indices[] ) {
     int ilay, icol, igpt0;
-    yakl::storeIndices( indices , ilay,icol,igpt0 );
+    storeIndices( indices , ilay,icol,igpt0 );
     
     // This check skips individual columns with no pressures in range
     //
@@ -404,9 +403,9 @@ void gas_optical_depths_major(int ncol, int nlay, int nbnd, int ngpt, int nflav,
   //   for (int icol=1; icol<=ncol; icol++) {
   //     // optical depth calculation for major species
   //     for (int igpt=1; igpt<=ngpt; igpt++) {
-  yakl::parallel_for_cpu_serial( Bounds<3>({1,nlay},{1,ncol},{1,ngpt}) , YAKL_LAMBDA ( int indices[] ) {
+  parallel_for_cpu_serial( Bounds<3>({1,nlay},{1,ncol},{1,ngpt}) , YAKL_LAMBDA ( int indices[] ) {
     int ilay, icol, igpt;
-    yakl::storeIndices( indices , ilay,icol,igpt );
+    storeIndices( indices , ilay,icol,igpt );
 
     // itropo = 1 lower atmosphere; itropo = 2 upper atmosphere
     int itropo = merge(1,2,tropo(icol,ilay));  // WS: moved inside innermost loop
@@ -485,7 +484,7 @@ extern "C" void compute_tau_absorption(int ncol, int nlay, int nbnd, int ngpt, i
   if(top_at_1) {
 
     // for (int icol=1; icol<=ncol; icol++){
-    yakl::parallel_for_cpu_serial( Bounds<1>({1,ncol}) , YAKL_LAMBDA ( int indices[] ) {
+    parallel_for_cpu_serial( Bounds<1>({1,ncol}) , YAKL_LAMBDA ( int indices[] ) {
       int icol = indices[0];
 
       itropo_lower(icol,2) = nlay;
@@ -524,7 +523,7 @@ extern "C" void compute_tau_absorption(int ncol, int nlay, int nbnd, int ngpt, i
   } else {  // top_at_1
 
     // for (int icol=1; icol<=ncol; icol++){
-    yakl::parallel_for_cpu_serial( Bounds<1>({1,ncol}) , YAKL_LAMBDA ( int indices[] ) {
+    parallel_for_cpu_serial( Bounds<1>({1,ncol}) , YAKL_LAMBDA ( int indices[] ) {
       int icol = indices[0];
 
       itropo_lower(icol,1) = 1;

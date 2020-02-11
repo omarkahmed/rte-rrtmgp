@@ -1,7 +1,6 @@
 
 #include "mo_optical_props_kernels.h"
 
-using yakl::Bounds;
 
 
 // ---------------------------------
@@ -23,9 +22,9 @@ extern "C" void inc_2stream_by_2stream_bybnd(int ncol, int nlay, int ngpt,
   // do igpt = 1 , ngpt
   //   do ilay = 1, nlay
   //     do icol = 1, ncol
-  yakl::parallel_for( Bounds<3>({1,ngpt},{1,nlay},{1,ncol}) , YAKL_LAMBDA ( int indices[] ) {
+  parallel_for( Bounds<3>({1,ngpt},{1,nlay},{1,ncol}) , YAKL_LAMBDA ( int indices[] ) {
     int igpt, ilay, icol;
-    yakl::storeIndices( indices , igpt,ilay,icol );
+    storeIndices( indices , igpt,ilay,icol );
 
     for (int ibnd=1; ibnd<=nbnd; ibnd++) {
       if (igpt >= gpt_lims(1,ibnd) && igpt <= gpt_lims(2,ibnd) ) {
@@ -60,9 +59,9 @@ extern "C" void inc_1scalar_by_1scalar_bybnd(int ncol, int nlay, int ngpt, real 
   // do igpt = 1 , ngpt
   //   do ilay = 1 , nlay
   //     do icol = 1 , ncol
-  yakl::parallel_for( Bounds<3>({1,ngpt},{1,nlay},{1,ncol}) , YAKL_LAMBDA ( int indices[] ) {
+  parallel_for( Bounds<3>({1,ngpt},{1,nlay},{1,ncol}) , YAKL_LAMBDA ( int indices[] ) {
     int igpt, ilay, icol;
-    yakl::storeIndices( indices , igpt,ilay,icol );
+    storeIndices( indices , igpt,ilay,icol );
 
     for (int ibnd=1; ibnd<=nbnd; ibnd++) {
       if (igpt >= gpt_lims(1,ibnd) && igpt <= gpt_lims(2,ibnd) ) {
@@ -88,9 +87,9 @@ extern "C" void delta_scale_2str_k(int ncol, int nlay, int ngpt, real *tau_p, re
   // do igpt = 1, ngpt
   //   do ilay = 1, nlay
   //     do icol = 1, ncol
-  yakl::parallel_for( Bounds<3>({1,ngpt},{1,nlay},{1,ncol}) , YAKL_LAMBDA ( int indices[] ) {
+  parallel_for( Bounds<3>({1,ngpt},{1,nlay},{1,ncol}) , YAKL_LAMBDA ( int indices[] ) {
     int igpt, ilay, icol;
-    yakl::storeIndices( indices , igpt,ilay,icol );
+    storeIndices( indices , igpt,ilay,icol );
 
     if (tau(icol,ilay,igpt) > eps) {
       real f  = g  (icol,ilay,igpt) * g  (icol,ilay,igpt);

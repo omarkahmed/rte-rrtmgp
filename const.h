@@ -14,6 +14,11 @@ YAKL_INLINE real constexpr operator"" _wp( long double x ) {
 }
 
 
+using yakl::fortran::parallel_for;
+using yakl::fortran::Bounds;
+using yakl::storeIndices;
+
+
 typedef yakl::FArray<real,yakl::memDevice> umgReal1d;
 typedef yakl::FArray<real,yakl::memDevice> umgReal2d;
 typedef yakl::FArray<real,yakl::memDevice> umgReal3d;
