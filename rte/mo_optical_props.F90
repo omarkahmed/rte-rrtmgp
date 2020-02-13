@@ -103,52 +103,7 @@ module mo_optical_props
     ! Increment another set of values
     !
     procedure, public  :: increment
-
-    !
-    ! Deferred procedures -- each must be implemented in each child class with
-    !   arguments following the abstract interface (defined below)
-    !
-    procedure(validate_abstract),     deferred, public  :: validate
-    procedure(delta_scale_abstract),  deferred, public  :: delta_scale
-    procedure(subset_range_abstract), deferred, public  :: get_subset
   end type
-  !
-  ! Interfaces for the methods to be implemented
-  !
-  abstract interface
-    !
-    ! Validation function looks only at internal data
-    !
-    function validate_abstract(this) result(err_message)
-      import ty_optical_props_arry
-      class(ty_optical_props_arry),  intent(in) :: this
-      character(len=128)  :: err_message
-    end function validate_abstract
-
-    !
-    ! Delta-scaling
-    !
-    function delta_scale_abstract(this, for) result(err_message)
-      import ty_optical_props_arry
-      import wp
-      class(ty_optical_props_arry),  intent(inout) :: this
-      real(wp), dimension(:,:,:), optional, &
-                                     intent(in   ) :: for
-      ! Forward scattering fraction; g**2 if not provided
-      character(len=128)  :: err_message
-    end function delta_scale_abstract
-
-    !
-    ! Subsetting -- currently there are only routines with start col and count
-    !
-    function subset_range_abstract(full, start, n, subset) result(err_message)
-      import ty_optical_props_arry
-      class(ty_optical_props_arry), intent(inout) :: full
-      integer,                      intent(in   ) :: start, n
-      class(ty_optical_props_arry), intent(inout) :: subset
-      character(128)                              :: err_message
-    end function subset_range_abstract
-  end interface
   !----------------------------------------------------------------------------------------
   !
   !   ty_optical_props_arry  includes only (extinction) optical depth
@@ -160,10 +115,6 @@ module mo_optical_props
   ! -------------------------------------------------------------------------------------------------
   type, extends(ty_optical_props_arry) :: ty_optical_props_1scl
   contains
-    procedure, public  :: validate => validate_1scalar
-    procedure, public  :: get_subset => subset_1scl_range
-    procedure, public  :: delta_scale => delta_scale_1scl
-
     procedure, private :: alloc_only_1scl
     procedure, private :: init_and_alloc_1scl
     procedure, private :: copy_and_alloc_1scl
@@ -175,10 +126,6 @@ module mo_optical_props
     real(wp), dimension(:,:,:), allocatable :: ssa ! single-scattering albedo (ncol, nlay, ngpt)
     real(wp), dimension(:,:,:), allocatable :: g   ! asymmetry parameter (ncol, nlay, ngpt)
   contains
-    procedure, public  :: validate => validate_2stream
-    procedure, public  :: get_subset => subset_2str_range
-    procedure, public  :: delta_scale => delta_scale_2str
-
     procedure, private :: alloc_only_2str
     procedure, private :: init_and_alloc_2str
     procedure, private :: copy_and_alloc_2str
@@ -190,9 +137,6 @@ module mo_optical_props
     real(wp), dimension(:,:,:),   allocatable :: ssa ! single-scattering albedo (ncol, nlay, ngpt)
     real(wp), dimension(:,:,:,:), allocatable :: p   ! phase-function moments (nmom, ncol, nlay, ngpt)
   contains
-    procedure, public :: validate => validate_nstream
-    procedure, public :: get_subset => subset_nstr_range
-    procedure, public :: delta_scale => delta_scale_nstr
     procedure, public :: get_nmom
 
     procedure, private :: alloc_only_nstr
@@ -201,6 +145,17 @@ module mo_optical_props
     generic,   public  :: alloc_nstr => alloc_only_nstr, init_and_alloc_nstr, copy_and_alloc_nstr
   end type
   ! -------------------------------------------------------------------------------------------------
+
+
+  interface validate
+    module procedure :: validate_1scalar, validate_2stream, validate_nstream
+  end interface
+
+  interface delta_scale
+    module procedure :: delta_scale_1scl, delta_scale_2str, delta_scale_nstr
+  end interface
+
+
 contains
   ! -------------------------------------------------------------------------------------------------
   !
@@ -489,8 +444,8 @@ contains
   ! ------------------------------------------------------------------------------------------
   ! --- delta scaling
   ! ------------------------------------------------------------------------------------------
-  function delta_scale_1scl(this, for) result(err_message)
-    class(ty_optical_props_1scl), intent(inout) :: this
+  function delta_scale_1scl(cls, for) result(err_message)
+    class(ty_optical_props_1scl), intent(inout) :: cls
     real(wp), dimension(:,:,:), optional, &
                                   intent(in   ) :: for
     character(128)                              :: err_message
@@ -500,8 +455,8 @@ contains
     err_message = ""
   end function delta_scale_1scl
   ! ------------------------------------------------------------------------------------------
-  function delta_scale_2str(this, for) result(err_message)
-    class(ty_optical_props_2str), intent(inout) :: this
+  function delta_scale_2str(cls, for) result(err_message)
+    class(ty_optical_props_2str), intent(inout) :: cls
     real(wp), dimension(:,:,:), optional, &
                                   intent(in   ) :: for
     ! Forward scattering fraction; g**2 if not provided
@@ -509,9 +464,9 @@ contains
 
     integer :: ncol, nlay, ngpt
     ! --------------------------------
-    ncol = this%get_ncol()
-    nlay = this%get_nlay()
-    ngpt = this%get_ngpt()
+    ncol = cls%get_ncol()
+    nlay = cls%get_nlay()
+    ngpt = cls%get_ngpt()
     err_message = ""
 
     if(present(for)) then
@@ -523,15 +478,15 @@ contains
         err_message = "delta_scale: values of 'for' out of bounds [0,1]"
         return
       end if
-      call delta_scale_2str_kernel(ncol, nlay, ngpt, this%tau, this%ssa, this%g, for)
+      call delta_scale_2str_kernel(ncol, nlay, ngpt, cls%tau, cls%ssa, cls%g, for)
     else
-      call delta_scale_2str_kernel(ncol, nlay, ngpt, this%tau, this%ssa, this%g)
+      call delta_scale_2str_kernel(ncol, nlay, ngpt, cls%tau, cls%ssa, cls%g)
     end if
 
   end function delta_scale_2str
   ! ------------------------------------------------------------------------------------------
-  function delta_scale_nstr(this, for) result(err_message)
-    class(ty_optical_props_nstr), intent(inout) :: this
+  function delta_scale_nstr(cls, for) result(err_message)
+    class(ty_optical_props_nstr), intent(inout) :: cls
     real(wp), dimension(:,:,:), optional, &
                                  intent(in   ) :: for
     character(128)                             :: err_message
@@ -543,24 +498,24 @@ contains
   ! --- Validation
   !
   ! ------------------------------------------------------------------------------------------
-  function validate_1scalar(this) result(err_message)
-    class(ty_optical_props_1scl), intent(in) :: this
+  function validate_1scalar(cls) result(err_message)
+    class(ty_optical_props_1scl), intent(in) :: cls
     character(len=128)                       :: err_message
 
     err_message = ''
-    if(.not. allocated(this%tau)) then
+    if(.not. allocated(cls%tau)) then
       err_message = "validate: tau not allocated/initialized"
       return
     end if
-    if(any_vals_less_than(this%tau, 0._wp)) &
+    if(any_vals_less_than(cls%tau, 0._wp)) &
       err_message = "validate: tau values out of range"
-    if(len_trim(err_message) > 0 .and. len_trim(this%get_name()) > 0) &
-      err_message = trim(this%get_name()) // ': ' // trim(err_message)
+    if(len_trim(err_message) > 0 .and. len_trim(cls%get_name()) > 0) &
+      err_message = trim(cls%get_name()) // ': ' // trim(err_message)
 
   end function validate_1scalar
   ! ------------------------------------------------------------------------------------------
-  function validate_2stream(this) result(err_message)
-    class(ty_optical_props_2str), intent(in) :: this
+  function validate_2stream(cls) result(err_message)
+    class(ty_optical_props_2str), intent(in) :: cls
     character(len=128)                       :: err_message
 
     integer :: d1, d2, d3
@@ -569,34 +524,34 @@ contains
     !
     ! Array allocation status, sizing
     !
-    if(.not. all([allocated(this%tau), allocated(this%ssa), allocated(this%g)])) then
+    if(.not. all([allocated(cls%tau), allocated(cls%ssa), allocated(cls%g)])) then
       err_message = "validate: arrays not allocated/initialized"
       return
     end if
-    d1 = size(this%tau, 1)
-    d2 = size(this%tau, 2)
-    d3 = size(this%tau, 3)
-    if(.not. extents_are(this%ssa, d1, d2, d3) .or. &
-       .not. extents_are(this%g  , d1, d2, d3))     &
+    d1 = size(cls%tau, 1)
+    d2 = size(cls%tau, 2)
+    d3 = size(cls%tau, 3)
+    if(.not. extents_are(cls%ssa, d1, d2, d3) .or. &
+       .not. extents_are(cls%g  , d1, d2, d3))     &
     err_message = "validate: arrays not sized consistently"
     !
     ! Valid values
     !
-    if(any_vals_less_than(this%tau,  0._wp)) &
+    if(any_vals_less_than(cls%tau,  0._wp)) &
       err_message = "validate: tau values out of range"
-    if(any_vals_outside  (this%ssa,  0._wp, 1._wp)) &
+    if(any_vals_outside  (cls%ssa,  0._wp, 1._wp)) &
       err_message = "validate: ssa values out of range"
-    if(any_vals_outside  (this%g  , -1._wp, 1._wp)) &
+    if(any_vals_outside  (cls%g  , -1._wp, 1._wp)) &
       err_message = "validate: g values out of range"
 
-    if(len_trim(err_message) > 0 .and. len_trim(this%get_name()) > 0) &
-      err_message = trim(this%get_name()) // ': ' // trim(err_message)
+    if(len_trim(err_message) > 0 .and. len_trim(cls%get_name()) > 0) &
+      err_message = trim(cls%get_name()) // ': ' // trim(err_message)
 
   end function validate_2stream
 
   ! ------------------------------------------------------------------------------------------
-  function validate_nstream(this) result(err_message)
-    class(ty_optical_props_nstr), intent(in) :: this
+  function validate_nstream(cls) result(err_message)
+    class(ty_optical_props_nstr), intent(in) :: cls
     character(len=128)                       :: err_message
 
     integer :: d1, d2, d3, d4
@@ -605,31 +560,32 @@ contains
     !
     ! Array allocation status, sizing
     !
-    if(.not. all([allocated(this%tau), allocated(this%ssa), allocated(this%p)])) then
+    if(.not. all([allocated(cls%tau), allocated(cls%ssa), allocated(cls%p)])) then
       err_message = "validate: arrays not allocated/initialized"
       return
     end if
-    d1 = size(this%tau, 1)
-    d2 = size(this%tau, 2)
-    d3 = size(this%tau, 3)
-    d4 = size(this%p,   1)
-    if(.not. extents_are(this%ssa, d1, d2, d3) .or. &
-       .not. extents_are(this%p  , d4, d1, d2, d3))     &
+    d1 = size(cls%tau, 1)
+    d2 = size(cls%tau, 2)
+    d3 = size(cls%tau, 3)
+    d4 = size(cls%p,   1)
+    if(.not. extents_are(cls%ssa, d1, d2, d3) .or. &
+       .not. extents_are(cls%p  , d4, d1, d2, d3))     &
     err_message = "validate: arrays not sized consistently"
     !
     ! Valid values
     !
-    if(any_vals_less_than(this%tau,  0._wp)) &
+    if(any_vals_less_than(cls%tau,  0._wp)) &
       err_message = "validate: tau values out of range"
-    if(any_vals_outside  (this%ssa,  0._wp, 1._wp)) &
+    if(any_vals_outside  (cls%ssa,  0._wp, 1._wp)) &
       err_message = "validate: ssa values out of range"
-    if(any_vals_outside  (this%p(1,:,:,:),  &
+    if(any_vals_outside  (cls%p(1,:,:,:),  &
                                                                            -1._wp, 1._wp)) &
       err_message = "validate: p(1,:,:,:)  = g values out of range"
 
-    if(len_trim(err_message) > 0 .and. len_trim(this%get_name()) > 0) &
-        err_message = trim(this%get_name()) // ': ' // trim(err_message)
+    if(len_trim(err_message) > 0 .and. len_trim(cls%get_name()) > 0) &
+        err_message = trim(cls%get_name()) // ': ' // trim(err_message)
   end function validate_nstream
+
 
   ! ------------------------------------------------------------------------------------------
   !

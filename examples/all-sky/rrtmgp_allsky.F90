@@ -33,7 +33,8 @@ end subroutine vmr_2d_to_1d
 program rte_rrtmgp_clouds
   use mo_rte_kind,           only: wp
   use mo_optical_props,      only: ty_optical_props, &
-                                   ty_optical_props_arry, ty_optical_props_1scl, ty_optical_props_2str
+                                   ty_optical_props_arry, ty_optical_props_1scl, ty_optical_props_2str, &
+                                   delta_scale
   use mo_gas_optics_rrtmgp,  only: ty_gas_optics_rrtmgp
   use mo_cloud_optics,       only: ty_cloud_optics
   use mo_gas_concentrations, only: ty_gas_concs, init
@@ -352,7 +353,12 @@ program rte_rrtmgp_clouds
                                          gas_concs,    &
                                          atmos,        &
                                          toa_flux))
-      call stop_on_err(clouds%delta_scale())
+      select type(clouds)
+      type is (ty_optical_props_1scl)
+        call stop_on_err(delta_scale(clouds))
+      type is (ty_optical_props_2str)
+        call stop_on_err(delta_scale(clouds))
+      end select
       call stop_on_err(clouds%increment(atmos))
       call stop_on_err(rte_sw(atmos, top_at_1, &
                               mu0,   toa_flux, &

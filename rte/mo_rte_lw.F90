@@ -37,7 +37,8 @@ module mo_rte_lw
   use mo_rte_kind,      only: wp, wl
   use mo_rte_util_array,only: any_vals_less_than, any_vals_outside, extents_are
   use mo_optical_props, only: ty_optical_props, &
-                              ty_optical_props_arry, ty_optical_props_1scl, ty_optical_props_2str, ty_optical_props_nstr
+                              ty_optical_props_arry, ty_optical_props_1scl, ty_optical_props_2str, ty_optical_props_nstr, &
+                              validate
   use mo_source_functions,   &
                         only: ty_source_func_lw
   use mo_fluxes,        only: ty_fluxes
@@ -159,15 +160,6 @@ contains
         error_msg = "rte_lw: have to ask for at least one quadrature point for no-scattering calculation"
       n_quad_angs = n_gauss_angles
     end if
-    !
-    ! Ensure values of tau, ssa, and g are reasonable
-    !
-    error_msg =  optical_props%validate()
-    if(len_trim(error_msg) > 0) then
-      if(len_trim(optical_props%get_name()) > 0) &
-        error_msg = trim(optical_props%get_name()) // ': ' // trim(error_msg)
-      return
-    end if
 
     ! ------------------------------------------------------------------------------------
     !
@@ -175,18 +167,12 @@ contains
     !
     allocate(gpt_flux_up (ncol, nlay+1, ngpt), gpt_flux_dn(ncol, nlay+1, ngpt))
     allocate(sfc_emis_gpt(ncol,         ngpt))
-    !!$acc enter data copyin(sources, sources%lay_source, sources%lev_source_inc, sources%lev_source_dec, sources%sfc_source)
-    !$acc enter data copyin(optical_props)
-    !$acc enter data create(gpt_flux_dn, gpt_flux_up)
-    !$acc enter data create(sfc_emis_gpt)
     call expand_and_transpose(optical_props, sfc_emis, sfc_emis_gpt)
     !
     !   Upper boundary condition
     !
     if(present(inc_flux)) then
-      !$acc enter data copyin(inc_flux)
       call apply_BC(ncol, nlay, ngpt, logical(top_at_1, wl), inc_flux, gpt_flux_dn)
-      !$acc exit data delete(inc_flux)
     else
       !
       ! Default is zero incident diffuse flux
@@ -202,8 +188,7 @@ contains
         !
         ! No scattering two-stream calculation
         !
-        !$acc enter data copyin(optical_props%tau)
-        error_msg =  optical_props%validate()
+        error_msg = validate(optical_props)
         if(len_trim(error_msg) > 0) return
         call lw_solver_noscat_GaussQuad(ncol, nlay, ngpt, logical(top_at_1, wl), &
                               n_quad_angs, gauss_Ds(1:n_quad_angs,n_quad_angs), gauss_wts(1:n_quad_angs,n_quad_angs), &
@@ -211,20 +196,17 @@ contains
                               sources%lay_source, sources%lev_source_inc, sources%lev_source_dec, &
                               sfc_emis_gpt, sources%sfc_source,  &
                               gpt_flux_up, gpt_flux_dn)
-        !$acc exit data delete(optical_props%tau)
       class is (ty_optical_props_2str)
         !
         ! two-stream calculation with scattering
         !
-        !$acc enter data copyin(optical_props%tau, optical_props%ssa, optical_props%g)
-        error_msg =  optical_props%validate()
+        error_msg = validate(optical_props)
         if(len_trim(error_msg) > 0) return
         call lw_solver_2stream(ncol, nlay, ngpt, logical(top_at_1, wl), &
                                optical_props%tau, optical_props%ssa, optical_props%g,              &
                                sources%lay_source, sources%lev_source_inc, sources%lev_source_dec, &
                                sfc_emis_gpt, sources%sfc_source,       &
                                gpt_flux_up, gpt_flux_dn)
-        !$acc exit data delete(optical_props%tau, optical_props%ssa, optical_props%g)
       class is (ty_optical_props_nstr)
         !
         ! n-stream calculation
@@ -237,10 +219,6 @@ contains
     ! ...and reduce spectral fluxes to desired output quantities
     !
     error_msg = fluxes%reduce(gpt_flux_up, gpt_flux_dn, optical_props, top_at_1)
-    !$acc exit data delete(sfc_emis_gpt)
-    !$acc exit data delete(gpt_flux_up,gpt_flux_dn)
-    !$acc exit data delete(optical_props)
-    !!$acc exit data delete(sources%lay_source, sources%lev_source_inc, sources%lev_source_dec, sources%sfc_source,sources)
   end function rte_lw
   !--------------------------------------------------------------------------------------------------------------------
   !
@@ -259,7 +237,6 @@ contains
     nband = ops%get_nband()
     ngpt  = ops%get_ngpt()
     limits = ops%get_band_lims_gpoint()
-    !$acc parallel loop collapse(2) copyin(arr_in, limits)
     do iband = 1, nband
       do icol = 1, ncol
         do igpt = limits(1, iband), limits(2, iband)
