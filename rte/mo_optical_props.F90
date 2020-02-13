@@ -75,8 +75,6 @@ module mo_optical_props
     procedure, public  :: get_nband
     procedure, public  :: get_ngpt
     procedure, public  :: get_gpoint_bands
-    procedure, public  :: convert_band2gpt
-    procedure, public  :: convert_gpt2band
   end type
   !----------------------------------------------------------------------------------------
   !
@@ -965,13 +963,13 @@ contains
   !
   ! First and last g-point of a specific band
   !
-  pure function convert_band2gpt(this, band)
-    class(ty_optical_props), intent(in) :: this
+  pure function convert_band2gpt(cls, band)
+    class(ty_optical_props), intent(in) :: cls
     integer,                 intent(in) :: band
     integer, dimension(2)               :: convert_band2gpt
 
-    if(this%is_initialized()) then
-      convert_band2gpt(:) = this%band2gpt(:,band)
+    if(cls%is_initialized()) then
+      convert_band2gpt(:) = cls%band2gpt(:,band)
     else
       convert_band2gpt(:) = 0
     end if
@@ -1026,13 +1024,13 @@ contains
   !
   ! Band associated with a specific g-point
   !
-  pure function convert_gpt2band(this, gpt)
-    class(ty_optical_props), intent(in) :: this
+  pure function convert_gpt2band(cls, gpt)
+    class(ty_optical_props), intent(in) :: cls
     integer,                            intent(in) :: gpt
     integer                             :: convert_gpt2band
 
-    if(this%is_initialized()) then
-      convert_gpt2band = this%gpt2band(gpt)
+    if(cls%is_initialized()) then
+      convert_gpt2band = cls%gpt2band(gpt)
     else
       convert_gpt2band = 0
     end if
