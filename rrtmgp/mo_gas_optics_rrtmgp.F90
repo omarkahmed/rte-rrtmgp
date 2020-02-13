@@ -30,7 +30,7 @@ module mo_gas_optics_rrtmgp
                                    compute_tau_absorption, compute_tau_rayleigh, compute_Planck_source, &
                                    combine_and_reorder_2str, combine_and_reorder_nstr
 
-  use mo_rrtmgp_util_string, only: lower_case, string_in_array, string_loc_in_array
+  use mo_rrtmgp_util_string, only: lower_case, string_in_array, string_loc_in_array, char_f2c, char_c2f
   use mo_gas_concentrations, only: ty_gas_concs
   use mo_optical_props,      only: ty_optical_props_arry, ty_optical_props_1scl, ty_optical_props_2str, ty_optical_props_nstr
   use mo_gas_optics,         only: ty_gas_optics
@@ -415,7 +415,7 @@ contains
     integer :: idx_h2o ! index of water vapor
     integer :: nminorlower, nminorklower,nminorupper, nminorkupper
     logical :: use_rayl
-    character(len=64) :: tmpstr
+    character(len=128) :: tmpstr
     ! ----------------------------------------------------------
     !
     ! Error checking
@@ -481,8 +481,10 @@ contains
       ! Get vmr if  gas is provided in ty_gas_concs
       !
       do igas2 = lbound(gas_desc%gas_name,1) , ubound(gas_desc%gas_name,1)
-        call lower_case(this%gas_names(igas) , tmpstr)
-        if ( trim(tmpstr) == gas_desc%gas_name(igas2) ) then
+        call char_f2c( this%gas_names(igas) , tmpstr )
+        call lower_case( tmpstr , tmpstr )
+        call char_c2f( tmpstr , tmpstr )
+        if ( trim(tmpstr) == trim(gas_desc%gas_name(igas2)) ) then
            error_msg = gas_desc%get_vmr(this%gas_names(igas), vmr(:,:,igas))
            if (error_msg /= '') return
         endif
@@ -1118,13 +1120,15 @@ contains
     ! Local variables
     character(len=32), dimension(count(this%is_key(:)  )) :: key_gas_names
     integer                                               :: igas
-    character(len=64) :: tmpstr
+    character(len=128) :: tmpstr
     ! --------------------------------------
     error_msg = ""
     key_gas_names = pack(this%gas_names, mask=this%is_key)
     do igas = 1, size(key_gas_names)
       if (.not. string_in_array(key_gas_names(igas), gas_desc%gas_name)) then
-        call lower_case(key_gas_names(igas) , tmpstr)
+        call char_f2c( key_gas_names(igas) , tmpstr )
+        call lower_case( tmpstr , tmpstr )
+        call char_c2f( tmpstr , tmpstr )
         error_msg = ' ' // trim(tmpstr) // trim(error_msg)
       endif
     end do

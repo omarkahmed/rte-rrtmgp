@@ -31,7 +31,7 @@
 
 module mo_gas_concentrations
   use mo_rte_kind,           only: wp
-  use mo_rrtmgp_util_string, only: lower_case
+  use mo_rrtmgp_util_string, only: lower_case, char_f2c, char_c2f
   use mo_rte_util_array,     only: any_vals_outside
   implicit none
   integer, parameter :: GAS_NOT_IN_LIST = -1
@@ -79,7 +79,7 @@ contains
     class(ty_gas_concs),            intent(inout) :: this
     character(len=*), dimension(:), intent(in   ) :: gas_names
     character(len=128)                            :: error_msg
-    character(len=64) :: tmpstri, tmpstrj
+    character(len=128) :: tmpstri, tmpstrj
     ! ---------
     integer :: i, j, ngas
     ! ---------
@@ -93,8 +93,12 @@ contains
 
     do i = 1, ngas-1
       do j = i+1, ngas
-        call lower_case( trim(gas_names(i)) , tmpstri );
-        call lower_case( trim(gas_names(j)) , tmpstrj );
+        call char_f2c( gas_names(i) , tmpstri )
+        call char_f2c( gas_names(j) , tmpstrj )
+        call lower_case( tmpstri , tmpstri )
+        call lower_case( tmpstrj , tmpstrj )
+        call char_c2f( tmpstri , tmpstri )
+        call char_c2f( tmpstrj , tmpstrj )
         if ( trim(tmpstri) == trim(tmpstrj) ) then
           error_msg = "ty_gas_concs%init(): duplicate gas names aren't allowed"
           exit
@@ -474,13 +478,17 @@ contains
     integer                         :: find_gas
     ! -----------------
     integer :: igas
-    character(len=64) :: tmpstr1, tmpstr2
+    character(len=128) :: tmpstr1, tmpstr2
     ! -----------------
     find_gas = GAS_NOT_IN_LIST
     if(.not. allocated(this%gas_name)) return
     do igas = 1, size(this%gas_name)
-      call lower_case( trim(this%gas_name(igas)) , tmpstr1 )
-      call lower_case( trim(gas)                 , tmpstr2 )
+      call char_f2c( this%gas_name(igas) , tmpstr1 )
+      call char_f2c( gas                 , tmpstr2 )
+      call lower_case( tmpstr1 , tmpstr1 )
+      call lower_case( tmpstr2 , tmpstr2 )
+      call char_c2f( tmpstr1 , tmpstr1 )
+      call char_c2f( tmpstr2 , tmpstr2 )
       if ( trim(tmpstr1) == trim(tmpstr2) ) then
         find_gas = igas
       end if
