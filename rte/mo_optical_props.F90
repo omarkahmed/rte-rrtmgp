@@ -123,8 +123,6 @@ module mo_optical_props
   type, extends(ty_optical_props_arry) :: ty_optical_props_nstr
     real(wp), dimension(:,:,:),   allocatable :: ssa ! single-scattering albedo (ncol, nlay, ngpt)
     real(wp), dimension(:,:,:,:), allocatable :: p   ! phase-function moments (nmom, ncol, nlay, ngpt)
-  contains
-    procedure, public :: get_nmom
   end type
   ! -------------------------------------------------------------------------------------------------
 
@@ -631,7 +629,7 @@ contains
       class is (ty_optical_props_nstr)
         if(allocated(subset%ssa)) deallocate(subset%ssa)
         if(allocated(subset%p  )) then
-          nmom = subset%get_nmom()
+          nmom = get_nmom(subset)
           deallocate(subset%p  )
         else
           nmom = 1
@@ -683,7 +681,7 @@ contains
       class is (ty_optical_props_nstr)
         if(allocated(subset%ssa)) deallocate(subset%ssa)
         if(allocated(subset%p  )) then
-          nmom = subset%get_nmom()
+          nmom = get_nmom(subset)
           deallocate(subset%p  )
         else
           nmom = 1
@@ -799,7 +797,7 @@ contains
                                               op_io%tau, op_io%ssa, op_io%g, &
                                               op_in%tau, op_in%ssa, op_in%g)
           class is (ty_optical_props_nstr)
-            call increment_2stream_by_nstream(ncol, nlay, ngpt, op_in%get_nmom(), &
+            call increment_2stream_by_nstream(ncol, nlay, ngpt, get_nmom(op_in), &
                                               op_io%tau, op_io%ssa, op_io%g, &
                                               op_in%tau, op_in%ssa, op_in%p)
         end select
@@ -811,11 +809,11 @@ contains
                                               op_io%tau, op_io%ssa, &
                                               op_in%tau)
           class is (ty_optical_props_2str)
-            call increment_nstream_by_2stream(ncol, nlay, ngpt, op_io%get_nmom(), &
+            call increment_nstream_by_2stream(ncol, nlay, ngpt, get_nmom(op_io), &
                                               op_io%tau, op_io%ssa, op_io%p, &
                                               op_in%tau, op_in%ssa, op_in%g)
           class is (ty_optical_props_nstr)
-            call increment_nstream_by_nstream(ncol, nlay, ngpt, op_io%get_nmom(), op_in%get_nmom(), &
+            call increment_nstream_by_nstream(ncol, nlay, ngpt, get_nmom(op_io), get_nmom(op_in), &
                                               op_io%tau, op_io%ssa, op_io%p, &
                                               op_in%tau, op_in%ssa, op_in%p)
         end select
@@ -866,7 +864,7 @@ contains
                                                 op_in%tau, op_in%ssa, op_in%g, &
                                                 op_io%get_nband(), op_io%get_band_lims_gpoint())
             class is (ty_optical_props_nstr)
-              call inc_2stream_by_nstream_bybnd(ncol, nlay, ngpt, op_in%get_nmom(), &
+              call inc_2stream_by_nstream_bybnd(ncol, nlay, ngpt, get_nmom(op_in), &
                                                 op_io%tau, op_io%ssa, op_io%g, &
                                                 op_in%tau, op_in%ssa, op_in%p, &
                                                 op_io%get_nband(), op_io%get_band_lims_gpoint())
@@ -880,12 +878,12 @@ contains
                                                 op_in%tau,          &
                                                 op_io%get_nband(), op_io%get_band_lims_gpoint())
             class is (ty_optical_props_2str)
-              call inc_nstream_by_2stream_bybnd(ncol, nlay, ngpt, op_io%get_nmom(), &
+              call inc_nstream_by_2stream_bybnd(ncol, nlay, ngpt, get_nmom(op_io), &
                                                 op_io%tau, op_io%ssa, op_io%p, &
                                                 op_in%tau, op_in%ssa, op_in%g, &
                                                 op_io%get_nband(), op_io%get_band_lims_gpoint())
             class is (ty_optical_props_nstr)
-              call inc_nstream_by_nstream_bybnd(ncol, nlay, ngpt, op_io%get_nmom(), op_in%get_nmom(), &
+              call inc_nstream_by_nstream_bybnd(ncol, nlay, ngpt, get_nmom(op_io), get_nmom(op_in), &
                                                 op_io%tau, op_io%ssa, op_io%p, &
                                                 op_in%tau, op_in%ssa, op_in%p, &
                                                 op_io%get_nband(), op_io%get_band_lims_gpoint())
@@ -924,12 +922,12 @@ contains
     get_nlay = get_arry_extent(this, 2)
   end function get_nlay
   ! ------------------------------------------------------------------------------------------
-  pure function get_nmom(this)
-    class(ty_optical_props_nstr), intent(in   ) :: this
+  pure function get_nmom(cls)
+    class(ty_optical_props_nstr), intent(in   ) :: cls
     integer                                     :: get_nmom
 
-    if(allocated(this%p)) then
-      get_nmom = size(this%p, 1)
+    if(allocated(cls%p)) then
+      get_nmom = size(cls%p, 1)
     else
       get_nmom = 0
     end if
