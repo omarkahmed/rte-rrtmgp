@@ -35,7 +35,7 @@ program rte_rrtmgp_clouds
   use mo_optical_props,      only: ty_optical_props, &
                                    ty_optical_props_arry, ty_optical_props_1scl, ty_optical_props_2str, &
                                    delta_scale, alloc_1scl, alloc_2str, increment, get_band_lims_wavenumber, &
-                                   get_nband, get_ngpt
+                                   get_nband, get_ngpt, props_init => init
   use mo_gas_optics_rrtmgp,  only: ty_gas_optics_rrtmgp
   use mo_cloud_optics,       only: ty_cloud_optics
   use mo_gas_concentrations, only: ty_gas_concs, init
@@ -214,7 +214,7 @@ program rte_rrtmgp_clouds
     allocate(ty_optical_props_1scl::clouds)
   end if
   ! Clouds optical props are defined by band
-  call stop_on_err(clouds%init(get_band_lims_wavenumber(k_dist)))
+  call stop_on_err(props_init(clouds,get_band_lims_wavenumber(k_dist)))
   !
   ! Allocate arrays for the optical properties themselves.
   !

@@ -25,7 +25,7 @@ module mo_gas_optics_rrtmgp
   use mo_rrtmgp_constants,   only: avogad, m_dry, m_h2o, grav
   use mo_rte_util_array,     only: zero_array, any_vals_less_than, any_vals_outside, extents_are
   use mo_optical_props,      only: ty_optical_props, get_band_lims_gpoint, get_ngpt, get_nlay, get_ncol, &
-                                   get_gpoint_bands, get_nband
+                                   get_gpoint_bands, get_nband, init, is_initialized
   use mo_source_functions,   only: ty_source_func_lw
   use mo_gas_optics_kernels, only: interpolation,                                                       &
                                    compute_tau_absorption, compute_tau_rayleigh, compute_Planck_source, &
@@ -424,7 +424,7 @@ contains
     use_rayl = allocated(this%krayl)
     error_msg = ''
     ! Check for initialization
-    if (.not. this%is_initialized()) then
+    if (.not. is_initialized(this)) then
       error_msg = 'ERROR: spectral configuration not loaded'
       return
     end if
@@ -948,7 +948,7 @@ contains
     integer :: i, j, idx
     integer :: ngas
     ! --------------------------------------
-    err_message = this%ty_optical_props%init(band_lims_wavenum, band2gpt)
+    err_message = init(this%ty_optical_props,band_lims_wavenum, band2gpt)
     if(len_trim(err_message) /= 0) return
     !
     ! Which gases known to the gas optics are present in the host model (available_gases)?

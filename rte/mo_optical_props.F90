@@ -64,14 +64,6 @@ module mo_optical_props
     integer,  dimension(:),   allocatable :: gpt2band       ! band = gpt2band(g-point)
     real(wp), dimension(:,:), allocatable :: band_lims_wvn  ! (upper and lower wavenumber by band) = band_lims_wvn(2,band)
     character(len=name_len)               :: name = ""
-  contains
-    generic,   public  :: init => init_base, init_base_from_copy
-    procedure, private :: init_base
-    procedure, private :: init_base_from_copy
-    procedure, public  :: is_initialized => is_initialized_base
-    procedure, private :: is_initialized_base
-    procedure, public  :: finalize => finalize_base
-    procedure, private :: finalize_base
   end type
   !----------------------------------------------------------------------------------------
   !
@@ -127,6 +119,10 @@ module mo_optical_props
     module procedure :: delta_scale_1scl, delta_scale_2str, delta_scale_nstr
   end interface
 
+  interface init
+    module procedure :: init_base, init_base_from_copy
+  end interface
+
 
 contains
   ! -------------------------------------------------------------------------------------------------
@@ -139,8 +135,8 @@ contains
   !   Values are assumed to be defined in bands a mapping between bands and g-points is provided
   !
   ! -------------------------------------------------------------------------------------------------
-  function init_base(this, band_lims_wvn, band_lims_gpt, name) result(err_message)
-    class(ty_optical_props),    intent(inout) :: this
+  function init_base(cls, band_lims_wvn, band_lims_gpt, name) result(err_message)
+    class(ty_optical_props),    intent(inout) :: cls
     real(wp), dimension(:,:),   intent(in   ) :: band_lims_wvn
     integer,  dimension(:,:), &
                       optional, intent(in   ) :: band_lims_gpt
@@ -178,36 +174,36 @@ contains
     !
     ! Assignment
     !
-    if(allocated(this%band2gpt     )) deallocate(this%band2gpt)
-    if(allocated(this%band_lims_wvn)) deallocate(this%band_lims_wvn)
-    allocate(this%band2gpt     (2,size(band_lims_wvn,2)), &
-             this%band_lims_wvn(2,size(band_lims_wvn,2)))
-    this%band2gpt      = band_lims_gpt_lcl
-    this%band_lims_wvn = band_lims_wvn
-    if(present(name)) this%name = trim(name)
+    if(allocated(cls%band2gpt     )) deallocate(cls%band2gpt)
+    if(allocated(cls%band_lims_wvn)) deallocate(cls%band_lims_wvn)
+    allocate(cls%band2gpt     (2,size(band_lims_wvn,2)), &
+             cls%band_lims_wvn(2,size(band_lims_wvn,2)))
+    cls%band2gpt      = band_lims_gpt_lcl
+    cls%band_lims_wvn = band_lims_wvn
+    if(present(name)) cls%name = trim(name)
 
     !
     ! Make a map between g-points and bands
     !   Efficient only when g-point indexes start at 1 and are contiguous.
     !
-    if(allocated(this%gpt2band)) deallocate(this%gpt2band)
-    allocate(this%gpt2band(maxval(band_lims_gpt_lcl)))
+    if(allocated(cls%gpt2band)) deallocate(cls%gpt2band)
+    allocate(cls%gpt2band(maxval(band_lims_gpt_lcl)))
     do iband=1,size(band_lims_gpt_lcl,dim=2)
-      this%gpt2band(band_lims_gpt_lcl(1,iband):band_lims_gpt_lcl(2,iband)) = iband
+      cls%gpt2band(band_lims_gpt_lcl(1,iband):band_lims_gpt_lcl(2,iband)) = iband
     end do
   end function init_base
   !-------------------------------------------------------------------------------------------------
-  function init_base_from_copy(this, spectral_desc) result(err_message)
-    class(ty_optical_props),    intent(inout) :: this
+  function init_base_from_copy(cls, spectral_desc) result(err_message)
+    class(ty_optical_props),    intent(inout) :: cls
     class(ty_optical_props),    intent(in   ) :: spectral_desc
   character(len = 128)                        :: err_message
 
-    if(.not. spectral_desc%is_initialized()) then
+    if(.not. is_initialized(spectral_desc)) then
       err_message = "optical_props%init(): can't initialize based on un-initialized input"
       return
     else
-      err_message = this%init(get_band_lims_wavenumber(spectral_desc), &
-                              get_band_lims_gpoint    (spectral_desc))
+      err_message = init(cls,get_band_lims_wavenumber(spectral_desc), &
+                             get_band_lims_gpoint    (spectral_desc))
     end if
   end function init_base_from_copy
   !-------------------------------------------------------------------------------------------------
@@ -215,26 +211,26 @@ contains
   ! Base class: return true if initialized, false otherwise
   !
   ! -------------------------------------------------------------------------------------------------
-  pure function is_initialized_base(this)
-    class(ty_optical_props), intent(in) :: this
-    logical                             :: is_initialized_base
+  pure function is_initialized(cls)
+    class(ty_optical_props), intent(in) :: cls
+    logical                             :: is_initialized
 
-    is_initialized_base = allocated(this%band2gpt)
-  end function is_initialized_base
+    is_initialized = allocated(cls%band2gpt)
+  end function is_initialized
   !-------------------------------------------------------------------------------------------------
   !
   ! Base class: finalize (deallocate memory)
   !
   ! -------------------------------------------------------------------------------------------------
-  subroutine finalize_base(this)
-    class(ty_optical_props),    intent(inout) :: this
+  subroutine finalize(cls)
+    class(ty_optical_props),    intent(inout) :: cls
 
-    if(allocated(this%band2gpt)) deallocate(this%band2gpt)
-    if(allocated(this%gpt2band)) deallocate(this%gpt2band)
-    if(allocated(this%band_lims_wvn)) &
-                                 deallocate(this%band_lims_wvn)
-    this%name = ""
-  end subroutine finalize_base
+    if(allocated(cls%band2gpt)) deallocate(cls%band2gpt)
+    if(allocated(cls%gpt2band)) deallocate(cls%gpt2band)
+    if(allocated(cls%band_lims_wvn)) &
+                                 deallocate(cls%band_lims_wvn)
+    cls%name = ""
+  end subroutine finalize
   ! ------------------------------------------------------------------------------------------
   !
   !  Routines for array classes: initialization, allocation, and finalization
@@ -251,7 +247,7 @@ contains
     character(len=128)           :: err_message
 
     err_message = ""
-    if(.not. cls%is_initialized()) then
+    if(.not. is_initialized(cls)) then
       err_message = "optical_props%alloc: spectral discretization hasn't been provided"
       return
     end if
@@ -270,7 +266,7 @@ contains
     character(len=128)              :: err_message
 
     err_message = ""
-    if(.not. cls%is_initialized()) then
+    if(.not. is_initialized(cls)) then
       err_message = "optical_props%alloc: spectral discretization hasn't been provided"
       return
     end if
@@ -293,7 +289,7 @@ contains
     character(len=128)              :: err_message
 
     err_message = ""
-    if(.not. cls%is_initialized()) then
+    if(.not. is_initialized(cls)) then
       err_message = "optical_props%alloc: spectral discretization hasn't been provided"
       return
     end if
@@ -325,8 +321,8 @@ contains
     character(len=*), optional,   intent(in) :: name
     character(len=128)                       :: err_message
 
-    err_message = cls%ty_optical_props%init(band_lims_wvn, &
-                                             band_lims_gpt, name)
+    err_message = init(cls%ty_optical_props,band_lims_wvn, &
+                                            band_lims_gpt, name)
     if(err_message /= "") return
     err_message = alloc_1scl(cls, ncol, nlay)
   end function init_and_alloc_1scl
@@ -340,8 +336,8 @@ contains
     character(len=*), optional,   intent(in) :: name
     character(len=128)                       :: err_message
 
-    err_message = cls%ty_optical_props%init(band_lims_wvn, &
-                                             band_lims_gpt, name)
+    err_message = init(cls%ty_optical_props,band_lims_wvn, &
+                                            band_lims_gpt, name)
     if(err_message /= "") return
     err_message = alloc_2str(cls, ncol, nlay)
   end function init_and_alloc_2str
@@ -355,8 +351,8 @@ contains
     character(len=*), optional,   intent(in) :: name
     character(len=128)                       :: err_message
 
-    err_message = cls%ty_optical_props%init(band_lims_wvn, &
-                                             band_lims_gpt, name)
+    err_message = init(cls%ty_optical_props,band_lims_wvn, &
+                                            band_lims_gpt, name)
     if(err_message /= "") return
     err_message = alloc_nstr(cls, nmom, ncol, nlay)
   end function init_and_alloc_nstr
@@ -373,8 +369,8 @@ contains
     character(len=128)                       :: err_message
 
     err_message = ""
-    if(cls%ty_optical_props%is_initialized()) call cls%ty_optical_props%finalize()
-    err_message = cls%ty_optical_props%init(get_band_lims_wavenumber(spectral_desc), &
+    if(is_initialized(cls%ty_optical_props)) call finalize(cls%ty_optical_props)
+    err_message = init(cls%ty_optical_props,get_band_lims_wavenumber(spectral_desc), &
                                             get_band_lims_gpoint    (spectral_desc), name)
     if(err_message /= "") return
     err_message = alloc_1scl(cls, ncol, nlay)
@@ -388,8 +384,8 @@ contains
     character(len=128)                       :: err_message
 
     err_message = ""
-    if(cls%ty_optical_props%is_initialized()) call cls%ty_optical_props%finalize()
-    err_message = cls%ty_optical_props%init(get_band_lims_wavenumber(spectral_desc), &
+    if(is_initialized(cls%ty_optical_props)) call finalize(cls%ty_optical_props)
+    err_message = init(cls%ty_optical_props,get_band_lims_wavenumber(spectral_desc), &
                                             get_band_lims_gpoint    (spectral_desc), name)
     if(err_message /= "") return
     err_message = alloc_2str(cls, ncol, nlay)
@@ -403,8 +399,8 @@ contains
     character(len=128)                       :: err_message
 
     err_message = ""
-    if(cls%ty_optical_props%is_initialized()) call cls%ty_optical_props%finalize()
-    err_message = cls%ty_optical_props%init(get_band_lims_wavenumber(spectral_desc), &
+    if(is_initialized(cls%ty_optical_props)) call finalize(cls%ty_optical_props)
+    err_message = init(cls%ty_optical_props,get_band_lims_wavenumber(spectral_desc), &
                                             get_band_lims_gpoint    (spectral_desc), name)
     if(err_message /= "") return
     err_message = alloc_nstr(cls, nmom, ncol, nlay)
@@ -579,7 +575,7 @@ contains
     integer :: ncol, nlay, ngpt, nmom
 
     err_message = ""
-    if(.not. full%is_initialized()) then
+    if(.not. is_initialized(full)) then
       err_message = "optical_props%subset: Asking for a subset of uninitialized data"
       return
     end if
@@ -590,8 +586,8 @@ contains
        err_message = "optical_props%subset: Asking for columns outside range"
     if(err_message /= "") return
 
-    if(subset%is_initialized()) call subset%finalize()
-    err_message = subset%init(full)
+    if(is_initialized(subset)) call finalize(subset)
+    err_message = init(subset,full)
     ! Seems like the deallocation statements should be needed under Fortran 2003
     !   but Intel compiler doesn't run without them
     if(allocated(subset%tau)) deallocate(subset%tau)
@@ -632,7 +628,7 @@ contains
     integer :: ncol, nlay, ngpt, nmom
 
     err_message = ""
-    if(.not. full%is_initialized()) then
+    if(.not. is_initialized(full)) then
       err_message = "optical_props%subset: Asking for a subset of uninitialized data"
       return
     end if
@@ -643,8 +639,8 @@ contains
        err_message = "optical_props%subset: Asking for columns outside range"
     if(err_message /= "") return
 
-    if(subset%is_initialized()) call subset%finalize()
-    err_message = subset%init(full)
+    if(is_initialized(subset)) call finalize(subset)
+    err_message = init(subset,full)
     select type (subset)
       class is (ty_optical_props_1scl)
         err_message = alloc_1scl(subset, n, nlay)
@@ -685,7 +681,7 @@ contains
     integer :: ncol, nlay, ngpt, nmom
 
     err_message = ""
-    if(.not. full%is_initialized()) then
+    if(.not. is_initialized(full)) then
       err_message = "optical_props%subset: Asking for a subset of uninitialized data"
       return
     end if
@@ -696,8 +692,8 @@ contains
        err_message = "optical_props%subset: Asking for columns outside range"
     if(err_message /= "") return
 
-    if(subset%is_initialized()) call subset%finalize()
-    err_message = subset%init(full)
+    if(is_initialized(subset)) call finalize(subset)
+    err_message = init(subset,full)
     if(allocated(subset%tau)) deallocate(subset%tau)
     select type (subset)
       class is (ty_optical_props_1scl)
@@ -924,7 +920,7 @@ contains
     class(ty_optical_props), intent(in) :: cls
     integer                             :: get_nband
 
-    if(cls%is_initialized()) then
+    if(is_initialized(cls)) then
       get_nband = size(cls%band2gpt,dim=2)
     else
       get_nband = 0
@@ -938,7 +934,7 @@ contains
     class(ty_optical_props), intent(in) :: cls
     integer                             :: get_ngpt
 
-    if(cls%is_initialized()) then
+    if(is_initialized(cls)) then
       get_ngpt = maxval(cls%band2gpt)
     else
       get_ngpt = 0
@@ -965,7 +961,7 @@ contains
     integer,                 intent(in) :: band
     integer, dimension(2)               :: convert_band2gpt
 
-    if(cls%is_initialized()) then
+    if(is_initialized(cls)) then
       convert_band2gpt(:) = cls%band2gpt(:,band)
     else
       convert_band2gpt(:) = 0
@@ -981,7 +977,7 @@ contains
     real(wp), dimension(size(cls%band_lims_wvn,1), size(cls%band_lims_wvn,2)) &
                                         :: get_band_lims_wavenumber
 
-    if(cls%is_initialized()) then
+    if(is_initialized(cls)) then
       get_band_lims_wavenumber(:,:) = cls%band_lims_wvn(:,:)
     else
       get_band_lims_wavenumber(:,:) = 0._wp
@@ -996,7 +992,7 @@ contains
     real(wp), dimension(size(cls%band_lims_wvn,1), size(cls%band_lims_wvn,2)) &
                                         :: get_band_lims_wavelength
 
-    if(cls%is_initialized()) then
+    if(is_initialized(cls)) then
       get_band_lims_wavelength(:,:) = 1._wp/cls%band_lims_wvn(:,:)
     else
       get_band_lims_wavelength(:,:) = 0._wp
@@ -1011,7 +1007,7 @@ contains
     integer, dimension(size(cls%gpt2band,dim=1)) &
                                         :: get_gpoint_bands
 
-    if(cls%is_initialized()) then
+    if(is_initialized(cls)) then
       get_gpoint_bands(:) = cls%gpt2band(:)
     else
       get_gpoint_bands(:) = 0
@@ -1026,7 +1022,7 @@ contains
     integer,                            intent(in) :: gpt
     integer                             :: convert_gpt2band
 
-    if(cls%is_initialized()) then
+    if(is_initialized(cls)) then
       convert_gpt2band = cls%gpt2band(gpt)
     else
       convert_gpt2band = 0
