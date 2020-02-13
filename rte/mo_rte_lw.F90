@@ -38,9 +38,8 @@ module mo_rte_lw
   use mo_rte_util_array,only: any_vals_less_than, any_vals_outside, extents_are
   use mo_optical_props, only: ty_optical_props, &
                               ty_optical_props_arry, ty_optical_props_1scl, ty_optical_props_2str, ty_optical_props_nstr, &
-                              validate, get_nlay, get_ncol, get_band_lims_gpoint, get_nband, get_ngpt
-  use mo_source_functions,   &
-                        only: ty_source_func_lw
+                              validate, get_nlay, props_get_ncol => get_ncol, get_band_lims_gpoint, get_nband, get_ngpt
+  use mo_source_functions, only: ty_source_func_lw, source_get_ncol => get_ncol
   use mo_fluxes,        only: ty_fluxes, reduce, ty_fluxes_broadband, are_desired
   use mo_rte_solver_kernels, &
                         only: apply_BC, lw_solver_noscat_GaussQuad, lw_solver_2stream
@@ -106,7 +105,7 @@ contains
     !   if inc_flux is present it has the right dimensions, is positive definite
     !
     ! --------------------------------
-    ncol  = get_ncol(optical_props)
+    ncol  = props_get_ncol(optical_props)
     nlay  = get_nlay(optical_props)
     ngpt  = get_ngpt (optical_props)
     nband = get_nband(optical_props)
@@ -128,7 +127,7 @@ contains
     !
     ! Source functions
     !
-    if(any([sources%get_ncol(), sources%get_nlay(), get_ngpt(sources)]  /= [ncol, nlay, ngpt])) &
+    if(any([source_get_ncol(sources), sources%get_nlay(), get_ngpt(sources)]  /= [ncol, nlay, ngpt])) &
       error_msg = "rte_lw: sources and optical properties inconsistently sized"
     ! Also need to validate
 
