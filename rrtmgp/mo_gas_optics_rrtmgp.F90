@@ -24,7 +24,7 @@ module mo_gas_optics_rrtmgp
   use mo_rte_kind,           only: wp, wl
   use mo_rrtmgp_constants,   only: avogad, m_dry, m_h2o, grav
   use mo_rte_util_array,     only: zero_array, any_vals_less_than, any_vals_outside, extents_are
-  use mo_optical_props,      only: ty_optical_props
+  use mo_optical_props,      only: ty_optical_props, get_band_lims_gpoint
   use mo_source_functions,   only: ty_source_func_lw
   use mo_gas_optics_kernels, only: interpolation,                                                       &
                                    compute_tau_absorption, compute_tau_rayleigh, compute_Planck_source, &
@@ -556,7 +556,7 @@ contains
             nminorupper, nminorkupper,               &
             idx_h2o,                                 &
             this%gpoint_flavor,                      &
-            this%get_band_lims_gpoint(),             &
+            get_band_lims_gpoint(this),             &
             this%kmajor,                             &
             this%kminor_lower,                       &
             this%kminor_upper,                       &
@@ -583,7 +583,7 @@ contains
             ncol,nlay,nband,ngpt,        &
             ngas,nflav,neta,npres,ntemp, & ! dimensions
             this%gpoint_flavor,          &
-            this%get_band_lims_gpoint(), &
+            get_band_lims_gpoint(this), &
             this%krayl,                  & ! inputs from object
             idx_h2o, col_dry_wk,col_gas, &
             fminor,jeta,tropo,jtemp,     & ! local input
@@ -679,7 +679,7 @@ contains
                 get_nflav(this), this%get_neta(), this%get_npres(), this%get_ntemp(), this%get_nPlanckTemp(), &
                 tlay, tlev_wk, tsfc, merge(1,nlay,play(1,1) > play(1,nlay)), &
                 fmajor, jeta, tropo, jtemp, jpress,                    &
-                this%get_gpoint_bands(), this%get_band_lims_gpoint(), this%planck_frac, this%temp_ref_min,&
+                this%get_gpoint_bands(), get_band_lims_gpoint(this), this%planck_frac, this%temp_ref_min,&
                 this%totplnk_delta, this%totplnk, this%gpoint_flavor,  &
                 sfc_source_t, lay_source_t, lev_source_inc_t, lev_source_dec_t)
     !$acc parallel loop collapse(2)

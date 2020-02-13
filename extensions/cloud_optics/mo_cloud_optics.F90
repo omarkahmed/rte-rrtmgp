@@ -25,7 +25,7 @@ module mo_cloud_optics
                               ty_optical_props_arry, &
                               ty_optical_props_1scl, &
                               ty_optical_props_2str, &
-                              ty_optical_props_nstr, get_nlay, get_ncol
+                              ty_optical_props_nstr, get_nlay, get_ncol, bands_are_equal
   implicit none
   interface pade_eval
     module procedure pade_eval_nbnd, pade_eval_1
@@ -410,7 +410,7 @@ contains
     !
     ! Spectral consistency
     !
-    if(.not. this%bands_are_equal(optical_props)) &
+    if(.not. bands_are_equal(this,optical_props)) &
       error_msg = "cloud optics: optical properties don't have the same band structure"
     if(optical_props%get_nband() /= optical_props%get_ngpt() ) &
       error_msg = "cloud optics: optical properties must be requested by band not g-points"
