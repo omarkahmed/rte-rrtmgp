@@ -45,7 +45,7 @@ contains
   subroutine load_and_init(kdist, filename, available_gases)
     class(ty_gas_optics_rrtmgp), intent(inout) :: kdist
     character(len=*),     intent(in   ) :: filename
-    class(ty_gas_concs),  intent(in   ) :: available_gases ! Which gases does the host model have available?
+    type(ty_gas_concs),  intent(in   ) :: available_gases ! Which gases does the host model have available?
     ! --------------------------------------------------
     !
     ! Variables that will be passed to gas_optics%load()

@@ -31,7 +31,7 @@ module mo_gas_optics_rrtmgp
                                    combine_and_reorder_2str, combine_and_reorder_nstr
 
   use mo_rrtmgp_util_string, only: lower_case, string_in_array, string_loc_in_array, char_f2c, char_c2f
-  use mo_gas_concentrations, only: ty_gas_concs
+  use mo_gas_concentrations, only: ty_gas_concs, get_vmr
   use mo_optical_props,      only: ty_optical_props_arry, ty_optical_props_1scl, ty_optical_props_2str, ty_optical_props_nstr
   use mo_gas_optics,         only: ty_gas_optics
   use mo_rrtmgp_util_reorder
@@ -485,7 +485,7 @@ contains
         call lower_case( tmpstr , tmpstr )
         call char_c2f( tmpstr , tmpstr )
         if ( trim(tmpstr) == trim(gas_desc%gas_name(igas2)) ) then
-           error_msg = gas_desc%get_vmr(this%gas_names(igas), vmr(:,:,igas))
+           error_msg = get_vmr(gas_desc,this%gas_names(igas), vmr(:,:,igas))
            if (error_msg /= '') return
         endif
       enddo
@@ -721,7 +721,7 @@ contains
                     kminor_start_upper,                             &
                     totplnk, planck_frac, rayl_lower, rayl_upper) result(err_message)
     class(ty_gas_optics_rrtmgp),     intent(inout) :: this
-    class(ty_gas_concs),                    intent(in   ) :: available_gases ! Which gases does the host model have available?
+    type(ty_gas_concs),                    intent(in   ) :: available_gases ! Which gases does the host model have available?
     character(len=*),   dimension(:),       intent(in   ) :: gas_names
     integer,            dimension(:,:,:),   intent(in   ) :: key_species
     integer,            dimension(:,:),     intent(in   ) :: band2gpt
@@ -809,7 +809,7 @@ contains
                     kminor_start_upper, &
                     solar_src, rayl_lower, rayl_upper)  result(err_message)
     class(ty_gas_optics_rrtmgp), intent(inout) :: this
-    class(ty_gas_concs),                intent(in   ) :: available_gases ! Which gases does the host model have available?
+    type(ty_gas_concs),                intent(in   ) :: available_gases ! Which gases does the host model have available?
     character(len=*), &
               dimension(:),       intent(in) :: gas_names
     integer,  dimension(:,:,:),   intent(in) :: key_species
@@ -902,7 +902,7 @@ contains
                            kminor_start_upper, &
                            rayl_lower, rayl_upper) result(err_message)
     class(ty_gas_optics_rrtmgp), intent(inout) :: this
-    class(ty_gas_concs),                intent(in   ) :: available_gases
+    type(ty_gas_concs),                intent(in   ) :: available_gases
     character(len=*), &
               dimension(:),       intent(in) :: gas_names
     integer,  dimension(:,:,:),   intent(in) :: key_species
@@ -1114,7 +1114,7 @@ contains
   !
   function check_key_species_present(this, gas_desc) result(error_msg)
     class(ty_gas_optics_rrtmgp), intent(in) :: this
-    class(ty_gas_concs),                intent(in) :: gas_desc
+    type(ty_gas_concs),                intent(in) :: gas_desc
     character(len=128)                             :: error_msg
 
     ! Local variables
@@ -1143,7 +1143,7 @@ contains
   !
   function get_minor_list(this, gas_desc, ngas, names_spec)
     class(ty_gas_optics_rrtmgp), intent(in)       :: this
-    class(ty_gas_concs), intent(in)                      :: gas_desc
+    type(ty_gas_concs), intent(in)                      :: gas_desc
     integer, intent(in)                                  :: ngas
     character(32), dimension(ngas), intent(in)           :: names_spec
 
@@ -1461,7 +1461,7 @@ contains
                            scale_by_complement_atm_red, &
                            kminor_start_atm_red)
 
-    class(ty_gas_concs),                intent(in) :: available_gases
+    type(ty_gas_concs),                intent(in) :: available_gases
     character(len=*), dimension(:),     intent(in) :: gas_names
     real(wp),         dimension(:,:,:), intent(in) :: kminor_atm
     character(len=*), dimension(:),     intent(in) :: gas_minor, &
