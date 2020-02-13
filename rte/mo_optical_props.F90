@@ -93,13 +93,6 @@ module mo_optical_props
   ! -------------------------------------------------------------------------------------------------
   type, extends(ty_optical_props), public :: ty_optical_props_arry
     real(wp), dimension(:,:,:), allocatable :: tau ! optical depth (ncol, nlay, ngpt)
-  contains
-    procedure, public  :: get_ncol
-    procedure, public  :: get_nlay
-    !
-    ! Increment another set of values
-    !
-    procedure, public  :: increment
   end type
   !----------------------------------------------------------------------------------------
   !
@@ -456,8 +449,8 @@ contains
 
     integer :: ncol, nlay, ngpt
     ! --------------------------------
-    ncol = cls%get_ncol()
-    nlay = cls%get_nlay()
+    ncol = get_ncol(cls)
+    nlay = get_nlay(cls)
     ngpt = cls%get_ngpt()
     err_message = ""
 
@@ -603,10 +596,10 @@ contains
       err_message = "optical_props%subset: Asking for a subset of uninitialized data"
       return
     end if
-    ncol = full%get_ncol()
-    nlay = full%get_nlay()
+    ncol = get_ncol(full)
+    nlay = get_nlay(full)
     ngpt = full%get_ngpt()
-    if(start < 1 .or. start + n-1 > full%get_ncol()) &
+    if(start < 1 .or. start + n-1 > get_ncol(full)) &
        err_message = "optical_props%subset: Asking for columns outside range"
     if(err_message /= "") return
 
@@ -656,10 +649,10 @@ contains
       err_message = "optical_props%subset: Asking for a subset of uninitialized data"
       return
     end if
-    ncol = full%get_ncol()
-    nlay = full%get_nlay()
+    ncol = get_ncol(full)
+    nlay = get_nlay(full)
     ngpt = full%get_ngpt()
-    if(start < 1 .or. start + n-1 > full%get_ncol()) &
+    if(start < 1 .or. start + n-1 > get_ncol(full)) &
        err_message = "optical_props%subset: Asking for columns outside range"
     if(err_message /= "") return
 
@@ -709,10 +702,10 @@ contains
       err_message = "optical_props%subset: Asking for a subset of uninitialized data"
       return
     end if
-    ncol = full%get_ncol()
-    nlay = full%get_nlay()
+    ncol = get_ncol(full)
+    nlay = get_nlay(full)
     ngpt = full%get_ngpt()
-    if(start < 1 .or. start + n-1 > full%get_ncol()) &
+    if(start < 1 .or. start + n-1 > get_ncol(full)) &
        err_message = "optical_props%subset: Asking for columns outside range"
     if(err_message /= "") return
 
@@ -761,8 +754,8 @@ contains
       err_message = "ty_optical_props%increment: optical properties objects have different band structures"
       return
     end if
-    ncol = op_io%get_ncol()
-    nlay = op_io%get_nlay()
+    ncol = get_ncol(op_io)
+    nlay = get_nlay(op_io)
     ngpt = op_io%get_ngpt()
     if(op_in%gpoints_are_equal(op_io)) then
       !
@@ -908,18 +901,18 @@ contains
     end if
   end function get_arry_extent
   ! ------------------------------------------------------------------------------------------
-  pure function get_ncol(this)
-    class(ty_optical_props_arry), intent(in   ) :: this
+  pure function get_ncol(cls)
+    class(ty_optical_props_arry), intent(in   ) :: cls
     integer                                     :: get_ncol
 
-    get_ncol = get_arry_extent(this, 1)
+    get_ncol = get_arry_extent(cls, 1)
   end function get_ncol
   ! ------------------------------------------------------------------------------------------
-  pure function get_nlay(this)
-    class(ty_optical_props_arry), intent(in   ) :: this
+  pure function get_nlay(cls)
+    class(ty_optical_props_arry), intent(in   ) :: cls
     integer                                     :: get_nlay
 
-    get_nlay = get_arry_extent(this, 2)
+    get_nlay = get_arry_extent(cls, 2)
   end function get_nlay
   ! ------------------------------------------------------------------------------------------
   pure function get_nmom(cls)
