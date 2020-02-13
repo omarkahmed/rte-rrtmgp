@@ -41,7 +41,7 @@ module mo_rte_lw
                               validate, get_nlay, get_ncol, get_band_lims_gpoint, get_nband, get_ngpt
   use mo_source_functions,   &
                         only: ty_source_func_lw
-  use mo_fluxes,        only: ty_fluxes
+  use mo_fluxes,        only: ty_fluxes, reduce, ty_fluxes_broadband, are_desired
   use mo_rte_solver_kernels, &
                         only: apply_BC, lw_solver_noscat_GaussQuad, lw_solver_2stream
   implicit none
@@ -117,10 +117,13 @@ contains
     ! Error checking -- consistency of sizes and validity of values
     !
     ! --------------------------------
-    if(.not. fluxes%are_desired()) then
-      error_msg = "rte_lw: no space allocated for fluxes"
-      return
-    end if
+    select type(fluxes)
+    type is(ty_fluxes_broadband)
+      if(.not. are_desired(fluxes)) then
+        error_msg = "rte_lw: no space allocated for fluxes"
+        return
+      end if
+    end select
 
     !
     ! Source functions
@@ -218,7 +221,10 @@ contains
     !
     ! ...and reduce spectral fluxes to desired output quantities
     !
-    error_msg = fluxes%reduce(gpt_flux_up, gpt_flux_dn, optical_props, top_at_1)
+    select type(fluxes)
+    type is(ty_fluxes_broadband)
+      error_msg = reduce(fluxes,gpt_flux_up, gpt_flux_dn, optical_props, top_at_1)
+    end select
   end function rte_lw
   !--------------------------------------------------------------------------------------------------------------------
   !
