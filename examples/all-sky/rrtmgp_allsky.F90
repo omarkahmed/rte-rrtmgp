@@ -34,7 +34,7 @@ program rte_rrtmgp_clouds
   use mo_rte_kind,           only: wp
   use mo_optical_props,      only: ty_optical_props, &
                                    ty_optical_props_arry, ty_optical_props_1scl, ty_optical_props_2str, &
-                                   delta_scale
+                                   delta_scale, alloc_1scl, alloc_2str
   use mo_gas_optics_rrtmgp,  only: ty_gas_optics_rrtmgp
   use mo_cloud_optics,       only: ty_cloud_optics
   use mo_gas_concentrations, only: ty_gas_concs, init
@@ -220,20 +220,20 @@ program rte_rrtmgp_clouds
   select type(atmos)
     class is (ty_optical_props_1scl)
       !$acc enter data copyin(atmos)
-      call stop_on_err(atmos%alloc_1scl(ncol, nlay, k_dist))
+      call stop_on_err(alloc_1scl(atmos, ncol, nlay, k_dist))
       !$acc enter data copyin(atmos) create(atmos%tau)
     class is (ty_optical_props_2str)
-      call stop_on_err(atmos%alloc_2str( ncol, nlay, k_dist))
+      call stop_on_err(alloc_2str(atmos,  ncol, nlay, k_dist))
       !$acc enter data copyin(atmos) create(atmos%tau, atmos%ssa, atmos%g)
     class default
       call stop_on_err("rte_rrtmgp_clouds: Don't recognize the kind of optical properties ")
   end select
   select type(clouds)
     class is (ty_optical_props_1scl)
-      call stop_on_err(clouds%alloc_1scl(ncol, nlay))
+      call stop_on_err(alloc_1scl(clouds, ncol, nlay))
       !$acc enter data copyin(clouds) create(clouds%tau)
     class is (ty_optical_props_2str)
-      call stop_on_err(clouds%alloc_2str(ncol, nlay))
+      call stop_on_err(alloc_2str(clouds, ncol, nlay))
       !$acc enter data copyin(clouds) create(clouds%tau, clouds%ssa, clouds%g)
     class default
       call stop_on_err("rte_rrtmgp_clouds: Don't recognize the kind of optical properties ")

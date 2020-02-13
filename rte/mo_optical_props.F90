@@ -18,7 +18,7 @@
 !      with the spectral information before use.
 !
 !   Optical properties may be represented as arrays with dimensions ncol, nlay, ngpt
-!   (abstract class ty_optical_props_arry).
+!   (class ty_optical_props_arry).
 !   The type holds arrays depending on how much information is needed
 !   There are three possibilites
 !      ty_optical_props_1scl holds absorption optical depth tau, used in calculations accounting for extinction and emission
@@ -89,12 +89,9 @@ module mo_optical_props
   !----------------------------------------------------------------------------------------
   !
   ! Optical properties as arrays, normally dimensioned ncol, nlay, ngpt/nbnd
-  !   The abstract base class for arrays defines what procedures will be available
-  !   The optical depth field is also part of the abstract base class, since
-  !    any representation of values as arrays needs an optical depth field
   !
   ! -------------------------------------------------------------------------------------------------
-  type, extends(ty_optical_props), abstract, public :: ty_optical_props_arry
+  type, extends(ty_optical_props), public :: ty_optical_props_arry
     real(wp), dimension(:,:,:), allocatable :: tau ! optical depth (ncol, nlay, ngpt)
   contains
     procedure, public  :: get_ncol
@@ -114,22 +111,12 @@ module mo_optical_props
   !
   ! -------------------------------------------------------------------------------------------------
   type, extends(ty_optical_props_arry) :: ty_optical_props_1scl
-  contains
-    procedure, private :: alloc_only_1scl
-    procedure, private :: init_and_alloc_1scl
-    procedure, private :: copy_and_alloc_1scl
-    generic,   public  :: alloc_1scl => alloc_only_1scl, init_and_alloc_1scl, copy_and_alloc_1scl
   end type
 
   ! --- 2 stream ------------------------------------------------------------------------
   type, extends(ty_optical_props_arry) :: ty_optical_props_2str
     real(wp), dimension(:,:,:), allocatable :: ssa ! single-scattering albedo (ncol, nlay, ngpt)
     real(wp), dimension(:,:,:), allocatable :: g   ! asymmetry parameter (ncol, nlay, ngpt)
-  contains
-    procedure, private :: alloc_only_2str
-    procedure, private :: init_and_alloc_2str
-    procedure, private :: copy_and_alloc_2str
-    generic,   public  :: alloc_2str => alloc_only_2str, init_and_alloc_2str, copy_and_alloc_2str
   end type
 
   ! --- n stream ------------------------------------------------------------------------
@@ -138,13 +125,20 @@ module mo_optical_props
     real(wp), dimension(:,:,:,:), allocatable :: p   ! phase-function moments (nmom, ncol, nlay, ngpt)
   contains
     procedure, public :: get_nmom
-
-    procedure, private :: alloc_only_nstr
-    procedure, private :: init_and_alloc_nstr
-    procedure, private :: copy_and_alloc_nstr
-    generic,   public  :: alloc_nstr => alloc_only_nstr, init_and_alloc_nstr, copy_and_alloc_nstr
   end type
   ! -------------------------------------------------------------------------------------------------
+
+  interface alloc_1scl
+    module procedure :: alloc_only_1scl, init_and_alloc_1scl, copy_and_alloc_1scl
+  end interface
+
+  interface alloc_2str
+    module procedure :: alloc_only_2str, init_and_alloc_2str, copy_and_alloc_2str
+  end interface
+
+  interface alloc_nstr
+    module procedure :: alloc_only_nstr, init_and_alloc_nstr, copy_and_alloc_nstr
+  end interface
 
 
   interface validate
@@ -273,67 +267,67 @@ contains
   ! Straight allocation routines
   !
   ! --- 1 scalar ------------------------------------------------------------------------
-  function alloc_only_1scl(this, ncol, nlay) result(err_message)
-    class(ty_optical_props_1scl) :: this
+  function alloc_only_1scl(cls, ncol, nlay) result(err_message)
+    class(ty_optical_props_1scl) :: cls
     integer,          intent(in) :: ncol, nlay
     character(len=128)           :: err_message
 
     err_message = ""
-    if(.not. this%is_initialized()) then
+    if(.not. cls%is_initialized()) then
       err_message = "optical_props%alloc: spectral discretization hasn't been provided"
       return
     end if
     if(any([ncol, nlay] <= 0)) then
       err_message = "optical_props%alloc: must provide positive extents for ncol, nlay"
     else
-      if(allocated(this%tau)) deallocate(this%tau)
-      allocate(this%tau(ncol,nlay,this%get_ngpt()))
+      if(allocated(cls%tau)) deallocate(cls%tau)
+      allocate(cls%tau(ncol,nlay,cls%get_ngpt()))
     end if
   end function alloc_only_1scl
 
   ! --- 2 stream ------------------------------------------------------------------------
-  function alloc_only_2str(this, ncol, nlay) result(err_message)
-    class(ty_optical_props_2str)    :: this
+  function alloc_only_2str(cls, ncol, nlay) result(err_message)
+    class(ty_optical_props_2str)    :: cls
     integer,             intent(in) :: ncol, nlay
     character(len=128)              :: err_message
 
     err_message = ""
-    if(.not. this%is_initialized()) then
+    if(.not. cls%is_initialized()) then
       err_message = "optical_props%alloc: spectral discretization hasn't been provided"
       return
     end if
     if(any([ncol, nlay] <= 0)) then
       err_message = "optical_props%alloc: must provide positive extents for ncol, nlay"
     else
-      if(allocated(this%tau)) deallocate(this%tau)
-      allocate(this%tau(ncol,nlay,this%get_ngpt()))
+      if(allocated(cls%tau)) deallocate(cls%tau)
+      allocate(cls%tau(ncol,nlay,cls%get_ngpt()))
     end if
-    if(allocated(this%ssa)) deallocate(this%ssa)
-    if(allocated(this%g  )) deallocate(this%g  )
-    allocate(this%ssa(ncol,nlay,this%get_ngpt()), this%g(ncol,nlay,this%get_ngpt()))
+    if(allocated(cls%ssa)) deallocate(cls%ssa)
+    if(allocated(cls%g  )) deallocate(cls%g  )
+    allocate(cls%ssa(ncol,nlay,cls%get_ngpt()), cls%g(ncol,nlay,cls%get_ngpt()))
   end function alloc_only_2str
 
   ! --- n stream ------------------------------------------------------------------------
-  function alloc_only_nstr(this, nmom, ncol, nlay) result(err_message)
-    class(ty_optical_props_nstr)    :: this
+  function alloc_only_nstr(cls, nmom, ncol, nlay) result(err_message)
+    class(ty_optical_props_nstr)    :: cls
     integer,             intent(in) :: nmom ! number of moments
     integer,             intent(in) :: ncol, nlay
     character(len=128)              :: err_message
 
     err_message = ""
-    if(.not. this%is_initialized()) then
+    if(.not. cls%is_initialized()) then
       err_message = "optical_props%alloc: spectral discretization hasn't been provided"
       return
     end if
     if(any([ncol, nlay] <= 0)) then
       err_message = "optical_props%alloc: must provide positive extents for ncol, nlay"
     else
-      if(allocated(this%tau)) deallocate(this%tau)
-      allocate(this%tau(ncol,nlay,this%get_ngpt()))
+      if(allocated(cls%tau)) deallocate(cls%tau)
+      allocate(cls%tau(ncol,nlay,cls%get_ngpt()))
     end if
-    if(allocated(this%ssa)) deallocate(this%ssa)
-    if(allocated(this%p  )) deallocate(this%p  )
-    allocate(this%ssa(ncol,nlay,this%get_ngpt()), this%p(nmom,ncol,nlay,this%get_ngpt()))
+    if(allocated(cls%ssa)) deallocate(cls%ssa)
+    if(allocated(cls%p  )) deallocate(cls%p  )
+    allocate(cls%ssa(ncol,nlay,cls%get_ngpt()), cls%p(nmom,ncol,nlay,cls%get_ngpt()))
   end function alloc_only_nstr
   ! ------------------------------------------------------------------------------------------
   !
@@ -344,8 +338,8 @@ contains
   ! Initialization by specifying band limits and possibly g-point/band mapping
   !
   ! ---------------------------------------------------------------------------
-  function init_and_alloc_1scl(this, ncol, nlay, band_lims_wvn, band_lims_gpt, name) result(err_message)
-    class(ty_optical_props_1scl)             :: this
+  function init_and_alloc_1scl(cls, ncol, nlay, band_lims_wvn, band_lims_gpt, name) result(err_message)
+    class(ty_optical_props_1scl)             :: cls
     integer,                      intent(in) :: ncol, nlay
     real(wp), dimension(:,:),     intent(in) :: band_lims_wvn
     integer,  dimension(:,:), &
@@ -353,14 +347,14 @@ contains
     character(len=*), optional,   intent(in) :: name
     character(len=128)                       :: err_message
 
-    err_message = this%ty_optical_props%init(band_lims_wvn, &
+    err_message = cls%ty_optical_props%init(band_lims_wvn, &
                                              band_lims_gpt, name)
     if(err_message /= "") return
-    err_message = this%alloc_1scl(ncol, nlay)
+    err_message = alloc_1scl(cls, ncol, nlay)
   end function init_and_alloc_1scl
   ! ---------------------------------------------------------------------------
-  function init_and_alloc_2str(this, ncol, nlay, band_lims_wvn, band_lims_gpt, name) result(err_message)
-    class(ty_optical_props_2str)             :: this
+  function init_and_alloc_2str(cls, ncol, nlay, band_lims_wvn, band_lims_gpt, name) result(err_message)
+    class(ty_optical_props_2str)             :: cls
     integer,                      intent(in) :: ncol, nlay
     real(wp), dimension(:,:),     intent(in) :: band_lims_wvn
     integer,  dimension(:,:), &
@@ -368,14 +362,14 @@ contains
     character(len=*), optional,   intent(in) :: name
     character(len=128)                       :: err_message
 
-    err_message = this%ty_optical_props%init(band_lims_wvn, &
+    err_message = cls%ty_optical_props%init(band_lims_wvn, &
                                              band_lims_gpt, name)
     if(err_message /= "") return
-    err_message = this%alloc_2str(ncol, nlay)
+    err_message = alloc_2str(cls, ncol, nlay)
   end function init_and_alloc_2str
   ! ---------------------------------------------------------------------------
-  function init_and_alloc_nstr(this, nmom, ncol, nlay, band_lims_wvn, band_lims_gpt, name) result(err_message)
-    class(ty_optical_props_nstr)             :: this
+  function init_and_alloc_nstr(cls, nmom, ncol, nlay, band_lims_wvn, band_lims_gpt, name) result(err_message)
+    class(ty_optical_props_nstr)             :: cls
     integer,                      intent(in) :: nmom, ncol, nlay
     real(wp), dimension(:,:),     intent(in) :: band_lims_wvn
     integer,  dimension(:,:), &
@@ -383,59 +377,59 @@ contains
     character(len=*), optional,   intent(in) :: name
     character(len=128)                       :: err_message
 
-    err_message = this%ty_optical_props%init(band_lims_wvn, &
+    err_message = cls%ty_optical_props%init(band_lims_wvn, &
                                              band_lims_gpt, name)
     if(err_message /= "") return
-    err_message = this%alloc_nstr(nmom, ncol, nlay)
+    err_message = alloc_nstr(cls, nmom, ncol, nlay)
   end function init_and_alloc_nstr
   !-------------------------------------------------------------------------------------------------
   !
   ! Initialization from an existing spectral discretization/ty_optical_props
   !
   !-------------------------------------------------------------------------------------------------
-  function copy_and_alloc_1scl(this, ncol, nlay, spectral_desc, name) result(err_message)
-    class(ty_optical_props_1scl)             :: this
+  function copy_and_alloc_1scl(cls, ncol, nlay, spectral_desc, name) result(err_message)
+    class(ty_optical_props_1scl)             :: cls
     integer,                      intent(in) :: ncol, nlay
     class(ty_optical_props     ), intent(in) :: spectral_desc
     character(len=*), optional,   intent(in) :: name
     character(len=128)                       :: err_message
 
     err_message = ""
-    if(this%ty_optical_props%is_initialized()) call this%ty_optical_props%finalize()
-    err_message = this%ty_optical_props%init(spectral_desc%get_band_lims_wavenumber(), &
+    if(cls%ty_optical_props%is_initialized()) call cls%ty_optical_props%finalize()
+    err_message = cls%ty_optical_props%init(spectral_desc%get_band_lims_wavenumber(), &
                                              spectral_desc%get_band_lims_gpoint(), name)
     if(err_message /= "") return
-    err_message = this%alloc_1scl(ncol, nlay)
+    err_message = alloc_1scl(cls, ncol, nlay)
   end function copy_and_alloc_1scl
   ! ---------------------------------------------------------------------------
-  function copy_and_alloc_2str(this, ncol, nlay, spectral_desc, name) result(err_message)
-    class(ty_optical_props_2str)             :: this
+  function copy_and_alloc_2str(cls, ncol, nlay, spectral_desc, name) result(err_message)
+    class(ty_optical_props_2str)             :: cls
     integer,                      intent(in) :: ncol, nlay
     class(ty_optical_props     ), intent(in) :: spectral_desc
     character(len=*), optional,   intent(in) :: name
     character(len=128)                       :: err_message
 
     err_message = ""
-    if(this%ty_optical_props%is_initialized()) call this%ty_optical_props%finalize()
-    err_message = this%ty_optical_props%init(spectral_desc%get_band_lims_wavenumber(), &
+    if(cls%ty_optical_props%is_initialized()) call cls%ty_optical_props%finalize()
+    err_message = cls%ty_optical_props%init(spectral_desc%get_band_lims_wavenumber(), &
                                              spectral_desc%get_band_lims_gpoint(), name)
     if(err_message /= "") return
-    err_message = this%alloc_2str(ncol, nlay)
+    err_message = alloc_2str(cls, ncol, nlay)
   end function copy_and_alloc_2str
   ! ---------------------------------------------------------------------------
-  function copy_and_alloc_nstr(this, nmom, ncol, nlay, spectral_desc, name) result(err_message)
-    class(ty_optical_props_nstr)             :: this
+  function copy_and_alloc_nstr(cls, nmom, ncol, nlay, spectral_desc, name) result(err_message)
+    class(ty_optical_props_nstr)             :: cls
     integer,                      intent(in) :: nmom, ncol, nlay
     class(ty_optical_props     ), intent(in) :: spectral_desc
     character(len=*), optional,   intent(in) :: name
     character(len=128)                       :: err_message
 
     err_message = ""
-    if(this%ty_optical_props%is_initialized()) call this%ty_optical_props%finalize()
-    err_message = this%ty_optical_props%init(spectral_desc%get_band_lims_wavenumber(), &
+    if(cls%ty_optical_props%is_initialized()) call cls%ty_optical_props%finalize()
+    err_message = cls%ty_optical_props%init(spectral_desc%get_band_lims_wavenumber(), &
                                              spectral_desc%get_band_lims_gpoint(), name)
     if(err_message /= "") return
-    err_message = this%alloc_nstr(nmom, ncol, nlay)
+    err_message = alloc_nstr(cls, nmom, ncol, nlay)
   end function copy_and_alloc_nstr
   ! ------------------------------------------------------------------------------------------
   !
@@ -625,12 +619,12 @@ contains
     if(allocated(subset%tau)) deallocate(subset%tau)
     select type (subset)
       class is (ty_optical_props_1scl)
-        err_message = subset%alloc_1scl(n, nlay)
+        err_message = alloc_1scl(subset, n, nlay)
         if(err_message /= "") return
       class is (ty_optical_props_2str)
         if(allocated(subset%ssa)) deallocate(subset%ssa)
         if(allocated(subset%g  )) deallocate(subset%g  )
-        err_message = subset%alloc_2str(n, nlay)
+        err_message = alloc_2str(subset, n, nlay)
         if(err_message /= "") return
         subset%ssa(1:n,:,:) = 0._wp
         subset%g  (1:n,:,:) = 0._wp
@@ -642,7 +636,7 @@ contains
         else
           nmom = 1
         end if
-        err_message = subset%alloc_nstr(nmom, n, nlay)
+        err_message = alloc_nstr(subset, nmom, n, nlay)
         if(err_message /= "") return
         subset%ssa(1:n,:,:) = 0._wp
         subset%p(:,1:n,:,:) = 0._wp
@@ -675,13 +669,13 @@ contains
     err_message = subset%init(full)
     select type (subset)
       class is (ty_optical_props_1scl)
-        err_message = subset%alloc_1scl(n, nlay)
+        err_message = alloc_1scl(subset, n, nlay)
         if(err_message /= "") return
         call extract_subset(ncol, nlay, ngpt, full%tau, full%ssa, start, start+n-1, subset%tau)
       class is (ty_optical_props_2str)
         if(allocated(subset%ssa)) deallocate(subset%ssa)
         if(allocated(subset%g  )) deallocate(subset%g  )
-        err_message = subset%alloc_2str(n, nlay)
+        err_message = alloc_2str(subset, n, nlay)
         if(err_message /= "") return
         call extract_subset(ncol, nlay, ngpt, full%tau, start, start+n-1, subset%tau)
         call extract_subset(ncol, nlay, ngpt, full%ssa, start, start+n-1, subset%ssa)
@@ -694,7 +688,7 @@ contains
         else
           nmom = 1
         end if
-        err_message = subset%alloc_nstr(nmom, n, nlay)
+        err_message = alloc_nstr(subset, nmom, n, nlay)
         if(err_message /= "") return
         call extract_subset(ncol, nlay, ngpt, full%tau, start, start+n-1, subset%tau)
         call extract_subset(ncol, nlay, ngpt, full%ssa, start, start+n-1, subset%ssa)
@@ -729,13 +723,13 @@ contains
     if(allocated(subset%tau)) deallocate(subset%tau)
     select type (subset)
       class is (ty_optical_props_1scl)
-        err_message = subset%alloc_1scl(n, nlay)
+        err_message = alloc_1scl(subset, n, nlay)
         if(err_message /= "") return
         call extract_subset(ncol, nlay, ngpt, full%tau, full%ssa, start, start+n-1, subset%tau)
       class is (ty_optical_props_2str)
         if(allocated(subset%ssa)) deallocate(subset%ssa)
         if(allocated(subset%g  )) deallocate(subset%g  )
-        err_message = subset%alloc_2str(n, nlay)
+        err_message = alloc_2str(subset, n, nlay)
         if(err_message /= "") return
         call extract_subset(ncol, nlay, ngpt, full%tau, start, start+n-1, subset%tau)
         call extract_subset(ncol, nlay, ngpt, full%ssa, start, start+n-1, subset%ssa)
@@ -743,7 +737,7 @@ contains
       class is (ty_optical_props_nstr)
         if(allocated(subset%ssa)) deallocate(subset%ssa)
         if(allocated(subset%p  )) deallocate(subset%p  )
-        err_message = subset%alloc_nstr(nmom, n, nlay)
+        err_message = alloc_nstr(subset, nmom, n, nlay)
         if(err_message /= "") return
         call extract_subset(      ncol, nlay, ngpt, full%tau, start, start+n-1, subset%tau)
         call extract_subset(      ncol, nlay, ngpt, full%ssa, start, start+n-1, subset%ssa)
