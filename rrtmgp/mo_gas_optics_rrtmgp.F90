@@ -24,7 +24,8 @@ module mo_gas_optics_rrtmgp
   use mo_rte_kind,           only: wp, wl
   use mo_rrtmgp_constants,   only: avogad, m_dry, m_h2o, grav
   use mo_rte_util_array,     only: zero_array, any_vals_less_than, any_vals_outside, extents_are
-  use mo_optical_props,      only: ty_optical_props, get_band_lims_gpoint
+  use mo_optical_props,      only: ty_optical_props, get_band_lims_gpoint, get_ngpt, get_nlay, get_ncol, &
+                                   get_gpoint_bands, get_nband
   use mo_source_functions,   only: ty_source_func_lw
   use mo_gas_optics_kernels, only: interpolation,                                                       &
                                    compute_tau_absorption, compute_tau_rayleigh, compute_Planck_source, &
@@ -238,8 +239,8 @@ contains
     ! ----------------------------------------------------------
     ncol  = size(play,dim=1)
     nlay  = size(play,dim=2)
-    ngpt  = this%get_ngpt()
-    nband = this%get_nband()
+    ngpt  = get_ngpt (this)
+    nband = get_nband(this)
     !
     ! Gas optics
     !
@@ -275,7 +276,7 @@ contains
     !
     !   output extents
     !
-    if(any([sources%get_ncol(), sources%get_nlay(), sources%get_ngpt()] /= [ncol, nlay, ngpt])) &
+    if(any([sources%get_ncol(), sources%get_nlay(), get_ngpt(sources)] /= [ncol, nlay, ngpt])) &
       error_msg = "gas_optics%gas_optics: source function arrays inconsistently sized"
     if(error_msg  /= '') return
 
@@ -327,9 +328,9 @@ contains
     ! ----------------------------------------------------------
     ncol  = size(play,dim=1)
     nlay  = size(play,dim=2)
-    ngpt  = this%get_ngpt()
-    nband = this%get_nband()
-    ngas  = this%get_ngas()
+    ngpt  = get_ngpt (this)
+    nband = get_nband(this)
+    ngas  = get_ngas (this)
     nflav = get_nflav(this)
     !
     ! Gas optics
@@ -399,8 +400,8 @@ contains
     !
     ! Interpolation variables used in major gas but not elsewhere, so don't need exporting
     !
-    real(wp), dimension(ncol,nlay,  this%get_ngas()) :: vmr     ! volume mixing ratios
-    real(wp), dimension(ncol,nlay,0:this%get_ngas()) :: col_gas ! column amounts for each gas, plus col_dry
+    real(wp), dimension(ncol,nlay,  get_ngas(this)) :: vmr     ! volume mixing ratios
+    real(wp), dimension(ncol,nlay,0:get_ngas(this)) :: col_gas ! column amounts for each gas, plus col_dry
     real(wp), dimension(2,    get_nflav(this),ncol,nlay) :: col_mix ! combination of major species's column amounts
                                                          ! index(1) : reference temperature level
                                                          ! index(2) : flavor
@@ -462,11 +463,11 @@ contains
     end if
 
     ! ----------------------------------------------------------
-    ngas  = this%get_ngas()
+    ngas  = get_ngas(this)
     nflav = get_nflav(this)
-    neta  = this%get_neta()
-    npres = this%get_npres()
-    ntemp = this%get_ntemp()
+    neta  = get_neta (this)
+    npres = get_npres(this)
+    ntemp = get_ntemp(this)
     ! number of minor contributors, total num absorption coeffs
     nminorlower  = size(this%minor_scales_with_density_lower)
     nminorklower = size(this%kminor_lower, 1)
@@ -676,10 +677,10 @@ contains
     !$acc enter data create(sources%lay_source, sources%lev_source_inc, sources%lev_source_dec, sources%sfc_source)
     !$acc enter data create(sfc_source_t, lay_source_t, lev_source_inc_t, lev_source_dec_t) attach(tlev_wk)
     call compute_Planck_source(ncol, nlay, nbnd, ngpt, &
-                get_nflav(this), this%get_neta(), this%get_npres(), this%get_ntemp(), this%get_nPlanckTemp(), &
+                get_nflav(this), get_neta(this), get_npres(this), get_ntemp(this), get_nPlanckTemp(this), &
                 tlay, tlev_wk, tsfc, merge(1,nlay,play(1,1) > play(1,nlay)), &
                 fmajor, jeta, tropo, jtemp, jpress,                    &
-                this%get_gpoint_bands(), get_band_lims_gpoint(this), this%planck_frac, this%temp_ref_min,&
+                get_gpoint_bands(this), get_band_lims_gpoint(this), this%planck_frac, this%temp_ref_min,&
                 this%totplnk_delta, this%totplnk, this%gpoint_flavor,  &
                 sfc_source_t, lay_source_t, lev_source_inc_t, lev_source_dec_t)
     !$acc parallel loop collapse(2)
@@ -1065,7 +1066,7 @@ contains
     ! create flavor list
     call create_flavor(key_species_red, this%flavor)
     ! create gpoint_flavor list
-    call create_gpoint_flavor(key_species_red, this%get_gpoint_bands(), this%flavor, this%gpoint_flavor)
+    call create_gpoint_flavor(key_species_red, get_gpoint_bands(this), this%flavor, this%gpoint_flavor)
 
     ! minimum, maximum reference temperature, pressure -- assumes low-to-high ordering
     !   for T, high-to-low ordering for p
@@ -1082,7 +1083,7 @@ contains
     !   this%flavor is an index into this%gas_names
     !
     if (allocated(this%is_key)) deallocate(this%is_key) ! Shouldn't ever happen...
-    allocate(this%is_key(this%get_ngas()))
+    allocate(this%is_key(get_ngas(this)))
     this%is_key(:) = .False.
     do j = 1, size(this%flavor, 2)
       do i = 1, size(this%flavor, 1) ! extents should be 2
@@ -1154,7 +1155,7 @@ contains
     integer                                              :: igas, icnt
 
     if (allocated(get_minor_list)) deallocate(get_minor_list)
-    do igas = 1, this%get_ngas()
+    do igas = 1, get_ngas(this)
       gas_is_present(igas) = string_in_array(names_spec(igas), gas_desc%gas_name)
     end do
     icnt = count(gas_is_present)

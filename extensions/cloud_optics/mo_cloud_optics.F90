@@ -25,7 +25,7 @@ module mo_cloud_optics
                               ty_optical_props_arry, &
                               ty_optical_props_1scl, &
                               ty_optical_props_2str, &
-                              ty_optical_props_nstr, get_nlay, get_ncol, bands_are_equal
+                              ty_optical_props_nstr, get_nlay, get_ncol, bands_are_equal, get_nband, get_ngpt
   implicit none
   interface pade_eval
     module procedure pade_eval_nbnd, pade_eval_1
@@ -121,7 +121,7 @@ contains
     ! Error checking
     !   Can we check for consistency between table bounds and _fac?
     !
-    if(nbnd /= this%get_nband()) &
+    if(nbnd /= get_nband(this)) &
       error_msg = "cloud_optics%init(): number of bands inconsistent between lookup tables, spectral discretization"
     if(size(lut_extice, 2) /= nbnd) &
       error_msg = "cloud_optics%init(): array lut_extice has the wrong number of bands"
@@ -216,7 +216,7 @@ contains
     !
     ! Error checking
     !
-    if(nbnd /= this%get_nband()) &
+    if(nbnd /= get_nband(this)) &
       error_msg = "cloud_optics%init(): number of bands inconsistent between lookup tables, spectral discretization"
     if(.not. extents_are(pade_ssaliq, nbnd, nsizereg, ncoeff_ssa_g)) &
       error_msg = "cloud_optics%init(): array pade_ssaliq isn't consistently sized"
@@ -366,7 +366,7 @@ contains
     character(len=128)      :: error_msg
     ! ------- Local -------
     logical(wl), dimension(size(clwp,1), size(clwp,2)) :: liqmsk, icemsk
-    real(wp),    dimension(size(clwp,1), size(clwp,2), this%get_nband()) :: &
+    real(wp),    dimension(size(clwp,1), size(clwp,2), get_nband(this)) :: &
                 ltau, ltaussa, ltaussag, itau, itaussa, itaussag
                 ! Optical properties: tau, tau*ssa, tau*ssa*g
                 ! liquid and ice separately
@@ -389,7 +389,7 @@ contains
 
     ncol = size(clwp,1)
     nlay = size(clwp,2)
-    nbnd = this%get_nband()
+    nbnd = get_nband(this)
     !
     ! Array sizes
     !
@@ -412,7 +412,7 @@ contains
     !
     if(.not. bands_are_equal(this,optical_props)) &
       error_msg = "cloud optics: optical properties don't have the same band structure"
-    if(optical_props%get_nband() /= optical_props%get_ngpt() ) &
+    if(get_nband(optical_props) /= get_ngpt(optical_props) ) &
       error_msg = "cloud optics: optical properties must be requested by band not g-points"
     if(error_msg /= "") return
 
@@ -542,7 +542,7 @@ contains
     error_msg = ""
     if(.not. allocated(this%pade_extice) .and. .not. allocated(this%lut_extice )) &
       error_msg = "cloud_optics%set_ice_roughness(): can't set before initialization"
-    if (icergh < 1 .or. icergh > this%get_num_ice_roughness_types()) &
+    if (icergh < 1 .or. icergh > get_num_ice_roughness_types(this)) &
        error_msg = 'cloud optics: cloud ice surface roughness flag is out of bounds'
     if(error_msg /= "") return
 

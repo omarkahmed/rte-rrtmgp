@@ -16,7 +16,7 @@
 ! -------------------------------------------------------------------------------------------------
 module mo_source_functions
   use mo_rte_kind,      only: wp
-  use mo_optical_props, only: ty_optical_props
+  use mo_optical_props, only: ty_optical_props, get_ngpt
   implicit none
   ! -------------------------------------------------------------------------------------------------
   !
@@ -97,7 +97,7 @@ contains
     if(allocated(this%lev_source_inc)) deallocate(this%lev_source_inc)
     if(allocated(this%lev_source_dec)) deallocate(this%lev_source_dec)
 
-    ngpt = this%get_ngpt()
+    ngpt = get_ngpt(this)
     allocate(this%sfc_source    (ncol,     ngpt), this%lay_source    (ncol,nlay,ngpt), &
              this%lev_source_inc(ncol,nlay,ngpt), this%lev_source_dec(ncol,nlay,ngpt))
   end function alloc_lw
@@ -145,7 +145,7 @@ contains
 
     if(allocated(this%toa_source)) deallocate(this%toa_source)
 
-    allocate(this%toa_source(ncol, this%get_ngpt()))
+    allocate(this%toa_source(ncol, get_ngpt(this)))
   end function alloc_sw
   ! --------------------------------------------------------------
   function copy_and_alloc_sw(this, ncol, spectral_desc) result(err_message)

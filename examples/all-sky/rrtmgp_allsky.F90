@@ -34,7 +34,8 @@ program rte_rrtmgp_clouds
   use mo_rte_kind,           only: wp
   use mo_optical_props,      only: ty_optical_props, &
                                    ty_optical_props_arry, ty_optical_props_1scl, ty_optical_props_2str, &
-                                   delta_scale, alloc_1scl, alloc_2str, increment, get_band_lims_wavenumber
+                                   delta_scale, alloc_1scl, alloc_2str, increment, get_band_lims_wavenumber, &
+                                   get_nband, get_ngpt
   use mo_gas_optics_rrtmgp,  only: ty_gas_optics_rrtmgp
   use mo_cloud_optics,       only: ty_cloud_optics
   use mo_gas_concentrations, only: ty_gas_concs, init
@@ -197,8 +198,8 @@ program rte_rrtmgp_clouds
   !
   ! Problem sizes
   !
-  nbnd = k_dist%get_nband()
-  ngpt = k_dist%get_ngpt()
+  nbnd = get_nband(k_dist)
+  ngpt = get_ngpt (k_dist)
   top_at_1 = p_lay(1, 1) < p_lay(1, nlay)
 
   ! ----------------------------------------------------------------------------

@@ -32,7 +32,7 @@ module mo_rte_sw
   use mo_rte_util_array,only: any_vals_less_than, any_vals_outside, extents_are
   use mo_optical_props, only: ty_optical_props, &
                               ty_optical_props_arry, ty_optical_props_1scl, ty_optical_props_2str, ty_optical_props_nstr, &
-                              validate, get_nlay, get_ncol, get_name, get_band_lims_gpoint
+                              validate, get_nlay, get_ncol, get_name, get_band_lims_gpoint, get_nband, get_ngpt
   use mo_fluxes,        only: ty_fluxes
   use mo_rte_solver_kernels, &
                         only: apply_BC, sw_solver_noscat, sw_solver_2stream
@@ -70,8 +70,8 @@ contains
     ! ------------------------------------------------------------------------------------
     ncol  = get_ncol(atmos)
     nlay  = get_nlay(atmos)
-    ngpt  = atmos%get_ngpt()
-    nband = atmos%get_nband()
+    ngpt  = get_ngpt (atmos)
+    nband = get_nband(atmos)
     error_msg = ""
 
     ! ------------------------------------------------------------------------------------
@@ -212,11 +212,11 @@ contains
     ! -------------
     integer :: ncol, nband, ngpt
     integer :: icol, iband, igpt
-    integer, dimension(2,ops%get_nband()) :: limits
+    integer, dimension(2,get_nband(ops)) :: limits
 
     ncol  = size(arr_in, 2)
-    nband = ops%get_nband()
-    ngpt  = ops%get_ngpt()
+    nband = get_nband(ops)
+    ngpt  = get_ngpt (ops)
     limits = get_band_lims_gpoint(ops)
     !$acc parallel loop collapse(2) copyin(arr_in, limits)
     do iband = 1, nband
