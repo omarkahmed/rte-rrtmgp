@@ -32,7 +32,7 @@ module mo_rte_sw
   use mo_rte_util_array,only: any_vals_less_than, any_vals_outside, extents_are
   use mo_optical_props, only: ty_optical_props, &
                               ty_optical_props_arry, ty_optical_props_1scl, ty_optical_props_2str, ty_optical_props_nstr, &
-                              validate, get_nlay, get_ncol
+                              validate, get_nlay, get_ncol, get_name
   use mo_fluxes,        only: ty_fluxes
   use mo_rte_solver_kernels, &
                         only: apply_BC, sw_solver_noscat, sw_solver_2stream
@@ -113,8 +113,8 @@ contains
       error_msg = "rte_sw: sfc_alb_dif out of bounds [0,1]"
 
     if(len_trim(error_msg) > 0) then
-      if(len_trim(atmos%get_name()) > 0) &
-        error_msg = trim(atmos%get_name()) // ': ' // trim(error_msg)
+      if(len_trim(get_name(atmos)) > 0) &
+        error_msg = trim(get_name(atmos)) // ': ' // trim(error_msg)
       return
     end if
 
@@ -190,8 +190,8 @@ contains
         error_msg = 'sw_solver(...ty_optical_props_nstr...) not yet implemented'
     end select
     if(len_trim(error_msg) > 0) then
-      if(len_trim(atmos%get_name()) > 0) &
-        error_msg = trim(atmos%get_name()) // ': ' // trim(error_msg)
+      if(len_trim(get_name(atmos)) > 0) &
+        error_msg = trim(get_name(atmos)) // ': ' // trim(error_msg)
       return
     end if
     !
