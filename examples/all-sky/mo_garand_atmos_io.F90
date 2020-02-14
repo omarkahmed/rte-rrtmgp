@@ -23,7 +23,7 @@ module mo_garand_atmos_io
   ! RTE+RRTMGP modules
   !
   use mo_rte_kind,           only: wp
-  use mo_gas_concentrations, only: ty_gas_concs, init, set_vmr
+  use mo_gas_concentrations, only: ty_gas_concs
   use mo_rrtmgp_util_reorder,only: reorder123x312
   use mo_optical_props,      only: ty_optical_props
   !
@@ -76,12 +76,12 @@ contains
     p_lev = read_field(ncid, 'p_lev', ncol, nlev)
     t_lev = read_field(ncid, 't_lev', ncol, nlev)
 
-    call stop_on_err(init(gas_concs,gas_names))
+    call stop_on_err(gas_concs%init(gas_names))
     do igas = 1, ngas
       vmr_name = 'vmr_' // trim(gas_names(igas))
       if(.not. var_exists(ncid, trim(vmr_name))) &
         call stop_on_err("read_atmos: can't read concentration of " // trim(gas_names(igas)))
-      call stop_on_err(set_vmr(gas_concs,trim(gas_names(igas)), read_field(ncid, trim(vmr_name), ncol, nlay)))
+      call stop_on_err(gas_concs%set_vmr(trim(gas_names(igas)), read_field(ncid, trim(vmr_name), ncol, nlay)))
     end do
 
     ! col_dry has unchanged allocation status on return if the variable isn't present in the netCDF file

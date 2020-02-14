@@ -10,7 +10,7 @@ subroutine stop_on_err(error_msg)
 end subroutine stop_on_err
 
 subroutine vmr_2d_to_1d(gas_concs, gas_concs_garand, name, sz1, sz2)
-  use mo_gas_concentrations, only: ty_gas_concs, get_vmr, set_vmr
+  use mo_gas_concentrations, only: ty_gas_concs
   use mo_rte_kind,           only: wp
 
   type(ty_gas_concs), intent(in)    :: gas_concs_garand
@@ -21,12 +21,12 @@ subroutine vmr_2d_to_1d(gas_concs, gas_concs_garand, name, sz1, sz2)
   real(wp) :: tmp(sz1, sz2), tmp_col(sz2)
 
   !$acc data create(tmp, tmp_col)
-  call stop_on_err(get_vmr(gas_concs_garand,name, tmp))
+  call stop_on_err(gas_concs_garand%get_vmr(name, tmp))
   !$acc kernels
   tmp_col(:) = tmp(1, :)
   !$acc end kernels
 
-  call stop_on_err(set_vmr       (gas_concs, name, tmp_col))
+  call stop_on_err(gas_concs%set_vmr       (name, tmp_col))
   !$acc end data
 end subroutine vmr_2d_to_1d
 ! ----------------------------------------------------------------------------------
@@ -36,7 +36,7 @@ program rte_rrtmgp_clouds
                                    ty_optical_props_arry, ty_optical_props_1scl, ty_optical_props_2str
   use mo_gas_optics_rrtmgp,  only: ty_gas_optics_rrtmgp
   use mo_cloud_optics,       only: ty_cloud_optics
-  use mo_gas_concentrations, only: ty_gas_concs, init
+  use mo_gas_concentrations, only: ty_gas_concs
   use mo_source_functions,   only: ty_source_func_lw
   use mo_fluxes,             only: ty_fluxes_broadband
   use mo_rte_lw,             only: rte_lw
@@ -158,7 +158,7 @@ program rte_rrtmgp_clouds
   deallocate(col_dry)
   nlay = size(p_lay, 2)
   ! For clouds we'll use the first column, repeated over and over
-  call stop_on_err(init(gas_concs,gas_names))
+  call stop_on_err(gas_concs%init(gas_names))
   do igas = 1, ngas
     call vmr_2d_to_1d(gas_concs, gas_concs_garand, gas_names(igas), size(p_lay, 1), nlay)
   end do
