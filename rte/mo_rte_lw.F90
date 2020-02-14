@@ -57,7 +57,7 @@ contains
                   sources, sfc_emis,       &
                   fluxes,                  &
                   inc_flux, n_gauss_angles) result(error_msg)
-    class(ty_optical_props_arry), intent(in   ) :: optical_props     ! Array of ty_optical_props
+    class(ty_optical_props_arry), intent(in   ) :: optical_props     ! Array of ty_optical_props. This type is abstract
                                                                      ! and needs to be made concrete, either as an array
                                                                      ! (class ty_optical_props_arry) or in some user-defined way
     logical,                      intent(in   ) :: top_at_1          ! Is the top of the domain at index 1?

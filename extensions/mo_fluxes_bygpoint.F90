@@ -29,11 +29,14 @@ module mo_fluxes_bygpoint
                                            gpt_flux_dn => NULL()    ! (ncol, nlev, nband)
     real(wp), dimension(:,:,:), pointer :: gpt_flux_net => NULL()   ! Net (down - up)
     real(wp), dimension(:,:,:), pointer :: gpt_flux_dn_dir => NULL() ! Direct flux down
+  contains
+    procedure :: reduce => reduce_bygpoint
+    procedure :: are_desired => are_desired_bygpoint
   end type ty_fluxes_bygpoint
 contains
   ! --------------------------------------------------------------------------------------
-  function reduce_bygpoint(cls, gpt_flux_up, gpt_flux_dn, spectral_disc, top_at_1, gpt_flux_dn_dir) result(error_msg)
-    class(ty_fluxes_bygpoint),         intent(inout) :: cls
+  function reduce_bygpoint(this, gpt_flux_up, gpt_flux_dn, spectral_disc, top_at_1, gpt_flux_dn_dir) result(error_msg)
+    class(ty_fluxes_bygpoint),         intent(inout) :: this
     real(kind=wp), dimension(:,:,:),   intent(in   ) :: gpt_flux_up ! Fluxes by gpoint [W/m2](ncol, nlay+1, ngpt)
     real(kind=wp), dimension(:,:,:),   intent(in   ) :: gpt_flux_dn ! Fluxes by gpoint [W/m2](ncol, nlay+1, ngpt)
     class(ty_optical_props),           intent(in   ) :: spectral_disc  !< derived type with spectral information
@@ -49,32 +52,32 @@ contains
     nlev = size(gpt_flux_up, DIM=2)
     ngpt = size(gpt_flux_up, DIM=3)
 
-    if(associated(cls%gpt_flux_up)) then
-      if(.not. extents_are(cls%gpt_flux_up, ncol, nlev, ngpt)) then
+    if(associated(this%gpt_flux_up)) then
+      if(.not. extents_are(this%gpt_flux_up, ncol, nlev, ngpt)) then
         error_msg = "reduce: gpt_flux_up array incorrectly sized (can't compute net flux either)"
       else
-        cls%gpt_flux_up(:,:,:) = gpt_flux_up(:,:,:)
+        this%gpt_flux_up(:,:,:) = gpt_flux_up(:,:,:)
       end if
     end if
-    if(associated(cls%gpt_flux_dn)) then
-      if(.not. extents_are(cls%gpt_flux_dn, ncol, nlev, ngpt)) then
+    if(associated(this%gpt_flux_dn)) then
+      if(.not. extents_are(this%gpt_flux_dn, ncol, nlev, ngpt)) then
         error_msg = "reduce: gpt_flux_dn array incorrectly sized (can't compute net flux either)"
       else
-        cls%gpt_flux_dn(:,:,:) = gpt_flux_dn(:,:,:)
+        this%gpt_flux_dn(:,:,:) = gpt_flux_dn(:,:,:)
       end if
     end if
-    if(associated(cls%gpt_flux_net)) then
-      if(.not. extents_are(cls%gpt_flux_net, ncol, nlev, ngpt)) then
+    if(associated(this%gpt_flux_net)) then
+      if(.not. extents_are(this%gpt_flux_net, ncol, nlev, ngpt)) then
         error_msg = "reduce: gpt_flux_net array incorrectly sized (can't compute net flux either)"
       else
-        cls%gpt_flux_net(:,:,:) = gpt_flux_dn(:,:,:) - gpt_flux_up(:,:,:)
+        this%gpt_flux_net(:,:,:) = gpt_flux_dn(:,:,:) - gpt_flux_up(:,:,:)
       end if
     end if
-    if(associated(cls%gpt_flux_dn_dir)) then
-      if(.not. extents_are(cls%gpt_flux_dn_dir, ncol, nlev, ngpt)) then
+    if(associated(this%gpt_flux_dn_dir)) then
+      if(.not. extents_are(this%gpt_flux_dn_dir, ncol, nlev, ngpt)) then
         error_msg = "reduce: gpt_flux_dn_dir array incorrectly sized (can't compute net flux either)"
       else if(present(gpt_flux_dn_dir)) then
-        cls%gpt_flux_dn_dir(:,:,:) = gpt_flux_dn_dir(:,:,:)
+        this%gpt_flux_dn_dir(:,:,:) = gpt_flux_dn_dir(:,:,:)
       end if
     end if
   end function reduce_bygpoint
@@ -83,14 +86,14 @@ contains
     ! Are any fluxes desired from this set of g-point fluxes? We can tell because memory will
     !   be allocated for output
     !
-    function are_desired_bygpoint(cls)
-      class(ty_fluxes_bygpoint), intent(in   ) :: cls
+    function are_desired_bygpoint(this)
+      class(ty_fluxes_bygpoint), intent(in   ) :: this
       logical                                  :: are_desired_bygpoint
 
-      are_desired_bygpoint = any([associated(cls%gpt_flux_up),     &
-                                  associated(cls%gpt_flux_dn),     &
-                                  associated(cls%gpt_flux_dn_dir), &
-                                  associated(cls%gpt_flux_net)])
+      are_desired_bygpoint = any([associated(this%gpt_flux_up),     &
+                                  associated(this%gpt_flux_dn),     &
+                                  associated(this%gpt_flux_dn_dir), &
+                                  associated(this%gpt_flux_net)])
     end function are_desired_bygpoint
 
 end module mo_fluxes_bygpoint

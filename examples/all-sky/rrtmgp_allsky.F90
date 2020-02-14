@@ -36,9 +36,8 @@ program rte_rrtmgp_clouds
                                    ty_optical_props_arry, ty_optical_props_1scl, ty_optical_props_2str, &
                                    delta_scale, alloc_1scl, alloc_2str, increment, get_band_lims_wavenumber, &
                                    get_nband, get_ngpt, props_init => init
-  use mo_gas_optics_rrtmgp,  only: ty_gas_optics_rrtmgp, source_is_external, gas_optics
-  use mo_cloud_optics,       only: ty_cloud_optics, set_ice_roughness, get_min_radius_liq, get_max_radius_liq, &
-                                   get_min_radius_ice, get_max_radius_ice, cloud_optics_compute => cloud_optics
+  use mo_gas_optics_rrtmgp,  only: ty_gas_optics_rrtmgp
+  use mo_cloud_optics,       only: ty_cloud_optics
   use mo_gas_concentrations, only: ty_gas_concs, init
   use mo_source_functions,   only: ty_source_func_lw, alloc_src => alloc
   use mo_fluxes,             only: ty_fluxes_broadband
@@ -183,7 +182,7 @@ program rte_rrtmgp_clouds
   ! ----------------------------------------------------------------------------
   ! load data into classes
   call load_and_init(k_dist, k_dist_file, gas_concs)
-  is_sw = source_is_external(k_dist)
+  is_sw = k_dist%source_is_external()
   is_lw = .not. is_sw
   !
   ! Should also try with Pade calculations
@@ -194,7 +193,7 @@ program rte_rrtmgp_clouds
   else
     call load_cld_padecoeff(cloud_optics, cloud_optics_file)
   end if
-  call stop_on_err(set_ice_roughness(cloud_optics,2))
+  call stop_on_err(cloud_optics%set_ice_roughness(2))
   ! ----------------------------------------------------------------------------
   !
   ! Problem sizes
@@ -295,8 +294,8 @@ program rte_rrtmgp_clouds
   !   and not very close to the ground (< 900 hPa), and
   !   put them in 2/3 of the columns since that's roughly the
   !   total cloudiness of earth
-  rel_val = 0.5 * (get_min_radius_liq(cloud_optics) + get_max_radius_liq(cloud_optics))
-  rei_val = 0.5 * (get_min_radius_ice(cloud_optics) + get_max_radius_ice(cloud_optics))
+  rel_val = 0.5 * (cloud_optics%get_min_radius_liq() + cloud_optics%get_max_radius_liq())
+  rei_val = 0.5 * (cloud_optics%get_min_radius_ice() + cloud_optics%get_max_radius_ice())
   !$acc parallel loop collapse(2) copyin(t_lay) copyout(lwp, iwp, rel, rei)
   do ilay=1,nlay
     do icol=1,ncol
@@ -326,7 +325,7 @@ program rte_rrtmgp_clouds
   do iloop = 1, nloops
     call system_clock(start)
     call stop_on_err(                                      &
-      cloud_optics_compute(cloud_optics,lwp, iwp, rel, rei, clouds))
+      cloud_optics%cloud_optics(lwp, iwp, rel, rei, clouds))
     !
     ! Solvers
     !
@@ -334,7 +333,7 @@ program rte_rrtmgp_clouds
     fluxes%flux_dn => flux_dn(:,:)
     if(is_lw) then
       !$acc enter data create(lw_sources, lw_sources%lay_source, lw_sources%lev_source_inc, lw_sources%lev_source_dec, lw_sources%sfc_source)
-      call stop_on_err(gas_optics(k_dist,p_lay, p_lev, &
+      call stop_on_err(k_dist%gas_optics(p_lay, p_lev, &
                                          t_lay, t_sfc, &
                                          gas_concs,    &
                                          atmos,        &
@@ -350,7 +349,7 @@ program rte_rrtmgp_clouds
       !$acc enter data create(toa_flux)
       fluxes%flux_dn_dir => flux_dir(:,:)
 
-      call stop_on_err(gas_optics(k_dist,p_lay, p_lev, &
+      call stop_on_err(k_dist%gas_optics(p_lay, p_lev, &
                                          t_lay,        &
                                          gas_concs,    &
                                          atmos,        &
