@@ -25,7 +25,7 @@ module mo_cloud_optics
                               ty_optical_props_arry, &
                               ty_optical_props_1scl, &
                               ty_optical_props_2str, &
-                              ty_optical_props_nstr, get_nlay, get_ncol
+                              ty_optical_props_nstr
   implicit none
   interface pade_eval
     module procedure pade_eval_nbnd, pade_eval_1
@@ -403,7 +403,7 @@ contains
       error_msg = "cloud optics: reliq has wrong extents"
     if(size(reice, 1) /= ncol .or. size(reice, 2) /= nlay) &
       error_msg = "cloud optics: reice has wrong extents"
-    if(get_ncol(optical_props) /= ncol .or. get_nlay(optical_props) /= nlay) &
+    if(optical_props%get_ncol() /= ncol .or. optical_props%get_nlay() /= nlay) &
       error_msg = "cloud optics: optical_props have wrong extents"
     if(error_msg /= "") return
 

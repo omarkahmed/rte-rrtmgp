@@ -34,7 +34,7 @@ program rte_rrtmgp_clouds
   use mo_rte_kind,           only: wp
   use mo_optical_props,      only: ty_optical_props, &
                                    ty_optical_props_arry, ty_optical_props_1scl, ty_optical_props_2str, &
-                                   delta_scale, alloc_1scl, alloc_2str, increment
+                                   delta_scale, alloc_1scl, alloc_2str
   use mo_gas_optics_rrtmgp,  only: ty_gas_optics_rrtmgp
   use mo_cloud_optics,       only: ty_cloud_optics
   use mo_gas_concentrations, only: ty_gas_concs, init
@@ -338,7 +338,7 @@ program rte_rrtmgp_clouds
                                          atmos,        &
                                          lw_sources,   &
                                          tlev = t_lev))
-      call stop_on_err(increment(clouds,atmos))
+      call stop_on_err(clouds%increment(atmos))
       call stop_on_err(rte_lw(atmos, top_at_1, &
                               lw_sources,      &
                               emis_sfc,        &
@@ -359,7 +359,7 @@ program rte_rrtmgp_clouds
       type is (ty_optical_props_2str)
         call stop_on_err(delta_scale(clouds))
       end select
-      call stop_on_err(increment(clouds,atmos))
+      call stop_on_err(clouds%increment(atmos))
       call stop_on_err(rte_sw(atmos, top_at_1, &
                               mu0,   toa_flux, &
                               sfc_alb_dir, sfc_alb_dif, &

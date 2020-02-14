@@ -38,7 +38,7 @@ module mo_rte_lw
   use mo_rte_util_array,only: any_vals_less_than, any_vals_outside, extents_are
   use mo_optical_props, only: ty_optical_props, &
                               ty_optical_props_arry, ty_optical_props_1scl, ty_optical_props_2str, ty_optical_props_nstr, &
-                              validate, get_nlay, get_ncol
+                              validate
   use mo_source_functions,   &
                         only: ty_source_func_lw
   use mo_fluxes,        only: ty_fluxes
@@ -106,8 +106,8 @@ contains
     !   if inc_flux is present it has the right dimensions, is positive definite
     !
     ! --------------------------------
-    ncol  = get_ncol(optical_props)
-    nlay  = get_nlay(optical_props)
+    ncol  = optical_props%get_ncol()
+    nlay  = optical_props%get_nlay()
     ngpt  = optical_props%get_ngpt()
     nband = optical_props%get_nband()
     error_msg = ""

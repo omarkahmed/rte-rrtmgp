@@ -32,7 +32,7 @@ module mo_rte_sw
   use mo_rte_util_array,only: any_vals_less_than, any_vals_outside, extents_are
   use mo_optical_props, only: ty_optical_props, &
                               ty_optical_props_arry, ty_optical_props_1scl, ty_optical_props_2str, ty_optical_props_nstr, &
-                              validate, get_nlay, get_ncol
+                              validate
   use mo_fluxes,        only: ty_fluxes
   use mo_rte_solver_kernels, &
                         only: apply_BC, sw_solver_noscat, sw_solver_2stream
@@ -68,8 +68,8 @@ contains
     real(wp), dimension(:,:,:), allocatable :: gpt_flux_up, gpt_flux_dn, gpt_flux_dir
     real(wp), dimension(:,:),   allocatable :: sfc_alb_dir_gpt, sfc_alb_dif_gpt
     ! ------------------------------------------------------------------------------------
-    ncol  = get_ncol(atmos)
-    nlay  = get_nlay(atmos)
+    ncol  = atmos%get_ncol()
+    nlay  = atmos%get_nlay()
     ngpt  = atmos%get_ngpt()
     nband = atmos%get_nband()
     error_msg = ""
