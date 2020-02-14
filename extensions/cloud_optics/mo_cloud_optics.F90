@@ -25,8 +25,7 @@ module mo_cloud_optics
                               ty_optical_props_arry, &
                               ty_optical_props_1scl, &
                               ty_optical_props_2str, &
-                              ty_optical_props_nstr, get_nlay, get_ncol, bands_are_equal, get_nband, get_ngpt, &
-                              init
+                              ty_optical_props_nstr, get_nlay, get_ncol, bands_are_equal, get_nband, get_ngpt
   implicit none
   interface pade_eval
     module procedure pade_eval_nbnd, pade_eval_1
@@ -110,7 +109,7 @@ contains
     !
     integer               :: nbnd, nrghice, nsize_liq, nsize_ice
 
-    error_msg = init(this,band_lims_wvn, name="RRTMGP cloud optics")
+    error_msg = this%init(band_lims_wvn, name="RRTMGP cloud optics")
     !
     ! LUT coefficient dimensions
     !
@@ -213,7 +212,7 @@ contains
     ! The number of size regimes is assumed in the Pade evaluations
     if (nsizereg /= 3) &
       error_msg = "cloud optics: code assumes exactly three size regimes for Pade approximants but data is otherwise"
-    error_msg = init(this,band_lims_wvn, name="RRTMGP cloud optics")
+    error_msg = this%init(band_lims_wvn, name="RRTMGP cloud optics")
     !
     ! Error checking
     !

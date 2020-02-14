@@ -16,7 +16,7 @@
 ! -------------------------------------------------------------------------------------------------
 module mo_source_functions
   use mo_rte_kind,      only: wp
-  use mo_optical_props, only: ty_optical_props, get_ngpt, init, is_initialized, finalize
+  use mo_optical_props, only: ty_optical_props, get_ngpt
   implicit none
   ! -------------------------------------------------------------------------------------------------
   !
@@ -74,7 +74,7 @@ contains
     class(ty_source_func_lw), intent(in) :: this
     logical                              :: is_allocated_lw
 
-    is_allocated_lw = is_initialized(this) .and. &
+    is_allocated_lw = this%is_initialized() .and. &
                       allocated(this%sfc_source)
   end function is_allocated_lw
   ! --------------------------------------------------------------
@@ -86,7 +86,7 @@ contains
     integer :: ngpt
 
     err_message = ""
-    if(.not. is_initialized(this)) &
+    if(.not. this%is_initialized()) &
       err_message = "source_func_lw%alloc: not initialized so can't allocate"
     if(any([ncol, nlay] <= 0)) &
       err_message = "source_func_lw%alloc: must provide positive extents for ncol, nlay"
@@ -109,12 +109,12 @@ contains
     character(len = 128)                       :: err_message
 
     err_message = ""
-    if(.not. is_initialized(spectral_desc)) then
+    if(.not. spectral_desc%is_initialized()) then
       err_message = "source_func_lw%alloc: spectral_desc not initialized"
       return
     end if
-    call finalize(this)
-    err_message = init(this,spectral_desc)
+    call this%finalize()
+    err_message = this%init(spectral_desc)
     if (err_message /= "") return
     err_message = this%alloc(ncol,nlay)
   end function copy_and_alloc_lw
@@ -127,7 +127,7 @@ contains
     class(ty_source_func_sw), intent(in) :: this
     logical                              :: is_allocated_sw
 
-    is_allocated_sw = is_initialized(this%ty_optical_props) .and. &
+    is_allocated_sw = this%ty_optical_props%is_initialized() .and. &
                       allocated(this%toa_source)
   end function is_allocated_sw
   ! --------------------------------------------------------------
@@ -137,7 +137,7 @@ contains
     character(len = 128)                       :: err_message
 
     err_message = ""
-    if(.not. is_initialized(this)) &
+    if(.not. this%is_initialized()) &
       err_message = "source_func_sw%alloc: not initialized so can't allocate"
     if(ncol <= 0) &
       err_message = "source_func_sw%alloc: must provide positive extents for ncol"
@@ -155,11 +155,11 @@ contains
     character(len = 128)                       :: err_message
 
     err_message = ""
-    if(.not. is_initialized(spectral_desc)) then
+    if(.not. spectral_desc%is_initialized()) then
       err_message = "source_func_sw%alloc: spectral_desc not initialized"
       return
     end if
-    err_message = init(this,spectral_desc)
+    err_message = this%init(spectral_desc)
     if(err_message /= "") return
     err_message = this%alloc(ncol)
   end function copy_and_alloc_sw
@@ -175,14 +175,14 @@ contains
     if(allocated(this%lev_source_inc)) deallocate(this%lev_source_inc)
     if(allocated(this%lev_source_dec)) deallocate(this%lev_source_dec)
     if(allocated(this%sfc_source    )) deallocate(this%sfc_source)
-    call finalize(this%ty_optical_props)
+    call this%ty_optical_props%finalize()
   end subroutine finalize_lw
   ! --------------------------------------------------------------
   subroutine finalize_sw(this)
     class(ty_source_func_sw),    intent(inout) :: this
 
     if(allocated(this%toa_source    )) deallocate(this%toa_source)
-    call finalize(this%ty_optical_props)
+    call this%ty_optical_props%finalize()
   end subroutine finalize_sw
   ! ------------------------------------------------------------------------------------------
   !
@@ -244,7 +244,7 @@ contains
     !
     ! Could check to see if subset is correctly sized, has consistent spectral discretization
     !
-    if(subset%is_allocated()) call finalize(subset)
+    if(subset%is_allocated()) call subset%finalize()
     err_message = subset%alloc(n, full%get_nlay(), full)
     if(err_message /= "") return
     subset%sfc_source    (1:n,  :) = full%sfc_source    (start:start+n-1,  :)
@@ -271,7 +271,7 @@ contains
     !
     ! Could check to see if subset is correctly sized, has consistent spectral discretization
     !
-    if(subset%is_allocated()) call finalize(subset)
+    if(subset%is_allocated()) call subset%finalize()
     ! Seems like I should be able to call "alloc" generically but the compilers are complaining
     err_message = subset%copy_and_alloc_sw(n, full)
 
