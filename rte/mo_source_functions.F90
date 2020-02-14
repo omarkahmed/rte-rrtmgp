@@ -16,7 +16,7 @@
 ! -------------------------------------------------------------------------------------------------
 module mo_source_functions
   use mo_rte_kind,      only: wp
-  use mo_optical_props, only: ty_optical_props, get_ngpt, init, is_initialized, finalize
+  use mo_optical_props, only: ty_optical_props, get_ngpt, init, is_initialized, finalize_props => finalize
   implicit none
   ! -------------------------------------------------------------------------------------------------
   !
@@ -32,9 +32,6 @@ module mo_source_functions
                                                                   ! Includes spectral weighting that accounts for state-dependent
                                                                   ! frequency to g-space mapping
     real(wp), allocatable, dimension(:,:  ) :: sfc_source
-  contains
-    procedure, public :: is_allocated => is_allocated_lw
-    procedure, public :: finalize => finalize_lw
   end type ty_source_func_lw
   ! -------------------------------------------------------------------------------------------------
   !
@@ -42,10 +39,15 @@ module mo_source_functions
   !
   type, extends(ty_optical_props), public :: ty_source_func_sw
     real(wp), allocatable, dimension(:,:  ) :: toa_source
-  contains
-    procedure, public :: is_allocated => is_allocated_sw
-    procedure, public :: finalize => finalize_sw
   end type ty_source_func_sw
+
+  interface finalize
+    module procedure :: finalize_lw, finalize_sw
+  end interface finalize
+
+  interface is_allocated
+    module procedure :: is_allocated_lw, is_allocated_sw
+  end interface
 
   interface get_subset
     module procedure :: get_subset_range_sw, get_subset_range_lw
@@ -71,12 +73,12 @@ contains
   ! Longwave
   !
   ! ------------------------------------------------------------------------------------------
-  pure function is_allocated_lw(this)
-    class(ty_source_func_lw), intent(in) :: this
+  pure function is_allocated_lw(cls)
+    class(ty_source_func_lw), intent(in) :: cls
     logical                              :: is_allocated_lw
 
-    is_allocated_lw = is_initialized(this) .and. &
-                      allocated(this%sfc_source)
+    is_allocated_lw = is_initialized(cls) .and. &
+                      allocated(cls%sfc_source)
   end function is_allocated_lw
   ! --------------------------------------------------------------
   function alloc_lw(cls, ncol, nlay) result(err_message)
@@ -124,12 +126,12 @@ contains
   ! Shortwave
   !
   ! ------------------------------------------------------------------------------------------
-  pure function is_allocated_sw(this)
-    class(ty_source_func_sw), intent(in) :: this
+  pure function is_allocated_sw(cls)
+    class(ty_source_func_sw), intent(in) :: cls
     logical                              :: is_allocated_sw
 
-    is_allocated_sw = is_initialized(this%ty_optical_props) .and. &
-                      allocated(this%toa_source)
+    is_allocated_sw = is_initialized(cls%ty_optical_props) .and. &
+                      allocated(cls%toa_source)
   end function is_allocated_sw
   ! --------------------------------------------------------------
   function alloc_sw(cls, ncol) result(err_message)
@@ -169,21 +171,21 @@ contains
   ! Finalization (memory deallocation)
   !
   ! ------------------------------------------------------------------------------------------
-  subroutine finalize_lw(this)
-    class(ty_source_func_lw),    intent(inout) :: this
+  subroutine finalize_lw(cls)
+    class(ty_source_func_lw),    intent(inout) :: cls
 
-    if(allocated(this%lay_source    )) deallocate(this%lay_source)
-    if(allocated(this%lev_source_inc)) deallocate(this%lev_source_inc)
-    if(allocated(this%lev_source_dec)) deallocate(this%lev_source_dec)
-    if(allocated(this%sfc_source    )) deallocate(this%sfc_source)
-    call finalize(this%ty_optical_props)
+    if(allocated(cls%lay_source    )) deallocate(cls%lay_source)
+    if(allocated(cls%lev_source_inc)) deallocate(cls%lev_source_inc)
+    if(allocated(cls%lev_source_dec)) deallocate(cls%lev_source_dec)
+    if(allocated(cls%sfc_source    )) deallocate(cls%sfc_source)
+    call finalize_props(cls%ty_optical_props)
   end subroutine finalize_lw
   ! --------------------------------------------------------------
-  subroutine finalize_sw(this)
-    class(ty_source_func_sw),    intent(inout) :: this
+  subroutine finalize_sw(cls)
+    class(ty_source_func_sw),    intent(inout) :: cls
 
-    if(allocated(this%toa_source    )) deallocate(this%toa_source)
-    call finalize(this%ty_optical_props)
+    if(allocated(cls%toa_source    )) deallocate(cls%toa_source)
+    call finalize_props(cls%ty_optical_props)
   end subroutine finalize_sw
   ! ------------------------------------------------------------------------------------------
   !
@@ -194,7 +196,7 @@ contains
     class(ty_source_func_lw), intent(in) :: cls
     integer :: get_ncol_lw
 
-    if(cls%is_allocated()) then
+    if(is_allocated(cls)) then
       get_ncol_lw = size(cls%lay_source,1)
     else
       get_ncol_lw = 0
@@ -205,7 +207,7 @@ contains
     class(ty_source_func_lw), intent(in) :: cls
     integer :: get_nlay
 
-    if(cls%is_allocated()) then
+    if(is_allocated(cls)) then
       get_nlay = size(cls%lay_source,2)
     else
       get_nlay = 0
@@ -216,7 +218,7 @@ contains
     class(ty_source_func_sw), intent(in) :: cls
     integer :: get_ncol_sw
 
-    if(cls%is_allocated()) then
+    if(is_allocated(cls)) then
       get_ncol_sw = size(cls%toa_source,1)
     else
       get_ncol_sw = 0
@@ -234,7 +236,7 @@ contains
     character(128)                          :: err_message
 
     err_message = ""
-    if(.not. full%is_allocated()) then
+    if(.not. is_allocated(full)) then
       err_message = "source_func_lw%subset: Asking for a subset of unallocated data"
       return
     end if
@@ -245,7 +247,7 @@ contains
     !
     ! Could check to see if subset is correctly sized, has consistent spectral discretization
     !
-    if(subset%is_allocated()) call finalize(subset)
+    if(is_allocated(subset)) call finalize(subset)
     err_message = alloc(subset, n, get_nlay(full), full)
     if(err_message /= "") return
     subset%sfc_source    (1:n,  :) = full%sfc_source    (start:start+n-1,  :)
@@ -261,7 +263,7 @@ contains
     character(128)                          :: err_message
 
     err_message = ""
-    if(.not. full%is_allocated()) then
+    if(.not. is_allocated(full)) then
       err_message = "source_func_sw%subset: Asking for a subset of unallocated data"
       return
     end if
@@ -272,7 +274,7 @@ contains
     !
     ! Could check to see if subset is correctly sized, has consistent spectral discretization
     !
-    if(subset%is_allocated()) call finalize(subset)
+    if(is_allocated(subset)) call finalize(subset)
     ! Seems like I should be able to call "alloc" generically but the compilers are complaining
     err_message = alloc(subset, n, full)
 
