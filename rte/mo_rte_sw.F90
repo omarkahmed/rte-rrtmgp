@@ -32,7 +32,7 @@ module mo_rte_sw
   use mo_rte_util_array,only: any_vals_less_than, any_vals_outside, extents_are
   use mo_optical_props, only: ty_optical_props, &
                               ty_optical_props_arry, ty_optical_props_1scl, ty_optical_props_2str, ty_optical_props_nstr, &
-                              validate, get_nlay, get_ncol, get_name, get_band_lims_gpoint
+                              validate, get_nlay, get_ncol, get_name
   use mo_fluxes,        only: ty_fluxes
   use mo_rte_solver_kernels, &
                         only: apply_BC, sw_solver_noscat, sw_solver_2stream
@@ -217,7 +217,7 @@ contains
     ncol  = size(arr_in, 2)
     nband = ops%get_nband()
     ngpt  = ops%get_ngpt()
-    limits = get_band_lims_gpoint(ops)
+    limits = ops%get_band_lims_gpoint()
     !$acc parallel loop collapse(2) copyin(arr_in, limits)
     do iband = 1, nband
       do icol = 1, ncol

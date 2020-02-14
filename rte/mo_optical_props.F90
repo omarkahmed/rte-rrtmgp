@@ -77,6 +77,12 @@ module mo_optical_props
     procedure, public  :: get_gpoint_bands
     procedure, public  :: convert_band2gpt
     procedure, public  :: convert_gpt2band
+    procedure, public  :: get_band_lims_gpoint
+    procedure, public  :: get_band_lims_wavenumber
+    procedure, public  :: get_band_lims_wavelength
+    procedure, public  :: bands_are_equal
+    procedure, public  :: gpoints_are_equal
+    procedure, public  :: expand
   end type
   !----------------------------------------------------------------------------------------
   !
@@ -211,8 +217,8 @@ contains
       err_message = "optical_props%init(): can't initialize based on un-initialized input"
       return
     else
-      err_message = this%init(get_band_lims_wavenumber(spectral_desc), &
-                              get_band_lims_gpoint    (spectral_desc))
+      err_message = this%init(spectral_desc%get_band_lims_wavenumber(), &
+                              spectral_desc%get_band_lims_gpoint())
     end if
   end function init_base_from_copy
   !-------------------------------------------------------------------------------------------------
@@ -379,8 +385,8 @@ contains
 
     err_message = ""
     if(cls%ty_optical_props%is_initialized()) call cls%ty_optical_props%finalize()
-    err_message = cls%ty_optical_props%init(get_band_lims_wavenumber(spectral_desc), &
-                                            get_band_lims_gpoint    (spectral_desc), name)
+    err_message = cls%ty_optical_props%init(spectral_desc%get_band_lims_wavenumber(), &
+                                             spectral_desc%get_band_lims_gpoint(), name)
     if(err_message /= "") return
     err_message = alloc_1scl(cls, ncol, nlay)
   end function copy_and_alloc_1scl
@@ -394,8 +400,8 @@ contains
 
     err_message = ""
     if(cls%ty_optical_props%is_initialized()) call cls%ty_optical_props%finalize()
-    err_message = cls%ty_optical_props%init(get_band_lims_wavenumber(spectral_desc), &
-                                            get_band_lims_gpoint    (spectral_desc), name)
+    err_message = cls%ty_optical_props%init(spectral_desc%get_band_lims_wavenumber(), &
+                                             spectral_desc%get_band_lims_gpoint(), name)
     if(err_message /= "") return
     err_message = alloc_2str(cls, ncol, nlay)
   end function copy_and_alloc_2str
@@ -409,8 +415,8 @@ contains
 
     err_message = ""
     if(cls%ty_optical_props%is_initialized()) call cls%ty_optical_props%finalize()
-    err_message = cls%ty_optical_props%init(get_band_lims_wavenumber(spectral_desc), &
-                                            get_band_lims_gpoint    (spectral_desc), name)
+    err_message = cls%ty_optical_props%init(spectral_desc%get_band_lims_wavenumber(), &
+                                             spectral_desc%get_band_lims_gpoint(), name)
     if(err_message /= "") return
     err_message = alloc_nstr(cls, nmom, ncol, nlay)
   end function copy_and_alloc_nstr
@@ -742,14 +748,14 @@ contains
     integer :: ncol, nlay, ngpt, nmom
     ! -----
     err_message = ""
-    if(.not. bands_are_equal(op_in,op_io)) then
+    if(.not. op_in%bands_are_equal(op_io)) then
       err_message = "ty_optical_props%increment: optical properties objects have different band structures"
       return
     end if
     ncol = get_ncol(op_io)
     nlay = get_nlay(op_io)
     ngpt = op_io%get_ngpt()
-    if (gpoints_are_equal(op_in,op_io)) then
+    if(op_in%gpoints_are_equal(op_io)) then
       !
       ! Increment by gpoint
       !   (or by band if both op_in and op_io are defined that way)
@@ -823,17 +829,17 @@ contains
               call inc_1scalar_by_1scalar_bybnd(ncol, nlay, ngpt, &
                                                 op_io%tau,          &
                                                 op_in%tau,          &
-                                                op_io%get_nband(), get_band_lims_gpoint(op_io))
+                                                op_io%get_nband(), op_io%get_band_lims_gpoint())
             class is (ty_optical_props_2str)
               call inc_1scalar_by_2stream_bybnd(ncol, nlay, ngpt, &
                                                 op_io%tau,          &
                                                 op_in%tau, op_in%ssa, &
-                                                op_io%get_nband(), get_band_lims_gpoint(op_io))
+                                                op_io%get_nband(), op_io%get_band_lims_gpoint())
             class is (ty_optical_props_nstr)
               call inc_1scalar_by_nstream_bybnd(ncol, nlay, ngpt, &
                                                 op_io%tau,          &
                                                 op_in%tau, op_in%ssa, &
-                                                op_io%get_nband(), get_band_lims_gpoint(op_io))
+                                                op_io%get_nband(), op_io%get_band_lims_gpoint())
           end select
 
         class is (ty_optical_props_2str)
@@ -842,17 +848,17 @@ contains
               call inc_2stream_by_1scalar_bybnd(ncol, nlay, ngpt, &
                                                 op_io%tau, op_io%ssa, &
                                                 op_in%tau,          &
-                                                op_io%get_nband(), get_band_lims_gpoint(op_io))
+                                                op_io%get_nband(), op_io%get_band_lims_gpoint())
             class is (ty_optical_props_2str)
               call inc_2stream_by_2stream_bybnd(ncol, nlay, ngpt,        &
                                                 op_io%tau, op_io%ssa, op_io%g, &
                                                 op_in%tau, op_in%ssa, op_in%g, &
-                                                op_io%get_nband(), get_band_lims_gpoint(op_io))
+                                                op_io%get_nband(), op_io%get_band_lims_gpoint())
             class is (ty_optical_props_nstr)
               call inc_2stream_by_nstream_bybnd(ncol, nlay, ngpt, get_nmom(op_in), &
                                                 op_io%tau, op_io%ssa, op_io%g, &
                                                 op_in%tau, op_in%ssa, op_in%p, &
-                                                op_io%get_nband(), get_band_lims_gpoint(op_io))
+                                                op_io%get_nband(), op_io%get_band_lims_gpoint())
           end select
 
         class is (ty_optical_props_nstr)
@@ -861,17 +867,17 @@ contains
               call inc_nstream_by_1scalar_bybnd(ncol, nlay, ngpt, &
                                                 op_io%tau, op_io%ssa, &
                                                 op_in%tau,          &
-                                                op_io%get_nband(), get_band_lims_gpoint(op_io))
+                                                op_io%get_nband(), op_io%get_band_lims_gpoint())
             class is (ty_optical_props_2str)
               call inc_nstream_by_2stream_bybnd(ncol, nlay, ngpt, get_nmom(op_io), &
                                                 op_io%tau, op_io%ssa, op_io%p, &
                                                 op_in%tau, op_in%ssa, op_in%g, &
-                                                op_io%get_nband(), get_band_lims_gpoint(op_io))
+                                                op_io%get_nband(), op_io%get_band_lims_gpoint())
             class is (ty_optical_props_nstr)
               call inc_nstream_by_nstream_bybnd(ncol, nlay, ngpt, get_nmom(op_io), get_nmom(op_in), &
                                                 op_io%tau, op_io%ssa, op_io%p, &
                                                 op_in%tau, op_in%ssa, op_in%p, &
-                                                op_io%get_nband(), get_band_lims_gpoint(op_io))
+                                                op_io%get_nband(), op_io%get_band_lims_gpoint())
           end select
       end select
     end if
@@ -954,12 +960,12 @@ contains
   ! The first and last g-point of all bands at once
   ! dimension (2, nbands)
   !
-  pure function get_band_lims_gpoint(cls)
-    class(ty_optical_props), intent(in) :: cls
-    integer, dimension(size(cls%band2gpt,dim=1), size(cls%band2gpt,dim=2)) &
+  pure function get_band_lims_gpoint(this)
+    class(ty_optical_props), intent(in) :: this
+    integer, dimension(size(this%band2gpt,dim=1), size(this%band2gpt,dim=2)) &
                                         :: get_band_lims_gpoint
 
-    get_band_lims_gpoint = cls%band2gpt
+    get_band_lims_gpoint = this%band2gpt
   end function get_band_lims_gpoint
   !--------------------------------------------------------------------------------------------------------------------
   !
@@ -981,13 +987,13 @@ contains
   ! Lower and upper wavenumber of all bands
   ! (upper and lower wavenumber by band) = band_lims_wvn(2,band)
   !
-  pure function get_band_lims_wavenumber(cls)
-    class(ty_optical_props), intent(in) :: cls
-    real(wp), dimension(size(cls%band_lims_wvn,1), size(cls%band_lims_wvn,2)) &
+  pure function get_band_lims_wavenumber(this)
+    class(ty_optical_props), intent(in) :: this
+    real(wp), dimension(size(this%band_lims_wvn,1), size(this%band_lims_wvn,2)) &
                                         :: get_band_lims_wavenumber
 
-    if(cls%is_initialized()) then
-      get_band_lims_wavenumber(:,:) = cls%band_lims_wvn(:,:)
+    if(this%is_initialized()) then
+      get_band_lims_wavenumber(:,:) = this%band_lims_wvn(:,:)
     else
       get_band_lims_wavenumber(:,:) = 0._wp
     end if
@@ -996,13 +1002,13 @@ contains
   !
   ! Lower and upper wavelength of all bands
   !
-  pure function get_band_lims_wavelength(cls)
-    class(ty_optical_props), intent(in) :: cls
-    real(wp), dimension(size(cls%band_lims_wvn,1), size(cls%band_lims_wvn,2)) &
+  pure function get_band_lims_wavelength(this)
+    class(ty_optical_props), intent(in) :: this
+    real(wp), dimension(size(this%band_lims_wvn,1), size(this%band_lims_wvn,2)) &
                                         :: get_band_lims_wavelength
 
-    if(cls%is_initialized()) then
-      get_band_lims_wavelength(:,:) = 1._wp/cls%band_lims_wvn(:,:)
+    if(this%is_initialized()) then
+      get_band_lims_wavelength(:,:) = 1._wp/this%band_lims_wvn(:,:)
     else
       get_band_lims_wavelength(:,:) = 0._wp
     end if
@@ -1041,46 +1047,46 @@ contains
   !
   ! Expand an array of dimension arr_in(nband) to dimension arr_out(ngpt)
   !
-  pure function expand(cls, arr_in) result(arr_out)
-    class(ty_optical_props), intent(in) :: cls
+  pure function expand(this, arr_in) result(arr_out)
+    class(ty_optical_props), intent(in) :: this
     real(wp), dimension(:),  intent(in) :: arr_in ! (nband)
-    real(wp), dimension(size(cls%gpt2band)) :: arr_out
+    real(wp), dimension(size(this%gpt2band)) :: arr_out
 
     integer :: iband
 
-    do iband=1,cls%get_nband()
-      arr_out(cls%band2gpt(1,iband):cls%band2gpt(2,iband)) = arr_in(iband)
+    do iband=1,this%get_nband()
+      arr_out(this%band2gpt(1,iband):this%band2gpt(2,iband)) = arr_in(iband)
     end do
   end function expand
   !--------------------------------------------------------------------------------------------------------------------
   !
   ! Are the bands of two objects the same? (same number, same wavelength limits)
   !
-  pure function bands_are_equal(cls, that)
-    class(ty_optical_props), intent(in) :: cls, that
+  pure function bands_are_equal(this, that)
+    class(ty_optical_props), intent(in) :: this, that
     logical                             :: bands_are_equal
 
-    bands_are_equal = cls%get_nband() == that%get_nband() .and. &
-                      cls%get_nband() > 0
+    bands_are_equal = this%get_nband() == that%get_nband() .and. &
+                      this%get_nband() > 0
     if(.not. bands_are_equal) return
     bands_are_equal = &
-      all(abs(get_band_lims_wavenumber(cls) - get_band_lims_wavenumber(that)) < &
-          5._wp * spacing(get_band_lims_wavenumber(cls)))
+      all(abs(this%get_band_lims_wavenumber() - that%get_band_lims_wavenumber()) < &
+          5._wp * spacing(this%get_band_lims_wavenumber()))
   end function bands_are_equal
   !--------------------------------------------------------------------------------------------------------------------
   !
   ! Is the g-point structure of two objects the same?
   !   (same bands, same number of g-points, same mapping between bands and g-points)
   !
-  function gpoints_are_equal(cls, that)
-    class(ty_optical_props), intent(in) :: cls, that
+  pure function gpoints_are_equal(this, that)
+    class(ty_optical_props), intent(in) :: this, that
     logical                             :: gpoints_are_equal
 
-    gpoints_are_equal = bands_are_equal(cls,that) .and. &
-                        cls%get_ngpt() == that%get_ngpt()
+    gpoints_are_equal = this%bands_are_equal(that) .and. &
+                        this%get_ngpt() == that%get_ngpt()
     if(.not. gpoints_are_equal) return
     gpoints_are_equal = &
-      all(cls%get_gpoint_bands() == that%get_gpoint_bands())
+      all(this%get_gpoint_bands() == that%get_gpoint_bands())
   end function gpoints_are_equal
   ! -----------------------------------------------------------------------------------------------
   !
