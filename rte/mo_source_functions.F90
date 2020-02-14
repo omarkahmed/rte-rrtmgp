@@ -33,14 +33,10 @@ module mo_source_functions
                                                                   ! frequency to g-space mapping
     real(wp), allocatable, dimension(:,:  ) :: sfc_source
   contains
-    generic,   public :: alloc => alloc_lw, copy_and_alloc_lw
-    procedure, private:: alloc_lw
-    procedure, private:: copy_and_alloc_lw
     procedure, public :: is_allocated => is_allocated_lw
     procedure, public :: finalize => finalize_lw
     procedure, public :: get_subset => get_subset_range_lw
     procedure, public :: get_nlay => get_nlay_lw
-    ! validate?
   end type ty_source_func_lw
   ! -------------------------------------------------------------------------------------------------
   !
@@ -49,19 +45,19 @@ module mo_source_functions
   type, extends(ty_optical_props), public :: ty_source_func_sw
     real(wp), allocatable, dimension(:,:  ) :: toa_source
   contains
-    generic,   public :: alloc => alloc_sw, copy_and_alloc_sw
-    procedure, private:: alloc_sw
-    procedure, private:: copy_and_alloc_sw
     procedure, public :: is_allocated => is_allocated_sw
     procedure, public :: finalize => finalize_sw
     procedure, public :: get_subset => get_subset_range_sw
-    ! validate?
   end type ty_source_func_sw
 
 
   interface get_ncol
     module procedure :: get_ncol_lw, get_ncol_sw
   end interface
+
+  interface alloc
+    module procedure :: alloc_lw, copy_and_alloc_lw, alloc_sw, copy_and_alloc_sw
+  end interface alloc
 
 
   ! -------------------------------------------------------------------------------------------------
@@ -83,32 +79,32 @@ contains
                       allocated(this%sfc_source)
   end function is_allocated_lw
   ! --------------------------------------------------------------
-  function alloc_lw(this, ncol, nlay) result(err_message)
-    class(ty_source_func_lw),    intent(inout) :: this
+  function alloc_lw(cls, ncol, nlay) result(err_message)
+    class(ty_source_func_lw),    intent(inout) :: cls
     integer,                     intent(in   ) :: ncol, nlay
     character(len = 128)                       :: err_message
 
     integer :: ngpt
 
     err_message = ""
-    if(.not. is_initialized(this)) &
+    if(.not. is_initialized(cls)) &
       err_message = "source_func_lw%alloc: not initialized so can't allocate"
     if(any([ncol, nlay] <= 0)) &
       err_message = "source_func_lw%alloc: must provide positive extents for ncol, nlay"
     if (err_message /= "") return
 
-    if(allocated(this%sfc_source)) deallocate(this%sfc_source)
-    if(allocated(this%lay_source)) deallocate(this%lay_source)
-    if(allocated(this%lev_source_inc)) deallocate(this%lev_source_inc)
-    if(allocated(this%lev_source_dec)) deallocate(this%lev_source_dec)
+    if(allocated(cls%sfc_source)) deallocate(cls%sfc_source)
+    if(allocated(cls%lay_source)) deallocate(cls%lay_source)
+    if(allocated(cls%lev_source_inc)) deallocate(cls%lev_source_inc)
+    if(allocated(cls%lev_source_dec)) deallocate(cls%lev_source_dec)
 
-    ngpt = get_ngpt(this)
-    allocate(this%sfc_source    (ncol,     ngpt), this%lay_source    (ncol,nlay,ngpt), &
-             this%lev_source_inc(ncol,nlay,ngpt), this%lev_source_dec(ncol,nlay,ngpt))
+    ngpt = get_ngpt(cls)
+    allocate(cls%sfc_source    (ncol,     ngpt), cls%lay_source    (ncol,nlay,ngpt), &
+             cls%lev_source_inc(ncol,nlay,ngpt), cls%lev_source_dec(ncol,nlay,ngpt))
   end function alloc_lw
   ! --------------------------------------------------------------
-  function copy_and_alloc_lw(this, ncol, nlay, spectral_desc) result(err_message)
-    class(ty_source_func_lw),    intent(inout) :: this
+  function copy_and_alloc_lw(cls, ncol, nlay, spectral_desc) result(err_message)
+    class(ty_source_func_lw),    intent(inout) :: cls
     integer,                     intent(in   ) :: ncol, nlay
     class(ty_optical_props ),    intent(in   ) :: spectral_desc
     character(len = 128)                       :: err_message
@@ -118,10 +114,10 @@ contains
       err_message = "source_func_lw%alloc: spectral_desc not initialized"
       return
     end if
-    call finalize(this)
-    err_message = init(this,spectral_desc)
+    call finalize(cls)
+    err_message = init(cls,spectral_desc)
     if (err_message /= "") return
-    err_message = this%alloc(ncol,nlay)
+    err_message = alloc(cls,ncol,nlay)
   end function copy_and_alloc_lw
   ! ------------------------------------------------------------------------------------------
   !
@@ -136,25 +132,25 @@ contains
                       allocated(this%toa_source)
   end function is_allocated_sw
   ! --------------------------------------------------------------
-  function alloc_sw(this, ncol) result(err_message)
-    class(ty_source_func_sw),    intent(inout) :: this
+  function alloc_sw(cls, ncol) result(err_message)
+    class(ty_source_func_sw),    intent(inout) :: cls
     integer,                     intent(in   ) :: ncol
     character(len = 128)                       :: err_message
 
     err_message = ""
-    if(.not. is_initialized(this)) &
+    if(.not. is_initialized(cls)) &
       err_message = "source_func_sw%alloc: not initialized so can't allocate"
     if(ncol <= 0) &
       err_message = "source_func_sw%alloc: must provide positive extents for ncol"
     if (err_message /= "") return
 
-    if(allocated(this%toa_source)) deallocate(this%toa_source)
+    if(allocated(cls%toa_source)) deallocate(cls%toa_source)
 
-    allocate(this%toa_source(ncol, get_ngpt(this)))
+    allocate(cls%toa_source(ncol, get_ngpt(cls)))
   end function alloc_sw
   ! --------------------------------------------------------------
-  function copy_and_alloc_sw(this, ncol, spectral_desc) result(err_message)
-    class(ty_source_func_sw),    intent(inout) :: this
+  function copy_and_alloc_sw(cls, ncol, spectral_desc) result(err_message)
+    class(ty_source_func_sw),    intent(inout) :: cls
     integer,                     intent(in   ) :: ncol
     class(ty_optical_props ),    intent(in   ) :: spectral_desc
     character(len = 128)                       :: err_message
@@ -164,9 +160,9 @@ contains
       err_message = "source_func_sw%alloc: spectral_desc not initialized"
       return
     end if
-    err_message = init(this,spectral_desc)
+    err_message = init(cls,spectral_desc)
     if(err_message /= "") return
-    err_message = this%alloc(ncol)
+    err_message = alloc(cls,ncol)
   end function copy_and_alloc_sw
   ! ------------------------------------------------------------------------------------------
   !
@@ -250,7 +246,7 @@ contains
     ! Could check to see if subset is correctly sized, has consistent spectral discretization
     !
     if(subset%is_allocated()) call finalize(subset)
-    err_message = subset%alloc(n, full%get_nlay(), full)
+    err_message = alloc(subset, n, full%get_nlay(), full)
     if(err_message /= "") return
     subset%sfc_source    (1:n,  :) = full%sfc_source    (start:start+n-1,  :)
     subset%lay_source    (1:n,:,:) = full%lay_source    (start:start+n-1,:,:)
@@ -278,7 +274,7 @@ contains
     !
     if(subset%is_allocated()) call finalize(subset)
     ! Seems like I should be able to call "alloc" generically but the compilers are complaining
-    err_message = subset%copy_and_alloc_sw(n, full)
+    err_message = alloc(subset, n, full)
 
     subset%toa_source(1:n,  :) = full%toa_source(start:start+n-1,  :)
   end function get_subset_range_sw

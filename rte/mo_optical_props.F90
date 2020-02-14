@@ -872,13 +872,13 @@ contains
   !  Routines for array classes: problem sizes
   !
   ! -----------------------------------------------------------------------------------------------
-  pure function get_arry_extent(this, dim)
-    class(ty_optical_props_arry), intent(in   ) :: this
+  pure function get_arry_extent(cls, dim)
+    class(ty_optical_props_arry), intent(in   ) :: cls
     integer,                      intent(in   ) :: dim
     integer                                     :: get_arry_extent
 
-    if(allocated(this%tau)) then
-      get_arry_extent = size(this%tau, dim)
+    if(allocated(cls%tau)) then
+      get_arry_extent = size(cls%tau, dim)
     else
       get_arry_extent = 0
     end if
