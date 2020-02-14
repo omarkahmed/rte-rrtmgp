@@ -32,14 +32,11 @@ module mo_fluxes_byband
                                            bnd_flux_dn => NULL()    ! (ncol, nlev, nband)
     real(wp), dimension(:,:,:), pointer :: bnd_flux_net => NULL()   ! Net (down - up)
     real(wp), dimension(:,:,:), pointer :: bnd_flux_dn_dir => NULL() ! Direct flux down
-  contains
-    procedure :: reduce => reduce_byband
-    procedure :: are_desired => are_desired_byband
   end type ty_fluxes_byband
 contains
   ! --------------------------------------------------------------------------------------
-  function reduce_byband(this, gpt_flux_up, gpt_flux_dn, spectral_disc, top_at_1, gpt_flux_dn_dir) result(error_msg)
-    class(ty_fluxes_byband),           intent(inout) :: this
+  function reduce_byband(cls, gpt_flux_up, gpt_flux_dn, spectral_disc, top_at_1, gpt_flux_dn_dir) result(error_msg)
+    class(ty_fluxes_byband),           intent(inout) :: cls
     real(kind=wp), dimension(:,:,:),   intent(in   ) :: gpt_flux_up ! Fluxes by gpoint [W/m2](ncol, nlay+1, ngpt)
     real(kind=wp), dimension(:,:,:),   intent(in   ) :: gpt_flux_dn ! Fluxes by gpoint [W/m2](ncol, nlay+1, ngpt)
     class(ty_optical_props),           intent(in   ) :: spectral_disc  !< derived type with spectral information
@@ -60,7 +57,7 @@ contains
     ! Compute broadband fluxes
     !   This also checks that input arrays are consistently sized
     !
-    error_msg = this%ty_fluxes_broadband%reduce(gpt_flux_up, gpt_flux_dn, spectral_disc, top_at_1, gpt_flux_dn_dir)
+    error_msg = cls%ty_fluxes_broadband%reduce(gpt_flux_up, gpt_flux_dn, spectral_disc, top_at_1, gpt_flux_dn_dir)
     if(error_msg /= '') return
 
     if(size(gpt_flux_up, 3) /= ngpt) then
@@ -69,33 +66,33 @@ contains
     end if
 
     ! Check sizes of output arrays
-    if(associated(this%bnd_flux_up)) then
-      if(.not. extents_are(this%bnd_flux_up, ncol, nlev, nbnd)) then
+    if(associated(cls%bnd_flux_up)) then
+      if(.not. extents_are(cls%bnd_flux_up, ncol, nlev, nbnd)) then
         error_msg = "reduce: bnd_flux_up array incorrectly sized (can't compute net flux either)"
         return
       end if
     end if
-    if(associated(this%bnd_flux_dn)) then
-      if(.not. extents_are(this%bnd_flux_dn, ncol, nlev, nbnd)) then
+    if(associated(cls%bnd_flux_dn)) then
+      if(.not. extents_are(cls%bnd_flux_dn, ncol, nlev, nbnd)) then
         error_msg = "reduce: bnd_flux_dn array incorrectly sized (can't compute net flux either)"
         return
       end if
     end if
-    if(associated(this%bnd_flux_dn_dir)) then
-      if(.not. extents_are(this%bnd_flux_dn_dir, ncol, nlev, nbnd)) then
+    if(associated(cls%bnd_flux_dn_dir)) then
+      if(.not. extents_are(cls%bnd_flux_dn_dir, ncol, nlev, nbnd)) then
         error_msg = "reduce: bnd_flux_dn_dir array incorrectly sized"
         return
       end if
     end if
-    if(associated(this%bnd_flux_net)) then
-      if(.not. extents_are(this%bnd_flux_net, ncol, nlev, nbnd)) then
+    if(associated(cls%bnd_flux_net)) then
+      if(.not. extents_are(cls%bnd_flux_net, ncol, nlev, nbnd)) then
         error_msg = "reduce: bnd_flux_net array incorrectly sized (can't compute net flux either)"
         return
       end if
     end if
     !
     ! Self-consistency -- shouldn't be asking for direct beam flux if it isn't supplied
-    if(associated(this%bnd_flux_dn_dir) .and. .not. present(gpt_flux_dn_dir)) then
+    if(associated(cls%bnd_flux_dn_dir) .and. .not. present(gpt_flux_dn_dir)) then
       error_msg = "reduce: requesting bnd_flux_dn_dir but direct flux hasn't been supplied"
       return
     end if
@@ -104,31 +101,31 @@ contains
     !$acc enter data copyin(band_lims)
     ! Band-by-band fluxes
     ! Up flux
-    if(associated(this%bnd_flux_up)) then
-      call sum_byband(ncol, nlev, ngpt, nbnd, band_lims, gpt_flux_up,     this%bnd_flux_up    )
+    if(associated(cls%bnd_flux_up)) then
+      call sum_byband(ncol, nlev, ngpt, nbnd, band_lims, gpt_flux_up,     cls%bnd_flux_up    )
     end if
 
     ! -------
     ! Down flux
-    if(associated(this%bnd_flux_dn)) then
-      call sum_byband(ncol, nlev, ngpt, nbnd, band_lims, gpt_flux_dn,     this%bnd_flux_dn    )
+    if(associated(cls%bnd_flux_dn)) then
+      call sum_byband(ncol, nlev, ngpt, nbnd, band_lims, gpt_flux_dn,     cls%bnd_flux_dn    )
     end if
 
-    if(associated(this%bnd_flux_dn_dir)) then
-      call sum_byband(ncol, nlev, ngpt, nbnd, band_lims, gpt_flux_dn_dir, this%bnd_flux_dn_dir)
+    if(associated(cls%bnd_flux_dn_dir)) then
+      call sum_byband(ncol, nlev, ngpt, nbnd, band_lims, gpt_flux_dn_dir, cls%bnd_flux_dn_dir)
     end if
 
     ! -------
     ! Net flux
     !
-    if(associated(this%bnd_flux_net)) then
+    if(associated(cls%bnd_flux_net)) then
       !
       !  Reuse down and up results if possible
       !
-      if(associated(this%bnd_flux_dn) .and. associated(this%bnd_flux_up)) then
-        call net_byband(ncol, nlev,       nbnd,                             this%bnd_flux_dn, this%bnd_flux_up, this%bnd_flux_net)
+      if(associated(cls%bnd_flux_dn) .and. associated(cls%bnd_flux_up)) then
+        call net_byband(ncol, nlev,       nbnd,                             cls%bnd_flux_dn, cls%bnd_flux_up, cls%bnd_flux_net)
       else
-        call net_byband(ncol, nlev, ngpt, nbnd, band_lims, gpt_flux_dn, gpt_flux_up, this%bnd_flux_net)
+        call net_byband(ncol, nlev, ngpt, nbnd, band_lims, gpt_flux_dn, gpt_flux_up, cls%bnd_flux_net)
       end if
     end if
     !$acc exit data delete(band_lims)
@@ -137,14 +134,14 @@ contains
   ! Are any fluxes desired from this set of g-point fluxes? We can tell because memory will
   !   be allocated for output
   !
-  function are_desired_byband(this)
-    class(ty_fluxes_byband), intent(in   ) :: this
+  function are_desired_byband(cls)
+    class(ty_fluxes_byband), intent(in   ) :: cls
     logical                                :: are_desired_byband
 
-    are_desired_byband = any([associated(this%bnd_flux_up),     &
-                              associated(this%bnd_flux_dn),     &
-                              associated(this%bnd_flux_dn_dir), &
-                              associated(this%bnd_flux_net),    &
+    are_desired_byband = any([associated(cls%bnd_flux_up),     &
+                              associated(cls%bnd_flux_dn),     &
+                              associated(cls%bnd_flux_dn_dir), &
+                              associated(cls%bnd_flux_net),    &
                               this%ty_fluxes_broadband%are_desired()])
   end function are_desired_byband
 

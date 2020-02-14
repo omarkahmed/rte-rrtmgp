@@ -22,7 +22,7 @@ module mo_load_coefficients
   !
   use mo_rte_kind,           only: wp, wl
   use mo_gas_concentrations, only: ty_gas_concs
-  use mo_gas_optics_rrtmgp,  only: ty_gas_optics_rrtmgp
+  use mo_gas_optics_rrtmgp,  only: ty_gas_optics_rrtmgp, load
   ! --------------------------------------------------
   use mo_simple_netcdf, only: read_field, read_char_vec, read_logical_vec, var_exists, get_dim_size
   use netcdf
@@ -177,7 +177,7 @@ contains
       !
       totplnk     = read_field(ncid, 'totplnk', ninternalSourcetemps, nbnds)
       planck_frac = read_field(ncid, 'plank_fraction', ngpts, nmixingfracs, npress+1, ntemps)
-      call stop_on_err(kdist%load(available_gases, &
+      call stop_on_err(load(kdist,available_gases, &
                                   gas_names,   &
                                   key_species, &
                                   band2gpt,    &
@@ -206,7 +206,7 @@ contains
       ! Solar source doesn't have an dependencies yet
       !
       solar_src = read_field(ncid, 'solar_source', ngpts)
-      call stop_on_err(kdist%load(available_gases, &
+      call stop_on_err(load(kdist,available_gases, &
                                   gas_names,   &
                                   key_species, &
                                   band2gpt,    &

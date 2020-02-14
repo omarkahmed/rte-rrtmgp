@@ -38,9 +38,6 @@ module mo_compute_bc
   !
   type, extends(ty_fluxes) :: ty_fluxes_1lev
     real(wp), dimension(:,:), pointer :: gpt_flux_dn => NULL()    ! (ncol, nlev, nband)
-  contains
-    procedure :: reduce => reduce_1lev
-    procedure :: are_desired => are_desired_1lev
   end type ty_fluxes_1lev
 contains
   !--------------------------------------------------------------------------------------------------------------------
@@ -198,8 +195,8 @@ contains
     endif
   end function
   ! --------------------------------------------------------------------------------------
-  function reduce_1lev(this, gpt_flux_up, gpt_flux_dn, spectral_disc, top_at_1, gpt_flux_dn_dir) result(error_msg)
-    class(ty_fluxes_1lev),             intent(inout) :: this
+  function reduce_1lev(cls, gpt_flux_up, gpt_flux_dn, spectral_disc, top_at_1, gpt_flux_dn_dir) result(error_msg)
+    class(ty_fluxes_1lev),             intent(inout) :: cls
     real(kind=wp), dimension(:,:,:),   intent(in   ) :: gpt_flux_up ! Fluxes by gpoint [W/m2](ncol, nlay+1, ngpt)
     real(kind=wp), dimension(:,:,:),   intent(in   ) :: gpt_flux_dn ! Fluxes by gpoint [W/m2](ncol, nlay+1, ngpt)
     class(ty_optical_props),           intent(in   ) :: spectral_disc  !< derived type with spectral information
@@ -222,15 +219,15 @@ contains
    !
    ! Return the g-point flux at the bottomw of a two-layer domain
    !
-    if(associated(this%gpt_flux_dn)) then
-      if(any([size(this%gpt_flux_dn, 1) /= ncol,  &
-              size(this%gpt_flux_dn, 2) /= ngpt])) then
+    if(associated(cls%gpt_flux_dn)) then
+      if(any([size(cls%gpt_flux_dn, 1) /= ncol,  &
+              size(cls%gpt_flux_dn, 2) /= ngpt])) then
         error_msg = "reduce: gpt_flux_dn array incorrectly sized"
       else
         if(present(gpt_flux_dn_dir)) then
-          this%gpt_flux_dn(:,:) = gpt_flux_dn_dir(:,bottom_lev,:)
+          cls%gpt_flux_dn(:,:) = gpt_flux_dn_dir(:,bottom_lev,:)
         else
-          this%gpt_flux_dn(:,:) = gpt_flux_dn    (:,bottom_lev,:)
+          cls%gpt_flux_dn(:,:) = gpt_flux_dn    (:,bottom_lev,:)
         end if
       end if
     end if
@@ -239,10 +236,10 @@ contains
   ! Are any fluxes desired from this set of g-point fluxes? We can tell because memory will
   !   be allocated for output
   !
-  function are_desired_1lev(this)
-    class(ty_fluxes_1lev), intent(in   ) :: this
+  function are_desired_1lev(cls)
+    class(ty_fluxes_1lev), intent(in   ) :: cls
     logical                              :: are_desired_1lev
 
-    are_desired_1lev = associated(this%gpt_flux_dn)
+    are_desired_1lev = associated(cls%gpt_flux_dn)
   end function are_desired_1lev
 end module mo_compute_bc
