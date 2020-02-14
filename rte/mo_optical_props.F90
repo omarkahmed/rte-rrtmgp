@@ -83,6 +83,8 @@ module mo_optical_props
     procedure, public  :: bands_are_equal
     procedure, public  :: gpoints_are_equal
     procedure, public  :: expand
+    procedure, public  :: set_name
+    procedure, public  :: get_name
   end type
   !----------------------------------------------------------------------------------------
   !
@@ -492,8 +494,8 @@ contains
     end if
     if(any_vals_less_than(cls%tau, 0._wp)) &
       err_message = "validate: tau values out of range"
-    if(len_trim(err_message) > 0 .and. len_trim(get_name(cls)) > 0) &
-      err_message = trim(get_name(cls)) // ': ' // trim(err_message)
+    if(len_trim(err_message) > 0 .and. len_trim(cls%get_name()) > 0) &
+      err_message = trim(cls%get_name()) // ': ' // trim(err_message)
 
   end function validate_1scalar
   ! ------------------------------------------------------------------------------------------
@@ -527,8 +529,8 @@ contains
     if(any_vals_outside  (cls%g  , -1._wp, 1._wp)) &
       err_message = "validate: g values out of range"
 
-    if(len_trim(err_message) > 0 .and. len_trim(get_name(cls)) > 0) &
-      err_message = trim(get_name(cls)) // ': ' // trim(err_message)
+    if(len_trim(err_message) > 0 .and. len_trim(cls%get_name()) > 0) &
+      err_message = trim(cls%get_name()) // ': ' // trim(err_message)
 
   end function validate_2stream
 
@@ -565,8 +567,8 @@ contains
                                                                            -1._wp, 1._wp)) &
       err_message = "validate: p(1,:,:,:)  = g values out of range"
 
-    if(len_trim(err_message) > 0 .and. len_trim(get_name(cls)) > 0) &
-        err_message = trim(get_name(cls)) // ': ' // trim(err_message)
+    if(len_trim(err_message) > 0 .and. len_trim(cls%get_name()) > 0) &
+        err_message = trim(cls%get_name()) // ': ' // trim(err_message)
   end function validate_nstream
 
 
@@ -1093,18 +1095,18 @@ contains
   ! --- Setting/getting the name
   !
   ! -----------------------------------------------------------------------------------------------
-  subroutine set_name(cls, name)
-    class(ty_optical_props),  intent(inout) :: cls
+  subroutine set_name(this, name)
+    class(ty_optical_props),  intent(inout) :: this
     character(len=*),         intent(in   ) :: name
 
-    cls%name = trim(name)
+    this%name = trim(name)
   end subroutine set_name
   ! --------------------------------------------------------
-  function get_name(cls)
-    class(ty_optical_props),  intent(in   ) :: cls
+  function get_name(this)
+    class(ty_optical_props),  intent(in   ) :: this
     character(len=name_len)                 :: get_name
 
-      get_name = trim(cls%name)
+      get_name = trim(this%name)
   end function get_name
   ! ------------------------------------------------------------------------------------------
 
