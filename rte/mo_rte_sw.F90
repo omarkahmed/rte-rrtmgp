@@ -33,7 +33,7 @@ module mo_rte_sw
   use mo_optical_props, only: ty_optical_props, &
                               ty_optical_props_arry, ty_optical_props_1scl, ty_optical_props_2str, ty_optical_props_nstr, &
                               validate, get_nlay, get_ncol, get_name, get_band_lims_gpoint, get_nband, get_ngpt
-  use mo_fluxes,        only: ty_fluxes, reduce, ty_fluxes_broadband, are_desired
+  use mo_fluxes,        only: ty_fluxes
   use mo_rte_solver_kernels, &
                         only: apply_BC, sw_solver_noscat, sw_solver_2stream
   implicit none
@@ -79,13 +79,10 @@ contains
     ! Error checking -- consistency of sizes and validity of values
     !
     ! --------------------------------
-    select type(fluxes)
-    type is(ty_fluxes_broadband)
-      if(.not. are_desired(fluxes)) then
-        error_msg = "rte_sw: no space allocated for fluxes"
-        return
-      end if
-    end select
+    if(.not. fluxes%are_desired()) then
+      error_msg = "rte_sw: no space allocated for fluxes"
+      return
+    end if
 
     !
     ! Sizes and values of input arrays
@@ -200,10 +197,7 @@ contains
     !
     ! ...and reduce spectral fluxes to desired output quantities
     !
-    select type(fluxes)
-    type is (ty_fluxes_broadband)
-    error_msg = reduce(fluxes,gpt_flux_up, gpt_flux_dn, atmos, top_at_1, gpt_flux_dir)
-    end select
+    error_msg = fluxes%reduce(gpt_flux_up, gpt_flux_dn, atmos, top_at_1, gpt_flux_dir)
     !$acc exit data delete(mu0)
     !$acc exit data delete(gpt_flux_up, gpt_flux_dn, gpt_flux_dir)
   end function rte_sw
