@@ -35,8 +35,6 @@ module mo_source_functions
   contains
     procedure, public :: is_allocated => is_allocated_lw
     procedure, public :: finalize => finalize_lw
-    procedure, public :: get_subset => get_subset_range_lw
-    procedure, public :: get_nlay => get_nlay_lw
   end type ty_source_func_lw
   ! -------------------------------------------------------------------------------------------------
   !
@@ -47,9 +45,11 @@ module mo_source_functions
   contains
     procedure, public :: is_allocated => is_allocated_sw
     procedure, public :: finalize => finalize_sw
-    procedure, public :: get_subset => get_subset_range_sw
   end type ty_source_func_sw
 
+  interface get_subset
+    module procedure :: get_subset_range_sw, get_subset_range_lw
+  end interface
 
   interface get_ncol
     module procedure :: get_ncol_lw, get_ncol_sw
@@ -201,16 +201,16 @@ contains
     end if
   end function get_ncol_lw
   ! --------------------------------------------------------------
-  pure function get_nlay_lw(this)
-    class(ty_source_func_lw), intent(in) :: this
-    integer :: get_nlay_lw
+  pure function get_nlay(cls)
+    class(ty_source_func_lw), intent(in) :: cls
+    integer :: get_nlay
 
-    if(this%is_allocated()) then
-      get_nlay_lw = size(this%lay_source,2)
+    if(cls%is_allocated()) then
+      get_nlay = size(cls%lay_source,2)
     else
-      get_nlay_lw = 0
+      get_nlay = 0
     end if
-  end function get_nlay_lw
+  end function get_nlay
   ! --------------------------------------------------------------
   pure function get_ncol_sw(cls)
     class(ty_source_func_sw), intent(in) :: cls
@@ -246,7 +246,7 @@ contains
     ! Could check to see if subset is correctly sized, has consistent spectral discretization
     !
     if(subset%is_allocated()) call finalize(subset)
-    err_message = alloc(subset, n, full%get_nlay(), full)
+    err_message = alloc(subset, n, get_nlay(full), full)
     if(err_message /= "") return
     subset%sfc_source    (1:n,  :) = full%sfc_source    (start:start+n-1,  :)
     subset%lay_source    (1:n,:,:) = full%lay_source    (start:start+n-1,:,:)
