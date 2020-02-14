@@ -39,7 +39,7 @@ program rte_rrtmgp_clouds
   use mo_gas_optics_rrtmgp,  only: ty_gas_optics_rrtmgp
   use mo_cloud_optics,       only: ty_cloud_optics
   use mo_gas_concentrations, only: ty_gas_concs, init
-  use mo_source_functions,   only: ty_source_func_lw, alloc_src => alloc
+  use mo_source_functions,   only: ty_source_func_lw
   use mo_fluxes,             only: ty_fluxes_broadband
   use mo_rte_lw,             only: rte_lw
   use mo_rte_sw,             only: rte_sw
@@ -259,7 +259,7 @@ program rte_rrtmgp_clouds
   else
     ! lw_sorces is threadprivate
     !$omp parallel
-    call stop_on_err(alloc_src(lw_sources, ncol, nlay, k_dist))
+    call stop_on_err(lw_sources%alloc(ncol, nlay, k_dist))
     !$omp end parallel
 
     allocate(t_sfc(ncol), emis_sfc(nbnd, ncol))
