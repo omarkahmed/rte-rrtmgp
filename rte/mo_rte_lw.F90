@@ -38,7 +38,7 @@ module mo_rte_lw
   use mo_rte_util_array,only: any_vals_less_than, any_vals_outside, extents_are
   use mo_optical_props, only: ty_optical_props, &
                               ty_optical_props_arry, ty_optical_props_1scl, ty_optical_props_2str, ty_optical_props_nstr, &
-                              validate, get_nlay, get_ncol, get_band_lims_gpoint, get_nband, get_ngpt
+                              validate, get_nlay, get_ncol, get_band_lims_gpoint
   use mo_source_functions,   &
                         only: ty_source_func_lw
   use mo_fluxes,        only: ty_fluxes
@@ -108,8 +108,8 @@ contains
     ! --------------------------------
     ncol  = get_ncol(optical_props)
     nlay  = get_nlay(optical_props)
-    ngpt  = get_ngpt (optical_props)
-    nband = get_nband(optical_props)
+    ngpt  = optical_props%get_ngpt()
+    nband = optical_props%get_nband()
     error_msg = ""
 
     ! ------------------------------------------------------------------------------------
@@ -125,7 +125,7 @@ contains
     !
     ! Source functions
     !
-    if(any([sources%get_ncol(), sources%get_nlay(), get_ngpt(sources)]  /= [ncol, nlay, ngpt])) &
+    if(any([sources%get_ncol(), sources%get_nlay(), sources%get_ngpt()]  /= [ncol, nlay, ngpt])) &
       error_msg = "rte_lw: sources and optical properties inconsistently sized"
     ! Also need to validate
 
@@ -231,11 +231,11 @@ contains
     ! -------------
     integer :: ncol, nband, ngpt
     integer :: icol, iband, igpt
-    integer, dimension(2,get_nband(ops)) :: limits
+    integer, dimension(2,ops%get_nband()) :: limits
 
     ncol  = size(arr_in, 2)
-    nband = get_nband(ops)
-    ngpt  = get_ngpt (ops)
+    nband = ops%get_nband()
+    ngpt  = ops%get_ngpt()
     limits = get_band_lims_gpoint(ops)
     do iband = 1, nband
       do icol = 1, ncol
