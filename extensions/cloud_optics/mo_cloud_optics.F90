@@ -31,8 +31,10 @@ module mo_cloud_optics
   interface pade_eval
     module procedure pade_eval_nbnd, pade_eval_1
   end interface pade_eval
+  private
   ! -----------------------------------------------------------------------------------
   type, extends(ty_optical_props), public :: ty_cloud_optics
+    private
     !
     ! Ice surface roughness category - needed for Yang (2013) ice optics parameterization
     !
@@ -63,11 +65,21 @@ module mo_cloud_optics
     ! Particle size regimes for Pade formulations
     real(wp), dimension(:), allocatable :: pade_sizreg_extliq, pade_sizreg_ssaliq, pade_sizreg_asyliq  ! (nbound)
     real(wp), dimension(:), allocatable :: pade_sizreg_extice, pade_sizreg_ssaice, pade_sizreg_asyice  ! (nbound)
+    ! -----
+  contains
+    generic,   public :: load  => load_lut, load_pade
+    procedure, public :: finalize
+    procedure, public :: cloud_optics
+    procedure, public :: get_min_radius_liq
+    procedure, public :: get_min_radius_ice
+    procedure, public :: get_max_radius_liq
+    procedure, public :: get_max_radius_ice
+    procedure, public :: get_num_ice_roughness_types
+    procedure, public :: set_ice_roughness
+    ! Internal procedures
+    procedure, private :: load_lut
+    procedure, private :: load_pade
   end type ty_cloud_optics
-
-  interface load
-    module procedure :: load_lut, load_pade
-  end interface
 
 contains
   ! ------------------------------------------------------------------------------
@@ -76,12 +88,12 @@ contains
   !    lookup-tables and one for coefficients for Pade approximates
   !
   ! ------------------------------------------------------------------------------
-  function load_lut(cls, band_lims_wvn, &
+  function load_lut(this, band_lims_wvn, &
                     radliq_lwr, radliq_upr, radliq_fac, &
                     radice_lwr, radice_upr, radice_fac, &
                     lut_extliq, lut_ssaliq, lut_asyliq, &
                     lut_extice, lut_ssaice, lut_asyice) result(error_msg)
-    class(ty_cloud_optics),     intent(inout) :: cls
+    class(ty_cloud_optics),     intent(inout) :: this
     real(wp), dimension(:,:),   intent(in   ) :: band_lims_wvn ! Spectral discretization
     ! Lookup table interpolation constants
     ! Lower and upper bounds of the tables; also the constant for calculating interpolation indices for liquid
@@ -98,7 +110,7 @@ contains
     !
     integer               :: nbnd, nrghice, nsize_liq, nsize_ice
 
-    error_msg = init(cls,band_lims_wvn, name="RRTMGP cloud optics")
+    error_msg = init(this,band_lims_wvn, name="RRTMGP cloud optics")
     !
     ! LUT coefficient dimensions
     !
@@ -110,7 +122,7 @@ contains
     ! Error checking
     !   Can we check for consistency between table bounds and _fac?
     !
-    if(nbnd /= get_nband(cls)) &
+    if(nbnd /= get_nband(this)) &
       error_msg = "cloud_optics%init(): number of bands inconsistent between lookup tables, spectral discretization"
     if(size(lut_extice, 2) /= nbnd) &
       error_msg = "cloud_optics%init(): array lut_extice has the wrong number of bands"
@@ -124,48 +136,53 @@ contains
       error_msg = "cloud_optics%init(): array lut_asyice  isn't consistently sized"
     if(error_msg /= "") return
 
-    cls%liq_nsteps = nsize_liq
-    cls%ice_nsteps = nsize_ice
-    cls%liq_step_size = (radliq_upr - radliq_lwr)/real(nsize_liq-1,wp)
-    cls%ice_step_size = (radice_upr - radice_lwr)/real(nsize_ice-1,wp)
+    this%liq_nsteps = nsize_liq
+    this%ice_nsteps = nsize_ice
+    this%liq_step_size = (radliq_upr - radliq_lwr)/real(nsize_liq-1,wp)
+    this%ice_step_size = (radice_upr - radice_lwr)/real(nsize_ice-1,wp)
     ! Allocate LUT coefficients
-    allocate(cls%lut_extliq(nsize_liq, nbnd), &
-             cls%lut_ssaliq(nsize_liq, nbnd), &
-             cls%lut_asyliq(nsize_liq, nbnd), &
-             cls%lut_extice(nsize_ice, nbnd, nrghice), &
-             cls%lut_ssaice(nsize_ice, nbnd, nrghice), &
-             cls%lut_asyice(nsize_ice, nbnd, nrghice))
+    allocate(this%lut_extliq(nsize_liq, nbnd), &
+             this%lut_ssaliq(nsize_liq, nbnd), &
+             this%lut_asyliq(nsize_liq, nbnd), &
+             this%lut_extice(nsize_ice, nbnd, nrghice), &
+             this%lut_ssaice(nsize_ice, nbnd, nrghice), &
+             this%lut_asyice(nsize_ice, nbnd, nrghice))
 
+    !$acc enter data create(this)                                               &
+    !$acc            create(this%lut_extliq, this%lut_ssaliq, this%lut_asyliq)  &
+    !$acc            create(this%lut_extice, this%lut_ssaice, this%lut_asyice)
     ! Load LUT constants
-    cls%radliq_lwr = radliq_lwr
-    cls%radliq_upr = radliq_upr
-    cls%radice_lwr = radice_lwr
-    cls%radice_upr = radice_upr
+    this%radliq_lwr = radliq_lwr
+    this%radliq_upr = radliq_upr
+    this%radice_lwr = radice_lwr
+    this%radice_upr = radice_upr
 
     ! Load LUT coefficients
-    cls%lut_extliq = lut_extliq
-    cls%lut_ssaliq = lut_ssaliq
-    cls%lut_asyliq = lut_asyliq
-    cls%lut_extice = lut_extice
-    cls%lut_ssaice = lut_ssaice
-    cls%lut_asyice = lut_asyice
+    !$acc kernels
+    this%lut_extliq = lut_extliq
+    this%lut_ssaliq = lut_ssaliq
+    this%lut_asyliq = lut_asyliq
+    this%lut_extice = lut_extice
+    this%lut_ssaice = lut_ssaice
+    this%lut_asyice = lut_asyice
+    !$acc end kernels
     !
     ! Set default ice roughness - min values
     !
-    error_msg = set_ice_roughness(cls,1)
+    error_msg = this%set_ice_roughness(1)
   end function load_lut
   ! ------------------------------------------------------------------------------
   !
   ! Cloud optics initialization function - Pade
   !
   ! ------------------------------------------------------------------------------
-  function load_pade(cls, band_lims_wvn, &
+  function load_pade(this, band_lims_wvn, &
                      pade_extliq, pade_ssaliq, pade_asyliq, &
                      pade_extice, pade_ssaice, pade_asyice, &
                      pade_sizreg_extliq, pade_sizreg_ssaliq, pade_sizreg_asyliq, &
                      pade_sizreg_extice, pade_sizreg_ssaice, pade_sizreg_asyice) &
                      result(error_msg)
-    class(ty_cloud_optics),       intent(inout) :: cls          ! cloud specification data
+    class(ty_cloud_optics),       intent(inout) :: this          ! cloud specification data
     real(wp), dimension(:,:),     intent(in   ) :: band_lims_wvn ! Spectral discretization
     !
     ! Pade coefficients: extinction, single-scattering albedo, and asymmetry factor for liquid and ice
@@ -196,11 +213,11 @@ contains
     ! The number of size regimes is assumed in the Pade evaluations
     if (nsizereg /= 3) &
       error_msg = "cloud optics: code assumes exactly three size regimes for Pade approximants but data is otherwise"
-    error_msg = init(cls,band_lims_wvn, name="RRTMGP cloud optics")
+    error_msg = init(this,band_lims_wvn, name="RRTMGP cloud optics")
     !
     ! Error checking
     !
-    if(nbnd /= get_nband(cls)) &
+    if(nbnd /= get_nband(this)) &
       error_msg = "cloud_optics%init(): number of bands inconsistent between lookup tables, spectral discretization"
     if(.not. extents_are(pade_ssaliq, nbnd, nsizereg, ncoeff_ssa_g)) &
       error_msg = "cloud_optics%init(): array pade_ssaliq isn't consistently sized"
@@ -221,91 +238,109 @@ contains
     !
     ! Consistency among size regimes
     !
-    cls%radliq_lwr = pade_sizreg_extliq(1)
-    cls%radliq_upr = pade_sizreg_extliq(nbound)
-    cls%radice_lwr = pade_sizreg_extice(1)
-    cls%radice_upr = pade_sizreg_extice(nbound)
+    this%radliq_lwr = pade_sizreg_extliq(1)
+    this%radliq_upr = pade_sizreg_extliq(nbound)
+    this%radice_lwr = pade_sizreg_extice(1)
+    this%radice_upr = pade_sizreg_extice(nbound)
     if(error_msg /= "") return
 
-    if(any([pade_sizreg_ssaliq(1), pade_sizreg_asyliq(1)] < cls%radliq_lwr)) &
+    if(any([pade_sizreg_ssaliq(1), pade_sizreg_asyliq(1)] < this%radliq_lwr)) &
       error_msg = "cloud_optics%init(): one or more Pade size regimes have inconsistent lowest values"
-    if(any([pade_sizreg_ssaice(1), pade_sizreg_asyice(1)] < cls%radice_lwr)) &
+    if(any([pade_sizreg_ssaice(1), pade_sizreg_asyice(1)] < this%radice_lwr)) &
       error_msg = "cloud_optics%init(): one or more Pade size regimes have inconsistent lower values"
 
-    if(any([pade_sizreg_ssaliq(nbound), pade_sizreg_asyliq(nbound)] > cls%radliq_upr)) &
+    if(any([pade_sizreg_ssaliq(nbound), pade_sizreg_asyliq(nbound)] > this%radliq_upr)) &
       error_msg = "cloud_optics%init(): one or more Pade size regimes have lowest value less than radliq_upr"
-    if(any([pade_sizreg_ssaice(nbound), pade_sizreg_asyice(nbound)] > cls%radice_upr)) &
+    if(any([pade_sizreg_ssaice(nbound), pade_sizreg_asyice(nbound)] > this%radice_upr)) &
       error_msg = "cloud_optics%init(): one or more Pade size regimes have lowest value less than radice_upr"
     if(error_msg /= "") return
     !
     ! Allocate Pade coefficients
     !
-    allocate(cls%pade_extliq(nbnd, nsizereg, ncoeff_ext),   &
-             cls%pade_ssaliq(nbnd, nsizereg, ncoeff_ssa_g), &
-             cls%pade_asyliq(nbnd, nsizereg, ncoeff_ssa_g), &
-             cls%pade_extice(nbnd, nsizereg, ncoeff_ext,   nrghice), &
-             cls%pade_ssaice(nbnd, nsizereg, ncoeff_ssa_g, nrghice), &
-             cls%pade_asyice(nbnd, nsizereg, ncoeff_ssa_g, nrghice))
+    allocate(this%pade_extliq(nbnd, nsizereg, ncoeff_ext),   &
+             this%pade_ssaliq(nbnd, nsizereg, ncoeff_ssa_g), &
+             this%pade_asyliq(nbnd, nsizereg, ncoeff_ssa_g), &
+             this%pade_extice(nbnd, nsizereg, ncoeff_ext,   nrghice), &
+             this%pade_ssaice(nbnd, nsizereg, ncoeff_ssa_g, nrghice), &
+             this%pade_asyice(nbnd, nsizereg, ncoeff_ssa_g, nrghice))
     !
     ! Allocate Pade coefficient particle size regime boundaries
     !
-    allocate(cls%pade_sizreg_extliq(nbound), &
-             cls%pade_sizreg_ssaliq(nbound), &
-             cls%pade_sizreg_asyliq(nbound), &
-             cls%pade_sizreg_extice(nbound), &
-             cls%pade_sizreg_ssaice(nbound), &
-             cls%pade_sizreg_asyice(nbound))
+    allocate(this%pade_sizreg_extliq(nbound), &
+             this%pade_sizreg_ssaliq(nbound), &
+             this%pade_sizreg_asyliq(nbound), &
+             this%pade_sizreg_extice(nbound), &
+             this%pade_sizreg_ssaice(nbound), &
+             this%pade_sizreg_asyice(nbound))
+    !$acc enter data create(this)                                                                       &
+    !$acc            create(this%pade_extliq, this%pade_ssaliq, this%pade_asyliq)                       &
+    !$acc            create(this%pade_extice, this%pade_ssaice, this%pade_asyice)                       &
+    !$acc            create(this%pade_sizreg_extliq, this%pade_sizreg_ssaliq, this%pade_sizreg_asyliq)  &
+    !$acc            create(this%pade_sizreg_extice, this%pade_sizreg_ssaice, this%pade_sizreg_asyice)
     !
     ! Load data
     !
-    cls%pade_extliq = pade_extliq
-    cls%pade_ssaliq = pade_ssaliq
-    cls%pade_asyliq = pade_asyliq
-    cls%pade_extice = pade_extice
-    cls%pade_ssaice = pade_ssaice
-    cls%pade_asyice = pade_asyice
-    cls%pade_sizreg_extliq = pade_sizreg_extliq
-    cls%pade_sizreg_ssaliq = pade_sizreg_ssaliq
-    cls%pade_sizreg_asyliq = pade_sizreg_asyliq
-    cls%pade_sizreg_extice = pade_sizreg_extice
-    cls%pade_sizreg_ssaice = pade_sizreg_ssaice
-    cls%pade_sizreg_asyice = pade_sizreg_asyice
+    !$acc kernels
+    this%pade_extliq = pade_extliq
+    this%pade_ssaliq = pade_ssaliq
+    this%pade_asyliq = pade_asyliq
+    this%pade_extice = pade_extice
+    this%pade_ssaice = pade_ssaice
+    this%pade_asyice = pade_asyice
+    this%pade_sizreg_extliq = pade_sizreg_extliq
+    this%pade_sizreg_ssaliq = pade_sizreg_ssaliq
+    this%pade_sizreg_asyliq = pade_sizreg_asyliq
+    this%pade_sizreg_extice = pade_sizreg_extice
+    this%pade_sizreg_ssaice = pade_sizreg_ssaice
+    this%pade_sizreg_asyice = pade_sizreg_asyice
+    !$acc end kernels
     !
     ! Set default ice roughness - min values
     !
-    error_msg = set_ice_roughness(cls,1)
+    error_msg = this%set_ice_roughness(1)
   end function load_pade
   !--------------------------------------------------------------------------------------------------------------------
   !
   ! Finalize
   !
   !--------------------------------------------------------------------------------------------------------------------
-  subroutine finalize(cls)
-    class(ty_cloud_optics), intent(inout) :: cls
+  subroutine finalize(this)
+    class(ty_cloud_optics), intent(inout) :: this
 
-    cls%radliq_lwr = 0._wp
-    cls%radliq_upr = 0._wp
-    cls%radice_lwr = 0._wp
-    cls%radice_upr = 0._wp
+    this%radliq_lwr = 0._wp
+    this%radliq_upr = 0._wp
+    this%radice_lwr = 0._wp
+    this%radice_upr = 0._wp
 
     ! Lookup table cloud optics coefficients
-    if(allocated(cls%lut_extliq)) then
+    if(allocated(this%lut_extliq)) then
 
-      deallocate(cls%lut_extliq, cls%lut_ssaliq, cls%lut_asyliq, &
-                 cls%lut_extice, cls%lut_ssaice, cls%lut_asyice)
-      cls%liq_nsteps = 0
-      cls%ice_nsteps = 0
-      cls%liq_step_size = 0._wp
-      cls%ice_step_size = 0._wp
+      !$acc exit data delete(this%lut_extliq, this%lut_ssaliq, this%lut_asyliq)  &
+      !$acc           delete(this%lut_extice, this%lut_ssaice, this%lut_asyice)  &
+      !$acc           delete(this)
+
+
+      deallocate(this%lut_extliq, this%lut_ssaliq, this%lut_asyliq, &
+                 this%lut_extice, this%lut_ssaice, this%lut_asyice)
+      this%liq_nsteps = 0
+      this%ice_nsteps = 0
+      this%liq_step_size = 0._wp
+      this%ice_step_size = 0._wp
     end if
 
     ! Pade cloud optics coefficients
-    if(allocated(cls%pade_extliq)) then
+    if(allocated(this%pade_extliq)) then
 
-      deallocate(cls%pade_extliq, cls%pade_ssaliq, cls%pade_asyliq, &
-                 cls%pade_extice, cls%pade_ssaice, cls%pade_asyice, &
-                 cls%pade_sizreg_extliq, cls%pade_sizreg_ssaliq, cls%pade_sizreg_asyliq, &
-                 cls%pade_sizreg_extice, cls%pade_sizreg_ssaice, cls%pade_sizreg_asyice)
+      !$acc exit data delete(this%pade_extliq, this%pade_ssaliq, this%pade_asyliq)                       &
+      !$acc           delete(this%pade_extice, this%pade_ssaice, this%pade_asyice)                       &
+      !$acc           delete(this%pade_sizreg_extliq, this%pade_sizreg_ssaliq, this%pade_sizreg_asyliq)  &
+      !$acc           delete(this%pade_sizreg_extice, this%pade_sizreg_ssaice, this%pade_sizreg_asyice)  &
+      !$acc           delete(this)
+
+      deallocate(this%pade_extliq, this%pade_ssaliq, this%pade_asyliq, &
+                 this%pade_extice, this%pade_ssaice, this%pade_asyice, &
+                 this%pade_sizreg_extliq, this%pade_sizreg_ssaliq, this%pade_sizreg_asyliq, &
+                 this%pade_sizreg_extice, this%pade_sizreg_ssaice, this%pade_sizreg_asyice)
     end if
   end subroutine finalize
   ! ------------------------------------------------------------------------------
@@ -316,11 +351,11 @@ contains
   !
   ! Compute single-scattering properties
   !
-  function cloud_optics(cls, &
+  function cloud_optics(this, &
                         clwp, ciwp, reliq, reice, &
                         optical_props) result(error_msg)
     class(ty_cloud_optics), &
-              intent(in   ) :: cls
+              intent(in   ) :: this
     real(wp), intent(in   ) :: clwp  (:,:), &   ! cloud ice water path    (units?)
                                ciwp  (:,:), &   ! cloud liquid water path (units?)
                                reliq (:,:), &   ! cloud ice particle effective size (microns)
@@ -332,7 +367,7 @@ contains
     character(len=128)      :: error_msg
     ! ------- Local -------
     logical(wl), dimension(size(clwp,1), size(clwp,2)) :: liqmsk, icemsk
-    real(wp),    dimension(size(clwp,1), size(clwp,2), get_nband(cls)) :: &
+    real(wp),    dimension(size(clwp,1), size(clwp,2), get_nband(this)) :: &
                 ltau, ltaussa, ltaussag, itau, itaussa, itaussag
                 ! Optical properties: tau, tau*ssa, tau*ssa*g
                 ! liquid and ice separately
@@ -348,14 +383,14 @@ contains
     ! ----------------------------------------
 
     error_msg = ''
-    if(.not.(allocated(cls%lut_extliq) .or. allocated(cls%pade_extliq))) then
+    if(.not.(allocated(this%lut_extliq) .or. allocated(this%pade_extliq))) then
       error_msg = 'cloud optics: no data has been initialized'
       return
     end if
 
     ncol = size(clwp,1)
     nlay = size(clwp,2)
-    nbnd = get_nband(cls)
+    nbnd = get_nband(this)
     !
     ! Array sizes
     !
@@ -376,15 +411,19 @@ contains
     !
     ! Spectral consistency
     !
-    if(.not. bands_are_equal(cls,optical_props)) &
+    if(.not. bands_are_equal(this,optical_props)) &
       error_msg = "cloud optics: optical properties don't have the same band structure"
     if(get_nband(optical_props) /= get_ngpt(optical_props) ) &
       error_msg = "cloud optics: optical properties must be requested by band not g-points"
     if(error_msg /= "") return
 
+    !$acc data copyin(clwp, ciwp, reliq, reice)                         &
+    !$acc      create(ltau, ltaussa, ltaussag, itau, itaussa, itaussag) &
+    !$acc      create(liqmsk,icemsk)
     !
     ! Cloud masks; don't need value re values if there's no cloud
     !
+    !$acc parallel loop gang vector default(none) collapse(2)
     do ilay = 1, nlay
       do icol = 1, ncol
         liqmsk(icol,ilay) = clwp(icol,ilay) > 0._wp
@@ -395,9 +434,9 @@ contains
     !
     ! Particle size, liquid/ice water paths
     !
-    if(any_vals_outside(reliq, liqmsk, cls%radliq_lwr, cls%radliq_upr)) &
+    if(any_vals_outside(reliq, liqmsk, this%radliq_lwr, this%radliq_upr)) &
       error_msg = 'cloud optics: liquid effective radius is out of bounds'
-    if(any_vals_outside(reice, icemsk, cls%radice_lwr, cls%radice_upr)) &
+    if(any_vals_outside(reice, icemsk, this%radice_lwr, this%radice_upr)) &
       error_msg = 'cloud optics: ice effective radius is out of bounds'
     if(any_vals_less_than(clwp, liqmsk, 0._wp) .or. any_vals_less_than(ciwp, icemsk, 0._wp)) &
       error_msg = 'cloud optics: negative clwp or ciwp where clouds are supposed to be'
@@ -414,40 +453,40 @@ contains
       ! We could compute the properties for liquid and ice separately and
       !    use ty_optical_props_arry%increment but this involves substantially more division.
       !
-      if (allocated(cls%lut_extliq)) then
+      if (allocated(this%lut_extliq)) then
         !
         ! Liquid
         !
         call compute_all_from_table(ncol, nlay, nbnd, liqmsk, clwp, reliq,               &
-                                    cls%liq_nsteps,cls%liq_step_size,cls%radliq_lwr,  &
-                                    cls%lut_extliq, cls%lut_ssaliq, cls%lut_asyliq,   &
+                                    this%liq_nsteps,this%liq_step_size,this%radliq_lwr,  &
+                                    this%lut_extliq, this%lut_ssaliq, this%lut_asyliq,   &
                                     ltau, ltaussa, ltaussag)
         !
         ! Ice
         !
         call compute_all_from_table(ncol, nlay, nbnd, icemsk, ciwp, reice, &
-                                    cls%ice_nsteps,cls%ice_step_size,cls%radice_lwr, &
-                                    cls%lut_extice(:,:,cls%icergh),      &
-                                    cls%lut_ssaice(:,:,cls%icergh),      &
-                                    cls%lut_asyice(:,:,cls%icergh),      &
+                                    this%ice_nsteps,this%ice_step_size,this%radice_lwr, &
+                                    this%lut_extice(:,:,this%icergh),      &
+                                    this%lut_ssaice(:,:,this%icergh),      &
+                                    this%lut_asyice(:,:,this%icergh),      &
                                     itau, itaussa, itaussag)
       else
         !
         ! Cloud optical properties from Pade coefficient method
         !   Hard coded assumptions: order of approximants, three size regimes
         !
-        nsizereg = size(cls%pade_extliq,2)
+        nsizereg = size(this%pade_extliq,2)
         call compute_all_from_pade(ncol, nlay, nbnd, nsizereg, &
                                   liqmsk, clwp, reliq,        &
-                                  2, 3, cls%pade_sizreg_extliq, cls%pade_extliq, &
-                                  2, 2, cls%pade_sizreg_ssaliq, cls%pade_ssaliq, &
-                                  2, 2, cls%pade_sizreg_asyliq, cls%pade_asyliq, &
+                                  2, 3, this%pade_sizreg_extliq, this%pade_extliq, &
+                                  2, 2, this%pade_sizreg_ssaliq, this%pade_ssaliq, &
+                                  2, 2, this%pade_sizreg_asyliq, this%pade_asyliq, &
                                   ltau, ltaussa, ltaussag)
         call compute_all_from_pade(ncol, nlay, nbnd, nsizereg, &
                                   icemsk, ciwp, reice,        &
-                                  2, 3, cls%pade_sizreg_extice, cls%pade_extice(:,:,:,cls%icergh), &
-                                  2, 2, cls%pade_sizreg_ssaice, cls%pade_ssaice(:,:,:,cls%icergh), &
-                                  2, 2, cls%pade_sizreg_asyice, cls%pade_asyice(:,:,:,cls%icergh), &
+                                  2, 3, this%pade_sizreg_extice, this%pade_extice(:,:,:,this%icergh), &
+                                  2, 2, this%pade_sizreg_ssaice, this%pade_ssaice(:,:,:,this%icergh), &
+                                  2, 2, this%pade_sizreg_asyice, this%pade_asyice(:,:,:,this%icergh), &
                                   itau, itaussa, itaussag)
       endif
 
@@ -457,6 +496,9 @@ contains
       !
       select type(optical_props)
       type is (ty_optical_props_1scl)
+        !$acc parallel loop gang vector default(none) collapse(3) &
+        !$acc               copyin(optical_props) copyout(optical_props%tau)
+
         do ibnd = 1, nbnd
           do ilay = 1, nlay
             do icol = 1,ncol
@@ -467,6 +509,8 @@ contains
           end do
         end do
       type is (ty_optical_props_2str)
+        !$acc parallel loop gang vector default(none) collapse(3) &
+        !$acc               copyin(optical_props) copyout(optical_props%tau, optical_props%ssa, optical_props%g)
         do ibnd = 1, nbnd
           do ilay = 1, nlay
             do icol = 1,ncol
@@ -484,62 +528,63 @@ contains
       end select
 
     end if ! error_msg == ""
+    !$acc end data
   end function cloud_optics
   !--------------------------------------------------------------------------------------------------------------------
   !
   ! Inquiry functions
   !
   !--------------------------------------------------------------------------------------------------------------------
-  function set_ice_roughness(cls, icergh) result(error_msg)
-    class(ty_cloud_optics), intent(inout) :: cls
+  function set_ice_roughness(this, icergh) result(error_msg)
+    class(ty_cloud_optics), intent(inout) :: this
     integer,                intent(in   ) :: icergh
     character(len=128)                    :: error_msg
 
     error_msg = ""
-    if(.not. allocated(cls%pade_extice) .and. .not. allocated(cls%lut_extice )) &
+    if(.not. allocated(this%pade_extice) .and. .not. allocated(this%lut_extice )) &
       error_msg = "cloud_optics%set_ice_roughness(): can't set before initialization"
-    if (icergh < 1 .or. icergh > get_num_ice_roughness_types(cls)) &
+    if (icergh < 1 .or. icergh > get_num_ice_roughness_types(this)) &
        error_msg = 'cloud optics: cloud ice surface roughness flag is out of bounds'
     if(error_msg /= "") return
 
-    cls%icergh = icergh
+    this%icergh = icergh
   end function set_ice_roughness
   !-----------------------------------------------
-  function get_num_ice_roughness_types(cls) result(i)
-    class(ty_cloud_optics), intent(in   ) :: cls
+  function get_num_ice_roughness_types(this) result(i)
+    class(ty_cloud_optics), intent(in   ) :: this
     integer                               :: i
 
     i = 0
-    if(allocated(cls%pade_extice)) i = size(cls%pade_extice, dim=4)
-    if(allocated(cls%lut_extice )) i = size(cls%lut_extice,  dim=3)
+    if(allocated(this%pade_extice)) i = size(this%pade_extice, dim=4)
+    if(allocated(this%lut_extice )) i = size(this%lut_extice,  dim=3)
   end function get_num_ice_roughness_types
   !-----------------------------------------------
-  function get_min_radius_liq(cls) result(r)
-    class(ty_cloud_optics), intent(in   ) :: cls
+  function get_min_radius_liq(this) result(r)
+    class(ty_cloud_optics), intent(in   ) :: this
     real(wp)                              :: r
 
-    r = cls%radliq_lwr
+    r = this%radliq_lwr
   end function get_min_radius_liq
   !-----------------------------------------------
-  function get_max_radius_liq(cls) result(r)
-    class(ty_cloud_optics), intent(in   ) :: cls
+  function get_max_radius_liq(this) result(r)
+    class(ty_cloud_optics), intent(in   ) :: this
     real(wp)                              :: r
 
-    r = cls%radliq_upr
+    r = this%radliq_upr
   end function get_max_radius_liq
   !-----------------------------------------------
-  function get_min_radius_ice(cls) result(r)
-    class(ty_cloud_optics), intent(in   ) :: cls
+  function get_min_radius_ice(this) result(r)
+    class(ty_cloud_optics), intent(in   ) :: this
     real(wp)                              :: r
 
-    r = cls%radice_lwr
+    r = this%radice_lwr
   end function get_min_radius_ice
   !-----------------------------------------------
-  function get_max_radius_ice(cls) result(r)
-    class(ty_cloud_optics), intent(in   ) :: cls
+  function get_max_radius_ice(this) result(r)
+    class(ty_cloud_optics), intent(in   ) :: this
     real(wp)                              :: r
 
-    r = cls%radice_upr
+    r = this%radice_upr
   end function get_max_radius_ice
   !--------------------------------------------------------------------------------------------------------------------
   !
@@ -568,6 +613,7 @@ contains
     real(wp) :: fint
     real(wp) :: t, ts, tsg  ! tau, tau*ssa, tau*ssa*g
     ! ---------------------------
+    !$acc parallel loop gang vector default(present) collapse(3)
     do ibnd = 1, nbnd
       do ilay = 1,nlay
         do icol = 1, ncol
@@ -621,6 +667,7 @@ contains
     integer  :: icol, ilay, ibnd, irad, count
     real(wp) :: t, ts
 
+    !$acc parallel loop gang vector default(present) collapse(3)
     do ibnd = 1, nbnd
       do ilay = 1, nlay
         do icol = 1, ncol
@@ -692,6 +739,7 @@ contains
   ! Evaluate Pade approximant of order [m/n]
   !
   function pade_eval_1(iband, nbnd, nrads, m, n, irad, re, pade_coeffs)
+    !$acc routine seq
     !
     integer,                intent(in) :: iband, nbnd, nrads, m, n, irad
     real(wp), dimension(nbnd, nrads, 0:m+n), &

@@ -5,7 +5,7 @@ module mo_load_cloud_coefficients
                               ty_optical_props_1scl, &
                               ty_optical_props_2str, &
                               ty_optical_props_nstr
-  use mo_cloud_optics,  only: ty_cloud_optics, load
+  use mo_cloud_optics,  only: ty_cloud_optics
   use mo_simple_netcdf, only: read_field, read_string, var_exists, get_dim_size, &
                               write_field, create_dim, create_var
   use netcdf
@@ -81,7 +81,7 @@ contains
     lut_asyice = read_field(ncid, 'lut_asyice',  nsize_ice, nband, nrghice)
 
     ncid = nf90_close(ncid)
-    call stop_on_err(load(cloud_spec,band_lims_wvn,                      &
+    call stop_on_err(cloud_spec%load(band_lims_wvn,                      &
                                      radliq_lwr, radliq_upr, radliq_fac, &
                                      radice_lwr, radice_upr, radice_fac, &
                                      lut_extliq, lut_ssaliq, lut_asyliq, &
@@ -164,7 +164,7 @@ contains
 
     ncid = nf90_close(ncid)
 
-    call stop_on_err(load(cloud_spec,band_lims_wvn, &
+    call stop_on_err(cloud_spec%load(band_lims_wvn, &
                                      pade_extliq, pade_ssaliq, pade_asyliq, &
                                      pade_extice, pade_ssaice, pade_asyice, &
                                      pade_sizreg_extliq, pade_sizreg_ssaliq, pade_sizreg_asyliq, &
