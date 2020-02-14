@@ -11,9 +11,7 @@
 ! -------------------------------------------------------------------------------------------------
 !
 ! Compute output quantities from RTE based on spectrally-resolved flux profiles
-!    This module contains an abstract class and a broadband implmentation that sums over all spectral points
-!    The abstract base class defines the routines that extenstions must implement: reduce() and are_desired()
-!    The intent is for users to extend it as required, using mo_flxues_broadband as an example
+!    This module contains an class and a broadband implmentation that sums over all spectral points
 !
 ! -------------------------------------------------------------------------------------------------
 module mo_fluxes
@@ -25,7 +23,7 @@ module mo_fluxes
   implicit none
   ! -----------------------------------------------------------------------------------------------
   !
-  ! Abstract base class
+  ! Base class
   !   reduce() function accepts spectral flux profiles, computes desired outputs
   !   are_desired() returns a logical - does it makes sense to invoke reduce()?
   !
