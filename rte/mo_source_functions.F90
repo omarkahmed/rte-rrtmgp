@@ -39,6 +39,7 @@ module mo_source_functions
     procedure, public :: is_allocated => is_allocated_lw
     procedure, public :: finalize => finalize_lw
     procedure, public :: get_subset => get_subset_range_lw
+    procedure, public :: get_ncol => get_ncol_lw
     procedure, public :: get_nlay => get_nlay_lw
     ! validate?
   end type ty_source_func_lw
@@ -55,15 +56,9 @@ module mo_source_functions
     procedure, public :: is_allocated => is_allocated_sw
     procedure, public :: finalize => finalize_sw
     procedure, public :: get_subset => get_subset_range_sw
+    procedure, public :: get_ncol => get_ncol_sw
     ! validate?
   end type ty_source_func_sw
-
-
-  interface get_ncol
-    module procedure :: get_ncol_lw, get_ncol_sw
-  end interface
-
-
   ! -------------------------------------------------------------------------------------------------
 contains
   ! ------------------------------------------------------------------------------------------
@@ -194,12 +189,12 @@ contains
   !  Routines for finding the problem size
   !
   ! ------------------------------------------------------------------------------------------
-  pure function get_ncol_lw(cls)
-    class(ty_source_func_lw), intent(in) :: cls
+  pure function get_ncol_lw(this)
+    class(ty_source_func_lw), intent(in) :: this
     integer :: get_ncol_lw
 
-    if(cls%is_allocated()) then
-      get_ncol_lw = size(cls%lay_source,1)
+    if(this%is_allocated()) then
+      get_ncol_lw = size(this%lay_source,1)
     else
       get_ncol_lw = 0
     end if
@@ -216,12 +211,12 @@ contains
     end if
   end function get_nlay_lw
   ! --------------------------------------------------------------
-  pure function get_ncol_sw(cls)
-    class(ty_source_func_sw), intent(in) :: cls
+  pure function get_ncol_sw(this)
+    class(ty_source_func_sw), intent(in) :: this
     integer :: get_ncol_sw
 
-    if(cls%is_allocated()) then
-      get_ncol_sw = size(cls%toa_source,1)
+    if(this%is_allocated()) then
+      get_ncol_sw = size(this%toa_source,1)
     else
       get_ncol_sw = 0
     end if
@@ -242,7 +237,7 @@ contains
       err_message = "source_func_lw%subset: Asking for a subset of unallocated data"
       return
     end if
-    if(start < 1 .or. start + n-1 > get_ncol(full)) &
+    if(start < 1 .or. start + n-1 > full%get_ncol()) &
        err_message = "optical_props%subset: Asking for columns outside range"
     if(err_message /= "") return
 
@@ -269,7 +264,7 @@ contains
       err_message = "source_func_sw%subset: Asking for a subset of unallocated data"
       return
     end if
-    if(start < 1 .or. start + n-1 > get_ncol(full)) &
+    if(start < 1 .or. start + n-1 > full%get_ncol()) &
        err_message = "optical_props%subset: Asking for columns outside range"
     if(err_message /= "") return
 

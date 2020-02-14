@@ -24,9 +24,9 @@ module mo_gas_optics_rrtmgp
   use mo_rte_kind,           only: wp, wl
   use mo_rrtmgp_constants,   only: avogad, m_dry, m_h2o, grav
   use mo_rte_util_array,     only: zero_array, any_vals_less_than, any_vals_outside, extents_are
-  use mo_optical_props,      only: ty_optical_props, get_band_lims_gpoint, get_ngpt, get_nlay, &
+  use mo_optical_props,      only: ty_optical_props, get_band_lims_gpoint, get_ngpt, get_nlay, get_ncol, &
                                    get_gpoint_bands, get_nband, init, is_initialized
-  use mo_source_functions,   only: ty_source_func_lw, get_ncol
+  use mo_source_functions,   only: ty_source_func_lw
   use mo_gas_optics_kernels, only: interpolation,                                                       &
                                    compute_tau_absorption, compute_tau_rayleigh, compute_Planck_source, &
                                    combine_and_reorder_2str, combine_and_reorder_nstr
@@ -276,7 +276,7 @@ contains
     !
     !   output extents
     !
-    if(any([get_ncol(sources), sources%get_nlay(), get_ngpt(sources)] /= [ncol, nlay, ngpt])) &
+    if(any([sources%get_ncol(), sources%get_nlay(), get_ngpt(sources)] /= [ncol, nlay, ngpt])) &
       error_msg = "gas_optics%gas_optics: source function arrays inconsistently sized"
     if(error_msg  /= '') return
 
