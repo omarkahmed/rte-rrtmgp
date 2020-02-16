@@ -23,6 +23,6 @@ YAKL_INLINE void reorder_123x312_kernel(int d1, int d2, int d3, real3d const &ar
     storeIndices( indices , i3, i2, i1 );
     array_out(i3,i1,i2) = array_in(i1,i2,i3);
   });
-  std::cout << "WARNING: THIS IS NOT TESTED: " << __FILE__ << ": " << __LINE__ << "\n";
 }
+
 
