@@ -1651,8 +1651,8 @@ contains
         type is (ty_optical_props_nstr) ! We ought to be able to combine this with above
           nmom = size(optical_props%p, 1)
           !$acc enter data create(optical_props%tau, optical_props%ssa, optical_props%p)
-          call combine_and_reorder_nstr(ncol, nlay, ngpt, nmom, tau, tau_rayleigh, &
-                                        optical_props%tau, optical_props%ssa, optical_props%p)
+          ! call combine_and_reorder_nstr(ncol, nlay, ngpt, nmom, tau, tau_rayleigh, &
+          !                               optical_props%tau, optical_props%ssa, optical_props%p)
           !$acc exit data copyout(optical_props%tau, optical_props%ssa, optical_props%p)
       end select
       !$acc exit data delete(tau, tau_rayleigh)

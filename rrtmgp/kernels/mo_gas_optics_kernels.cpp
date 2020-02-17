@@ -622,13 +622,7 @@ extern "C" void compute_tau_absorption(int ncol, int nlay, int nbnd, int ngpt, i
 
 // Combine absoprtion and Rayleigh optical depths for total tau, ssa, p
 //   using Rayleigh scattering phase function
-extern "C" void combine_and_reorder_nstr(int ncol, int nlay, int ngpt, int nmom, real *tau_abs_p, real *tau_rayleigh_p, real *tau_p, real *ssa_p, real *p_p) {
-  umgReal3d tau_abs      ("tau_abs     ",tau_abs_p     ,ngpt,nlay,ncol     );
-  umgReal3d tau_rayleigh ("tau_rayleigh",tau_rayleigh_p,ngpt,nlay,ncol     );
-  umgReal3d tau          ("tau         ",tau_p         ,ncol,nlay,ngpt     );
-  umgReal3d ssa          ("ssa         ",ssa_p         ,ncol,nlay,ngpt     );
-  umgReal4d p            ("p           ",p_p           ,ncol,nlay,ngpt,nmom);
-
+void combine_and_reorder_nstr(int ncol, int nlay, int ngpt, int nmom, real3d &tau_abs, real3d &tau_rayleigh, real3d &tau, real3d &ssa, real4d &p) {
   real tiny = std::numeric_limits<real>::min();
 
   // do icol = 1, ncol
@@ -640,19 +634,18 @@ extern "C" void combine_and_reorder_nstr(int ncol, int nlay, int ngpt, int nmom,
 
     real t = tau_abs(igpt,ilay,icol) + tau_rayleigh(igpt,ilay,icol);
     tau(icol,ilay,igpt) = t;
-    if(t > 2._wp * tiny) {
+    if (t > 2._wp * tiny) {
       ssa(icol,ilay,igpt) = tau_rayleigh(igpt,ilay,icol) / t;
     } else {
       ssa(icol,ilay,igpt) = 0;
     }
     for (int imom=1; imom<=nmom; imom++) {
-      p(imom,icol,ilay,igpt) = 0;
+      p(icol,ilay,igpt,imom) = 0;
     }
-    if(nmom >= 2) {
-      p(2,icol,ilay,igpt) = 0.1;
+    if (nmom >= 2) {
+      p(icol,ilay,igpt,2) = 0.1;
     }
   });
-  std::cout << "WARNING: THIS ISN'T TESTED: " << __FILE__ << ": " << __LINE__ << "\n";
 }
 
 

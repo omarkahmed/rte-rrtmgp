@@ -156,7 +156,7 @@ extern "C" void compute_tau_absorption(int ncol, int nlay, int nbnd, int ngpt, i
 
 // Combine absoprtion and Rayleigh optical depths for total tau, ssa, p
 //   using Rayleigh scattering phase function
-extern "C" void combine_and_reorder_nstr(int ncol, int nlay, int ngpt, int nmom, real *tau_abs_p, real *tau_rayleigh_p, real *tau_p, real *ssa_p, real *p_p);
+void combine_and_reorder_nstr(int ncol, int nlay, int ngpt, int nmom, real3d &tau_abs, real3d &tau_rayleigh, real3d &tau, real3d &ssa, real4d &p);
 
 
 
