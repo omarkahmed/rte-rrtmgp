@@ -219,11 +219,11 @@ contains
         !$acc enter data copyin(optical_props%tau, optical_props%ssa, optical_props%g)
         error_msg =  optical_props%validate()
         if(len_trim(error_msg) > 0) return
-        call lw_solver_2stream(ncol, nlay, ngpt, logical(top_at_1, wl), &
-                               optical_props%tau, optical_props%ssa, optical_props%g,              &
-                               sources%lay_source, sources%lev_source_inc, sources%lev_source_dec, &
-                               sfc_emis_gpt, sources%sfc_source,       &
-                               gpt_flux_up, gpt_flux_dn)
+        ! call lw_solver_2stream(ncol, nlay, ngpt, logical(top_at_1, wl), &
+        !                        optical_props%tau, optical_props%ssa, optical_props%g,              &
+        !                        sources%lay_source, sources%lev_source_inc, sources%lev_source_dec, &
+        !                        sfc_emis_gpt, sources%sfc_source,       &
+        !                        gpt_flux_up, gpt_flux_dn)
         !$acc exit data delete(optical_props%tau, optical_props%ssa, optical_props%g)
       class is (ty_optical_props_nstr)
         !

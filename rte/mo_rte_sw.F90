@@ -158,9 +158,9 @@ contains
         !$acc enter data copyin(atmos, atmos%tau)
         error_msg =  atmos%validate()
         if(len_trim(error_msg) > 0) return
-        call sw_solver_noscat(ncol, nlay, ngpt, logical(top_at_1, wl), &
-                              atmos%tau, mu0,                          &
-                              gpt_flux_dir)
+        ! call sw_solver_noscat(ncol, nlay, ngpt, logical(top_at_1, wl), &
+        !                       atmos%tau, mu0,                          &
+        !                       gpt_flux_dir)
         !
         ! No diffuse flux
         !

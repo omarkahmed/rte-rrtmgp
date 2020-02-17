@@ -408,9 +408,9 @@ extern "C" void lw_solver_noscat_GaussQuad(int ncol, int nlay, int ngpt, bool to
 // Compute LW source function for upward and downward emission at levels using linear-in-tau assumption
 //   This version straight from ECRAD
 //   Source is provided as W/m2-str; factor of pi converts to flux units
-extern "C" void lw_source_2str(int ncol, int nlay, int ngpt, bool top_at_1, real2d const &sfc_emis, real2d const &sfc_src, real3d const &lay_source,
-                               real3d const &lev_source, real3d const &gamma1, real3d const &gamma2, real3d const &rdif, real3d const &tdif, real3d const &tau,
-                               real3d &source_dn, real3d &source_up, real2d &source_sfc) {
+void lw_source_2str(int ncol, int nlay, int ngpt, bool top_at_1, real2d const &sfc_emis, real2d const &sfc_src, real3d const &lay_source,
+                    real3d const &lev_source, real3d const &gamma1, real3d const &gamma2, real3d const &rdif, real3d const &tdif, real3d const &tau,
+                    real3d &source_dn, real3d &source_up, real2d &source_sfc) {
   real constexpr pi = 3.14159265358979323846;
 
   // do igpt = 1, ngpt
@@ -454,7 +454,7 @@ extern "C" void lw_source_2str(int ncol, int nlay, int ngpt, bool top_at_1, real
 // RRTMGP provides two source functions at each level
 //   using the spectral mapping from each of the adjascent layers.
 //   Need to combine these for use in two-stream calculation.
-extern "C" void lw_combine_sources(int ncol, int nlay, int ngpt, bool top_at_1, real3d const &lev_src_inc, real3d const &lev_src_dec, real3d &lev_source) {
+void lw_combine_sources(int ncol, int nlay, int ngpt, bool top_at_1, real3d const &lev_src_inc, real3d const &lev_src_dec, real3d &lev_source) {
   // do igpt = 1, ngpt
   //   do ilay = 1, nlay+1
   //     do icol = 1, ncol
@@ -480,7 +480,7 @@ extern "C" void lw_combine_sources(int ncol, int nlay, int ngpt, bool top_at_1, 
 //    with optical depth tau, single scattering albedo w0, and asymmetery parameter g.
 // Equations are developed in Meador and Weaver, 1980,
 //    doi:10.1175/1520-0469(1980)037<0630:TSATRT>2.0.CO;2
-extern "C" void lw_two_stream(int ncol, int nlay, int ngpt, real3d const &tau, real3d const &w0, real3d const &g, real3d &gamma1, real3d &gamma2, real3d &Rdif, real3d &Tdif) {
+void lw_two_stream(int ncol, int nlay, int ngpt, real3d const &tau, real3d const &w0, real3d const &g, real3d &gamma1, real3d &gamma2, real3d &Rdif, real3d &Tdif) {
   real constexpr LW_diff_sec = 1.66;  // 1./cos(diffusivity angle)
 
   // do igpt = 1, ngpt
@@ -525,7 +525,7 @@ extern "C" void lw_two_stream(int ncol, int nlay, int ngpt, real3d const &tau, r
 //   Top-level shortwave kernels
 // -------------------------------------------------------------------------------------------------
 //   Extinction-only i.e. solar direct beam
-extern "C" void sw_solver_noscat(int ncol, int nlay, int ngpt, bool top_at_1, real *tau_p, real *mu0_p, real *flux_dir_p) {
+void sw_solver_noscat(int ncol, int nlay, int ngpt, bool top_at_1, real *tau_p, real *mu0_p, real *flux_dir_p) {
   umgReal3d tau     ("tau     ",tau_p     ,ncol,nlay,  ngpt);
   umgReal1d mu0     ("mu0     ",mu0_p     ,ncol            );
   umgReal3d flux_dir("flux_dir",flux_dir_p,ncol,nlay+1,ngpt);
@@ -580,7 +580,7 @@ extern "C" void sw_solver_noscat(int ncol, int nlay, int ngpt, bool top_at_1, re
 //   compute layer reflectance, transmittance
 //   compute total source function at levels using linear-in-tau
 //   transport
-extern "C" void lw_solver_2stream(int ncol, int nlay, int ngpt, bool top_at_1, real *tau_p, real *ssa_p, real *g_p,
+void lw_solver_2stream(int ncol, int nlay, int ngpt, bool top_at_1, real *tau_p, real *ssa_p, real *g_p,
                                   real *lay_source_p, real *lev_source_inc_p, real *lev_source_dec_p, real *sfc_emis_p,
                                   real *sfc_src_p, real *flux_up_p, real *flux_dn_p) {
   umgReal3d tau           ("tau           ",tau_p           ,ncol,nlay,  ngpt);
