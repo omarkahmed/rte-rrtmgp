@@ -29,7 +29,7 @@ contains
                 temp_ref_min,temp_ref_delta,press_ref_trop_log, &
                 vmr_ref,                                        &
                 play,tlay,col_gas,                              &
-                jtemp,fmajor,fminor,col_mix,tropo,jeta,jpress) bind(C, name="interpolation")
+                jtemp,fmajor,fminor,col_mix,tropo,jeta,jpress) 
     ! input dimensions
     integer,                            intent(in) :: ncol,nlay
     integer,                            intent(in) :: ngas,nflav,neta,npres,ntemp
@@ -149,7 +149,7 @@ contains
                 col_mix,fmajor,fminor,              &
                 play,tlay,col_gas,                  &
                 jeta,jtemp,jpress,                  &
-                tau) bind(C, name="compute_tau_absorption")
+                tau) 
     ! ---------------------
     ! input dimensions
     integer,                                intent(in) :: ncol,nlay,nbnd,ngpt
@@ -276,7 +276,7 @@ contains
                                       kmajor,                         &
                                       col_mix,fmajor,                 &
                                       jeta,tropo,jtemp,jpress,        & ! local input
-                                      tau) bind(C, name="gas_optical_depths_major")
+                                      tau) 
     ! input dimensions
     integer, intent(in) :: ncol, nlay, nbnd, ngpt, nflav,neta,npres,ntemp  ! dimensions
 
@@ -342,7 +342,7 @@ contains
                                       play, tlay,            &
                                       col_gas,fminor,jeta,   &
                                       layer_limits,jtemp,    &
-                                      tau) bind(C, name="gas_optical_depths_minor")
+                                      tau) 
     integer,                                     intent(in   ) :: ncol,nlay,ngpt
     integer,                                     intent(in   ) :: ngas,nflav
     integer,                                     intent(in   ) :: ntemp,neta,nminor,nminork
@@ -435,7 +435,7 @@ contains
                                   krayl,                       &
                                   idx_h2o, col_dry,col_gas,    &
                                   fminor,jeta,tropo,jtemp,     &
-                                  tau_rayleigh) bind(C, name="compute_tau_rayleigh")
+                                  tau_rayleigh) 
     integer,                                     intent(in ) :: ncol,nlay,nbnd,ngpt
     integer,                                     intent(in ) :: ngas,nflav,neta,npres,ntemp
     integer,     dimension(2,ngpt),              intent(in ) :: gpoint_flavor
@@ -481,7 +481,7 @@ contains
                     fmajor, jeta, tropo, jtemp, jpress,    &
                     gpoint_bands, band_lims_gpt,           &
                     pfracin, temp_ref_min, totplnk_delta, totplnk, gpoint_flavor, &
-                    sfc_src, lay_src, lev_src_inc, lev_src_dec) bind(C, name="compute_Planck_source")
+                    sfc_src, lay_src, lev_src_inc, lev_src_dec) 
     integer,                                    intent(in) :: ncol, nlay, nbnd, ngpt
     integer,                                    intent(in) :: nflav, neta, npres, ntemp, nPlanckTemp
     real(wp),    dimension(ncol,nlay  ),        intent(in) :: tlay
@@ -712,8 +712,7 @@ contains
   !
   ! Combine absoprtion and Rayleigh optical depths for total tau, ssa, g
   !
-  pure subroutine combine_and_reorder_2str(ncol, nlay, ngpt, tau_abs, tau_rayleigh, tau, ssa, g) &
-      bind(C, name="combine_and_reorder_2str")
+  pure subroutine combine_and_reorder_2str(ncol, nlay, ngpt, tau_abs, tau_rayleigh, tau, ssa, g)
     integer,                             intent(in) :: ncol, nlay, ngpt
     real(wp), dimension(ngpt,nlay,ncol), intent(in   ) :: tau_abs, tau_rayleigh
     real(wp), dimension(ncol,nlay,ngpt), intent(inout) :: tau, ssa, g ! inout because components are allocated
@@ -741,7 +740,7 @@ contains
   ! Combine absoprtion and Rayleigh optical depths for total tau, ssa, p
   !   using Rayleigh scattering phase function
   !
-  pure subroutine combine_and_reorder_nstr(ncol, nlay, ngpt, nmom, tau_abs, tau_rayleigh, tau, ssa, p) &
+  subroutine combine_and_reorder_nstr(ncol, nlay, ngpt, nmom, tau_abs, tau_rayleigh, tau, ssa, p) &
       bind(C, name="combine_and_reorder_nstr")
     integer, intent(in) :: ncol, nlay, ngpt, nmom
     real(wp), dimension(ngpt,nlay,ncol), intent(in ) :: tau_abs, tau_rayleigh
@@ -763,9 +762,9 @@ contains
             ssa(icol,ilay,igpt) = 0._wp
           end if
           do imom = 1, nmom
-            p(imom,icol,ilay,igpt) = 0.0_wp
+            p(icol,ilay,igpt,imom) = 0.0_wp
           end do
-          if(nmom >= 2) p(2,icol,ilay,igpt) = 0.1_wp
+          if(nmom >= 2) p(icol,ilay,igpt,2) = 0.1_wp
         end do
       end do
     end do
