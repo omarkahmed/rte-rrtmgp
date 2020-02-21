@@ -104,20 +104,32 @@ extern "C" void combine_and_reorder_2str(int ncol, int nlay, int ngpt, real *tau
 
   real tiny = std::numeric_limits<real>::min();
 
-  // for (int icol=1; icol<=ncol; icol++) {
-  //   for (int ilay=1; ilay<=nlay; ilay++) {
-  //     for (int igpt=1; igpt<=ngpt; igpt++) {
-  parallel_for_cpu_serial( Bounds<3>({1,ncol},{1,nlay},{1,ngpt}) , YAKL_LAMBDA ( int indices[] ) {
-    int icol,ilay,igpt;
-    storeIndices( indices , icol,ilay,igpt );
-     real t = tau_abs(igpt,ilay,icol) + tau_rayleigh(igpt,ilay,icol);
-     tau(icol,ilay,igpt) = t;
-     g  (icol,ilay,igpt) = 0._wp;
-     if(t > 2._wp * tiny) {
-       ssa(icol,ilay,igpt) = tau_rayleigh(igpt,ilay,icol) / t;
-     } else {
-       ssa(icol,ilay,igpt) = 0._wp;
-     }
+  int constexpr TILE_SIZE=32;
+  int colTiles = ncol / TILE_SIZE + 1;
+  int gptTiles = ngpt / TILE_SIZE + 1;
+
+  // for (int ilay=1; ilay<=nlay; ilay++) {
+  //   for (int tcol=1; tcol<=colTiles; tcol++) {
+  //     for (int tgpt=1; tgpt<=gptTiles; tgpt++) {
+  //       for (int itcol=1; itcol<=TILE_SIZE; itcol++) {
+  //         for (int itgpt=1; itgpt<=TILE_SIZE; itgpt++) {
+  parallel_for( Bounds<5>({1,nlay},{1,colTiles},{1,gptTiles},{1,TILE_SIZE},{1,TILE_SIZE}) , YAKL_LAMBDA ( int const indices[] ) {
+    int ilay, tcol, tgpt, itcol, itgpt;
+    storeIndices( indices , ilay,tcol,tgpt,itcol,itgpt );
+
+    int icol = (tcol-1)*TILE_SIZE + itcol;
+    int igpt = (tgpt-1)*TILE_SIZE + itgpt;
+
+    if ( icol <= ncol && igpt <= ngpt ) {
+      real t = tau_abs(igpt,ilay,icol) + tau_rayleigh(igpt,ilay,icol);
+      tau(icol,ilay,igpt) = t;
+      g  (icol,ilay,igpt) = 0._wp;
+      if(t > 2._wp * tiny) {
+        ssa(icol,ilay,igpt) = tau_rayleigh(igpt,ilay,icol) / t;
+      } else {
+        ssa(icol,ilay,igpt) = 0._wp;
+      }
+    }
   });
 }
 
