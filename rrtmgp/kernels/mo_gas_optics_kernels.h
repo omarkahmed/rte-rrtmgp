@@ -78,7 +78,7 @@ YAKL_INLINE real interpolate2D(real2d const &fminor, real3d const &k, int igpt, 
 // One dimensional interpolation -- return all values along second table dimension
 //
 YAKL_INLINE void interpolate1D(real val, real offset, real delta, real2d const &table,
-                               real2d &res, int tab_d1, int tab_d2) {
+                               real1d &res, int tab_d1, int tab_d2) {
   real val0 = (val - offset) / delta;
   real frac = val0 - int(val0); // get fractional part
   int index = min(tab_d1-1, max(1, (int)(val0)+1)); // limit the index range

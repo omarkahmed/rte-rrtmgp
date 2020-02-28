@@ -3,6 +3,9 @@
 
 #include "const.h"
 
+using yakl::FArray;
+using yakl::memHost;
+
 // This code is part of RRTM for GCM Applications - Parallel (RRTMGP)
 //
 // Contacts: Robert Pincus and Eli Mlawer
@@ -37,7 +40,7 @@
 
 class GasConcs {
 public:
-  int constexpr GAS_NOT_IN_LIST = -1;
+  static int constexpr GAS_NOT_IN_LIST = -1;
   FArray<std::string,memHost> gas_name;
   FArray<real2d     ,memHost> concs;
   int ncol;

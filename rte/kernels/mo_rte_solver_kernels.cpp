@@ -32,8 +32,8 @@ extern "C" void apply_BC_0(int ncol, int nlay, int ngpt, bool top_at_1, real *fl
 
 extern "C" void apply_BC_factor(int ncol, int nlay, int ngpt, bool top_at_1, real *inc_flux_p, real *factor_p, real *flux_dn_p) {
   umgReal2d inc_flux("inc_flux",inc_flux_p,ncol       ,ngpt);
-  umgReal2d factor  ("factor"  ,factor_p  ,ncol            );
-  umgReal2d flux_dn ("flux_dn" ,flux_dn_p ,ncol,nlay+1,ngpt);
+  umgReal1d factor  ("factor"  ,factor_p  ,ncol            );
+  umgReal3d flux_dn ("flux_dn" ,flux_dn_p ,ncol,nlay+1,ngpt);
 
   if (top_at_1) {
     // do igpt = 1, ngpt
@@ -243,7 +243,7 @@ extern "C" void sw_solver_2stream(int ncol, int nlay, int ngpt, bool top_at_1, r
 // LW fluxes, no scattering, mu (cosine of integration angle) specified by column
 //   Does radiation calculation at user-supplied angles; converts radiances to flux
 //   using user-supplied weights
-extern "C" void lw_solver_noscat(int ncol, int nlay, int ngpt, bool top_at_1, real3d const &D, real weight,
+extern "C" void lw_solver_noscat(int ncol, int nlay, int ngpt, bool top_at_1, real2d const &D, real weight,
                                  real3d const &tau, real3d const &lay_source, real3d const &lev_source_inc, real3d const &lev_source_dec,
                                  real2d const &sfc_emis, real2d const &sfc_src, real3d &radn_up, real3d &radn_dn) {
   real3d tau_loc   ("tau_loc   ",ncol,nlay,ngpt);             
