@@ -97,7 +97,18 @@ template <class T> YAKL_INLINE  T min(T v1, T v2) { return v1 < v2 ? v1 : v2; }
 
 template <class T> YAKL_INLINE  T merge(T t, T f, bool cond) { return cond ? t : f; }
 
+template <class T> YAKL_INLINE  int size(T arr, int dim) { return arr.dimension[dim-1]; }
 
+
+inline void stoprun( std::string str ) {
+  throw str;
+}
+
+inline std::string lower_case( std::string str ) {
+  std::string ret = str;
+  std::transform(ret(i).begin(), ret(i).end(), ret(i).begin(), [](unsigned char c){ return std::tolower(c); });
+  return ret;
+}
 
 
 
