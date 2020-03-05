@@ -126,7 +126,7 @@ public:
   }
   
 
-  void set_vmr_2d(std::string gas, real2d &w) {
+  void set_vmr(std::string gas, real2d &w) {
     int igas = this->find_gas(gas);
 
     for (int j=1; j<=size(w,2); j++) {
