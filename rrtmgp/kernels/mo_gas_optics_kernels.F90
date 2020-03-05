@@ -823,9 +823,9 @@ contains
             ssa(icol,ilay,igpt) = 0._wp
           end if
           do imom = 1, nmom
-            p(imom,icol,ilay,igpt) = 0.0_wp
+            p(icol,ilay,igpt,imom) = 0.0_wp
           end do
-          if(nmom >= 2) p(2,icol,ilay,igpt) = 0.1_wp
+          if(nmom >= 2) p(icol,ilay,igpt,2) = 0.1_wp
         end do
       end do
     end do
