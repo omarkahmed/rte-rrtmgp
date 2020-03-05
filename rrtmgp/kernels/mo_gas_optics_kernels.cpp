@@ -180,8 +180,8 @@ extern "C" void compute_Planck_source(int ncol, int nlay, int nbnd, int ngpt, in
     int iflav = gpoint_flavor(itropo, igpt); //eta interpolation depends on band's flavor
     // interpolation in temperature, pressure, and eta
     pfrac(igpt,ilay,icol) = 
-      interpolate3D(one, fmajor.slice({COLON,COLON,COLON,iflav,icol,ilay}), pfracin, 
-                    igpt, jeta.slice({COLON,iflav,icol,ilay}), jtemp(icol,ilay),jpress(icol,ilay)+itropo,ngpt,neta,npres,ntemp);
+      interpolate3D(one, fmajor.slice<3>({COLON,COLON,COLON,iflav,icol,ilay}), pfracin, 
+                    igpt, jeta.slice<1>({COLON,iflav,icol,ilay}), jtemp(icol,ilay),jpress(icol,ilay)+itropo,ngpt,neta,npres,ntemp);
   });
 
   //
@@ -191,7 +191,7 @@ extern "C" void compute_Planck_source(int ncol, int nlay, int nbnd, int ngpt, in
   // for (int icol=1; icol<=ncol; icol++) {
   parallel_for_cpu_serial( Bounds<1>({1,ncol}) , YAKL_LAMBDA ( int indices[] ) {
     int icol = indices[0];
-    auto planck_function_slice = planck_function.slice({COLON,1,icol}); // Necessary to create a temporary because we're writing to it
+    auto planck_function_slice = planck_function.slice<1>({COLON,1,icol}); // Necessary to create a temporary because we're writing to it
     interpolate1D(tsfc(icol), temp_ref_min, totplnk_delta, totplnk, planck_function_slice,nPlanckTemp,nbnd);
   });
   //
@@ -213,7 +213,7 @@ extern "C" void compute_Planck_source(int ncol, int nlay, int nbnd, int ngpt, in
     storeIndices( indices , icol,ilay );
 
     // Compute layer source irradiance for g-point, equals band irradiance x fraction for g-point
-    auto planck_function_slice = planck_function.slice({COLON,ilay,icol}); // Necessary to create a temporary because we're writing to it
+    auto planck_function_slice = planck_function.slice<1>({COLON,ilay,icol}); // Necessary to create a temporary because we're writing to it
     interpolate1D(tlay(icol,ilay), temp_ref_min, totplnk_delta, totplnk, planck_function_slice,nPlanckTemp,nbnd);
   });
   //
@@ -236,7 +236,7 @@ extern "C" void compute_Planck_source(int ncol, int nlay, int nbnd, int ngpt, in
   // for (int icol=1; icol<=ncol; icol++) {
   parallel_for_cpu_serial( Bounds<1>({1,ncol}) , YAKL_LAMBDA ( int indices[] ) {
     int icol = indices[0];
-    auto planck_function_slice = planck_function.slice({COLON,1,icol}); // Necessary to create a temporary because we're writing to it
+    auto planck_function_slice = planck_function.slice<1>({COLON,1,icol}); // Necessary to create a temporary because we're writing to it
     interpolate1D(tlev(icol,1), temp_ref_min, totplnk_delta, totplnk, planck_function_slice,nPlanckTemp,nbnd);
   });
 
@@ -246,7 +246,7 @@ extern "C" void compute_Planck_source(int ncol, int nlay, int nbnd, int ngpt, in
     int icol, ilay;
     storeIndices( indices , icol,ilay );
 
-    auto planck_function_slice = planck_function.slice({COLON,ilay,icol}); // Necessary to create a temporary because we're writing to it
+    auto planck_function_slice = planck_function.slice<1>({COLON,ilay,icol}); // Necessary to create a temporary because we're writing to it
     interpolate1D(tlev(icol,ilay), temp_ref_min, totplnk_delta, totplnk, planck_function_slice,nPlanckTemp,nbnd);
   });
 
@@ -287,7 +287,7 @@ extern "C" void compute_tau_rayleigh(int ncol, int nlay, int nbnd, int ngpt, int
   umgInt2d  band_lims_gpt("band_lims_gpt",band_lims_gpt_p,2,nbnd);
   umgReal4d krayl        ("krayl"        ,krayl_p        ,ngpt,neta,ntemp,2);
   umgReal2d col_dry      ("col_dry"      ,col_dry_p      ,ncol,nlay);
-  umgReal2d col_gas      ("col_gas"      ,col_gas_p      ,{1,ncol},{1,nlay},{0,ngas});
+  umgReal3d col_gas      ("col_gas"      ,col_gas_p      ,{1,ncol},{1,nlay},{0,ngas});
   umgReal5d fminor       ("fminor"       ,fminor_p       ,2,2,nflav,ncol,nlay);
   umgInt4d  jeta         ("jeta"         ,jeta_p         ,2,  nflav,ncol,nlay);
   umgBool2d tropo        ("tropo"        ,tropo_p        ,ncol,nlay);
@@ -303,9 +303,9 @@ extern "C" void compute_tau_rayleigh(int ncol, int nlay, int nbnd, int ngpt, int
 
     int itropo = merge(1,2,tropo(icol,ilay)); // itropo = 1 lower atmosphere; itropo = 2 upper atmosphere
     int iflav = gpoint_flavor(itropo, igpt);
-    real k = interpolate2D(fminor.slice({COLON,COLON,iflav,icol,ilay}), 
-                           krayl.slice({COLON,COLON,COLON,itropo}),      
-                           igpt, jeta.slice({COLON,iflav,icol,ilay}), jtemp(icol,ilay), ngpt, neta, ntemp);
+    real k = interpolate2D(fminor.slice<2>({COLON,COLON,iflav,icol,ilay}), 
+                           krayl.slice<3>({COLON,COLON,COLON,itropo}),      
+                           igpt, jeta.slice<1>({COLON,iflav,icol,ilay}), jtemp(icol,ilay), ngpt, neta, ntemp);
     tau_rayleigh(igpt,ilay,icol) =  k * (col_gas(icol,ilay,idx_h2o)+col_dry(icol,ilay));
   });
 }
@@ -389,8 +389,8 @@ void gas_optical_depths_minor(int ncol, int nlay, int ngpt, int ngas, int nflav,
           real tau_minor = 0._wp;
           int iflav = gpt_flv(idx_tropo,igpt); // eta interpolation depends on flavor
           int minor_loc = minor_start + (igpt - gptS); // add offset to starting point
-          real kminor_loc = interpolate2D(fminor.slice({COLON,COLON,iflav,icol,ilay}), kminor, minor_loc,  
-                                          jeta.slice({COLON,iflav,icol,ilay}), myjtemp, nminork, neta, ntemp);
+          real kminor_loc = interpolate2D(fminor.slice<2>({COLON,COLON,iflav,icol,ilay}), kminor, minor_loc,  
+                                          jeta.slice<1>({COLON,iflav,icol,ilay}), myjtemp, nminork, neta, ntemp);
           tau_minor = kminor_loc * scaling;
 
           yakl::atomicAdd( tau(igpt,ilay,icol) , tau_minor );
@@ -426,9 +426,9 @@ void gas_optical_depths_major(int ncol, int nlay, int nbnd, int ngpt, int nflav,
     int iflav = gpoint_flavor(itropo, igpt);
     real tau_major = 
       // interpolation in temperature, pressure, and eta
-      interpolate3D(col_mix.slice({COLON,iflav,icol,ilay}), 
-                    fmajor.slice({COLON,COLON,COLON,iflav,icol,ilay}), kmajor, 
-                    igpt, jeta.slice({COLON,iflav,icol,ilay}), jtemp(icol,ilay),jpress(icol,ilay)+itropo,ngpt,neta,npres,ntemp);
+      interpolate3D(col_mix.slice<1>({COLON,iflav,icol,ilay}), 
+                    fmajor.slice<3>({COLON,COLON,COLON,iflav,icol,ilay}), kmajor, 
+                    igpt, jeta.slice<1>({COLON,iflav,icol,ilay}), jtemp(icol,ilay),jpress(icol,ilay)+itropo,ngpt,neta,npres,ntemp);
     tau(igpt,ilay,icol) = tau(igpt,ilay,icol) + tau_major;
   });
 }

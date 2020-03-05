@@ -3,6 +3,9 @@
 
 #include "const.h"
 
+using yakl::memHost;
+using yakl::memDevice;
+
 // This code is part of RRTM for GCM Applications - Parallel (RRTMGP)
 //
 // Contacts: Robert Pincus and Eli Mlawer
@@ -37,9 +40,9 @@
 
 class GasConcs {
 public:
-  int constexpr GAS_NOT_IN_LIST = -1;
-  FArray<std::string,memHost> gas_name;
-  FArray<real2d     ,memHost> concs;
+  static int constexpr GAS_NOT_IN_LIST = -1;
+  FArray<std::string,1,memHost  > gas_name;
+  FArray<real2d     ,1,memDevice> concs;
   int ncol;
   int nlay;
 
@@ -56,20 +59,20 @@ public:
 
 
   void reset() {
-    gas_name = FArray<std::string,memHost>();
-    concs    = FArray<real2d     ,memHost>();
+    gas_name = FArray<std::string,1,memHost  >();
+    concs    = FArray<real2d     ,1,memDevice>();
     ncol = 0;
     nlay = 0;
   }
 
 
-  void init(FArray<std::string,memHost> &gas_names) {
+  void init(FArray<std::string,1,memHost> &gas_names) {
     int ngas = size(gas_names,1);
 
     // Transform gas names to lower case, and check for empty strings
     for (int i=1; i<=ngas; i++) {
       gas_names(i) = lower_case( gas_names(i) );
-      if (gas_name(i).length() == 0) { stoprun("ERROR: GasConcs::init(): must provide non-empty gas names"); }
+      if (gas_names(i).length() == 0) { stoprun("ERROR: GasConcs::init(): must provide non-empty gas names"); }
     }
 
     // Check for duplicate gase names
@@ -81,8 +84,8 @@ public:
     
     // Allocate fixed-size arrays
     this->reset();
-    this->gas_name = FArray<std::string,memHost>("gas_name",ngas);
-    this->concs    = FArray<real2d     ,memHost>("concs"   ,ngas);
+    this->gas_name = FArray<std::string,1,memHost>  ("gas_name",ngas);
+    this->concs    = FArray<real2d     ,1,memDevice>("concs"   ,ngas);
 
     for (int i=1; i<=ngas; i++) {
       this->gas_name(i) = gas_names(i);
@@ -96,7 +99,7 @@ public:
 
     if (w < 0._wp || w > 1._wp) { stoprun("GasConcs::set_vmr(): concentrations should be >= 0, <= 1"); }
     if (igas == GAS_NOT_IN_LIST) {
-      stoprun("GasConcs::set_vmr(): trying to set " << gas << " but name not provided at initialization");
+      stoprun("GasConcs::set_vmr(): trying to set a gas whose name was not provided at initialization");
     }
     
     this->concs(igas) = real2d("concs",1,1);
@@ -112,7 +115,7 @@ public:
     }
     if (this->nlay > 0 && size(w,1) != this->nlay) { stoprun("GasConcs::set_vmr: different dimension (nlay)"); }
     if (igas == GAS_NOT_IN_LIST) {
-      stoprun("GasConcs::set_vmr(): trying to set " << gas << " but name not provided at initialization");
+      stoprun("GasConcs::set_vmr(): trying to set a gas whose name not provided at initialization");
     }
 
     this->nlay = size(w,1);
@@ -124,7 +127,7 @@ public:
   
 
   void set_vmr_2d(std::string gas, real2d &w) {
-    igas = this->find_gas(gas);
+    int igas = this->find_gas(gas);
 
     for (int j=1; j<=size(w,2); j++) {
       for (int i=1; i<=size(w,1); i++) {
@@ -134,7 +137,7 @@ public:
     if (this->ncol > 0 && size(w,1) != this->ncol) { stoprun("GasConcs::set_vmr: different dimension (ncol)" ); }
     if (this->nlay > 0 && size(w,2) != this->nlay) { stoprun("GasConcs::set_vmr: different dimension (nlay)" ); }
     if (igas == GAS_NOT_IN_LIST) {
-      stoprun("GasConcs::set_vmr(): trying to set " << gas << "but name not provided at initialization" );
+      stoprun("GasConcs::set_vmr(): trying to set a gas whose name not provided at initialization" );
     }
     
     this->ncol = size(w,1);
@@ -154,15 +157,15 @@ public:
   void get_vmr(std::string gas, real1d &array) {
     int igas = this->find_gas(gas);
 
-    if (igas == GAS_NOT_IN_LIST) { stoprun("GasConcs::get_vmr; gas " << gas << " not found" ); }
-    if (this->concs(igas).totElems == 0 ) {
-      stoprun("GasConcs::get_vmr; gas " << gas << " concentration hasn't been set" );
+    if (igas == GAS_NOT_IN_LIST) { stoprun("GasConcs::get_vmr; gas not found" ); }
+    if (this->concs(igas).totElems() == 0 ) {
+      stoprun("GasConcs::get_vmr; gas concentration hasn't been set" );
     }
     if (size(this->concs(igas),1) > 1) { // Are we requesting a single profile when many are present?
-      stoprun("GasConcs::get_vmr; gas " << gas << " requesting single profile but many are available" );
+      stoprun("GasConcs::get_vmr; gas requesting single profile but many are available" );
     }
     if (this->nlay > 0 && this->nlay != size(array,1)) {
-      stoprun("GasConcs::get_vmr; gas " << gas << " array is wrong size (nlay)" );
+      stoprun("GasConcs::get_vmr; gas array is wrong size (nlay)" );
     }
 
     if ( size(this->concs(igas),2) > 1) {
@@ -181,15 +184,15 @@ public:
   void get_vmr(std::string gas, real2d &array) {
     int igas = this->find_gas(gas);
 
-    if (igas == GAS_NOT_IN_LIST) { stoprun("GasConcs::get_vmr; gas " << gas << " not found" ); }
-    if (this->concs(igas).totElems == 0) {
-      stoprun("GasConcs::get_vmr; gas " << gas << " concentration hasn't been set" );
+    if (igas == GAS_NOT_IN_LIST) { stoprun("GasConcs::get_vmr; gas not found" ); }
+    if (this->concs(igas).totElems() == 0) {
+      stoprun("GasConcs::get_vmr; gas concentration hasn't been set" );
     }
-    if (this->ncol > 0 && this->ncol /= size(array,1)) {
-      stoprun("ty_gas_concs->get_vmr; gas " << gas << " array is wrong size (ncol)" );
+    if (this->ncol > 0 && this->ncol != size(array,1)) {
+      stoprun("ty_gas_concs->get_vmr; gas array is wrong size (ncol)" );
     }
-    if (this->nlay > 0 && this->nlay /= size(array,2)) {
-      stoprun("ty_gas_concs->get_vmr; gas " << gas << " array is wrong size (nlay)" );
+    if (this->nlay > 0 && this->nlay != size(array,2)) {
+      stoprun("ty_gas_concs->get_vmr; gas array is wrong size (nlay)" );
     }
 
     if ( size(this->concs(igas),1) > 1) {       // Concentration stored as 2D
@@ -225,8 +228,8 @@ public:
     subset.reset();
 
     int ngas = size(this->gas_name,1);
-    subset.gas_name = FArray<std::string,memHost>("gas_name",ngas);
-    subset.concs    = FArray<real2d     ,memHost>("concs"   ,ngas);
+    subset.gas_name = FArray<std::string,1,memHost  >("gas_name",ngas);
+    subset.concs    = FArray<real2d     ,1,memDevice>("concs"   ,ngas);
     subset.nlay = this->nlay;
     subset.ncol = this->ncol > 0 ? n : 0;
     for (int i=1; i<=ngas; i++) {
@@ -254,16 +257,16 @@ public:
   }
 
 
-  int get_num_gases() { return ngas; }
+  int get_num_gases() { return size(gas_name,1); }
   
 
-  FArray<std::string,memHost> get_gas_names() { return gas_name; }
+  FArray<std::string,1,memHost> get_gas_names() { return gas_name; }
 
 
   // find gas in list; GAS_NOT_IN_LIST if not found
   int find_gas(std::string gas) {
     int ngas = size(this->gas_name,1);
-    if (ngas == 0) { return; }
+    if (ngas == 0) { return 0; }
     for (int igas=1; igas<=ngas; igas++) {
       if ( lower_case(gas) == this->gas_name(igas) ) {
         return igas;

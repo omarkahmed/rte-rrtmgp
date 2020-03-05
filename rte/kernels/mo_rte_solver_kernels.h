@@ -13,9 +13,7 @@
 // ---------------------------------------------------------------
 YAKL_INLINE void lw_source_noscat_stencil(int ncol, int nlay, int ngpt, int icol, int ilay, int igpt,
                                           real3d const &lay_source, real3d const &lev_source_up, real3d const &lev_source_dn,
-                                          real3d const &tau, real3d const &trans, real3d &source_dn, real3d &source_up) {
-  real tau_thresh = sqrt( std::numeric_limits<real>::epsilon() );
-
+                                          real3d const &tau, real3d const &trans, real3d &source_dn, real3d &source_up, real tau_thresh) {
   // Weighting factor. Use 2nd order series expansion when rounding error (~tau^2)
   //   is of order epsilon (smallest difference from 1. in working precision)
   //   Thanks to Peter Blossey
@@ -252,7 +250,7 @@ extern "C" void sw_solver_2stream(int ncol, int nlay, int ngpt, bool top_at_1, r
 // LW fluxes, no scattering, mu (cosine of integration angle) specified by column
 //   Does radiation calculation at user-supplied angles; converts radiances to flux
 //   using user-supplied weights
-extern "C" void lw_solver_noscat(int ncol, int nlay, int ngpt, bool top_at_1, real3d const &D, real weight,
+extern "C" void lw_solver_noscat(int ncol, int nlay, int ngpt, bool top_at_1, real2d const &D, real weight,
                                  real3d const &tau, real3d const &lay_source, real3d const &lev_source_inc, real3d const &lev_source_dec,
                                  real2d const &sfc_emis, real2d const &sfc_src, real3d &radn_up, real3d &radn_dn);
 
