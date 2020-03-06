@@ -21,10 +21,7 @@ extern "C" void inc_2stream_by_2stream_bybnd(int ncol, int nlay, int ngpt,
   // do igpt = 1 , ngpt
   //   do ilay = 1, nlay
   //     do icol = 1, ncol
-  parallel_for( Bounds<3>({1,ngpt},{1,nlay},{1,ncol}) , YAKL_LAMBDA ( int indices[] ) {
-    int igpt, ilay, icol;
-    storeIndices( indices , igpt,ilay,icol );
-
+  parallel_for_cpu_serial( Bounds<3>({1,ngpt},{1,nlay},{1,ncol}) , YAKL_LAMBDA (int igpt, int ilay, int icol) {
     for (int ibnd=1; ibnd<=nbnd; ibnd++) {
       if (igpt >= gpt_lims(1,ibnd) && igpt <= gpt_lims(2,ibnd) ) {
         // t=tau1 + tau2
@@ -54,10 +51,7 @@ extern "C" void inc_1scalar_by_1scalar_bybnd(int ncol, int nlay, int ngpt, real 
   // do igpt = 1 , ngpt
   //   do ilay = 1 , nlay
   //     do icol = 1 , ncol
-  parallel_for( Bounds<3>({1,ngpt},{1,nlay},{1,ncol}) , YAKL_LAMBDA ( int indices[] ) {
-    int igpt, ilay, icol;
-    storeIndices( indices , igpt,ilay,icol );
-
+  parallel_for_cpu_serial( Bounds<3>({1,ngpt},{1,nlay},{1,ncol}) , YAKL_LAMBDA (int igpt, int ilay, int icol) {
     for (int ibnd=1; ibnd<=nbnd; ibnd++) {
       if (igpt >= gpt_lims(1,ibnd) && igpt <= gpt_lims(2,ibnd) ) {
         tau1(icol,ilay,igpt) = tau1(icol,ilay,igpt) + tau2(icol,ilay,ibnd);
@@ -80,10 +74,7 @@ extern "C" void delta_scale_2str_k(int ncol, int nlay, int ngpt, real *tau_p, re
   // do igpt = 1, ngpt
   //   do ilay = 1, nlay
   //     do icol = 1, ncol
-  parallel_for( Bounds<3>({1,ngpt},{1,nlay},{1,ncol}) , YAKL_LAMBDA ( int indices[] ) {
-    int igpt, ilay, icol;
-    storeIndices( indices , igpt,ilay,icol );
-
+  parallel_for_cpu_serial( Bounds<3>({1,ngpt},{1,nlay},{1,ncol}) , YAKL_LAMBDA (int igpt, int ilay, int icol) {
     if (tau(icol,ilay,igpt) > eps) {
       real f  = g  (icol,ilay,igpt) * g  (icol,ilay,igpt);
       real wf = ssa(icol,ilay,igpt) * f;
@@ -110,10 +101,7 @@ extern "C" void delta_scale_2str_f_k(int ncol, int nlay, int ngpt, real *tau_p, 
   // do igpt = 1, ngpt
   //   do ilay = 1, nlay
   //     do icol = 1, ncol
-  parallel_for( Bounds<3>({1,ngpt},{1,nlay},{1,ncol}) , YAKL_LAMBDA (int const indices[]) {
-    int igpt, ilay, icol;
-    storeIndices( indices , igpt,ilay,icol );
-
+  parallel_for_cpu_serial( Bounds<3>({1,ngpt},{1,nlay},{1,ncol}) , YAKL_LAMBDA (int igpt, int ilay, int icol) {
     if (tau(icol,ilay,igpt) > eps) {
       real wf = ssa(icol,ilay,igpt) * f(icol,ilay,igpt);
       tau(icol,ilay,igpt) = (1._wp - wf) * tau(icol,ilay,igpt);
@@ -145,10 +133,7 @@ extern "C" void increment_1scalar_by_1scalar(int ncol, int nlay, int ngpt, real 
   // do igpt = 1, ngpt
   //   do ilay = 1, nlay
   //     do icol = 1, ncol
-  parallel_for( Bounds<3>({1,ngpt},{1,nlay},{1,ncol}) , YAKL_LAMBDA (int const indices[]) {
-    int igpt, ilay, icol;
-    storeIndices( indices , igpt,ilay,icol );
-
+  parallel_for_cpu_serial( Bounds<3>({1,ngpt},{1,nlay},{1,ncol}) , YAKL_LAMBDA (int igpt, int ilay, int icol) {
     tau1(icol,ilay,igpt) = tau1(icol,ilay,igpt) + tau2(icol,ilay,igpt);
   });
   std::cout << "WARNING: THIS ISN'T TESTED: " << __FILE__ << ": " << __LINE__ << "\n";
@@ -165,10 +150,7 @@ extern "C" void increment_1scalar_by_2stream(int ncol, int nlay, int ngpt, real 
   // do igpt = 1, ngpt
   //   do ilay = 1, nlay
   //     do icol = 1, ncol
-  parallel_for( Bounds<3>({1,ngpt},{1,nlay},{1,ncol}) , YAKL_LAMBDA (int const indices[]) {
-    int igpt, ilay, icol;
-    storeIndices( indices , igpt,ilay,icol );
-
+  parallel_for_cpu_serial( Bounds<3>({1,ngpt},{1,nlay},{1,ncol}) , YAKL_LAMBDA (int igpt, int ilay, int icol) {
     tau1(icol,ilay,igpt) = tau1(icol,ilay,igpt) + tau2(icol,ilay,igpt) * (1._wp - ssa2(icol,ilay,igpt));
   });
   std::cout << "WARNING: THIS ISN'T TESTED: " << __FILE__ << ": " << __LINE__ << "\n";
@@ -185,10 +167,7 @@ extern "C" void increment_1scalar_by_nstream(int ncol, int nlay, int ngpt, real 
   // do igpt = 1, ngpt
   //   do ilay = 1, nlay
   //     do icol = 1, ncol
-  parallel_for( Bounds<3>({1,ngpt},{1,nlay},{1,ncol}) , YAKL_LAMBDA (int const indices[]) {
-    int igpt, ilay, icol;
-    storeIndices( indices , igpt,ilay,icol );
-
+  parallel_for_cpu_serial( Bounds<3>({1,ngpt},{1,nlay},{1,ncol}) , YAKL_LAMBDA (int igpt, int ilay, int icol) {
     tau1(icol,ilay,igpt) = tau1(icol,ilay,igpt) + tau2(icol,ilay,igpt) * (1._wp - ssa2(icol,ilay,igpt));
   });
   std::cout << "WARNING: THIS ISN'T TESTED: " << __FILE__ << ": " << __LINE__ << "\n";
@@ -207,10 +186,7 @@ extern "C" void increment_2stream_by_1scalar(int ncol, int nlay, int ngpt, real 
   // do igpt = 1, ngpt
   //   do ilay = 1, nlay
   //     do icol = 1, ncol
-  parallel_for( Bounds<3>({1,ngpt},{1,nlay},{1,ncol}) , YAKL_LAMBDA (int const indices[]) {
-    int igpt, ilay, icol;
-    storeIndices( indices , igpt,ilay,icol );
-
+  parallel_for_cpu_serial( Bounds<3>({1,ngpt},{1,nlay},{1,ncol}) , YAKL_LAMBDA (int igpt, int ilay, int icol) {
     real tau12 = tau1(icol,ilay,igpt) + tau2(icol,ilay,igpt);
     if (tau12 > eps) {
       ssa1(icol,ilay,igpt) = tau1(icol,ilay,igpt) * ssa1(icol,ilay,igpt) / tau12;
@@ -237,10 +213,7 @@ extern "C" void increment_2stream_by_2stream(int ncol, int nlay, int ngpt, real 
   // do igpt = 1, ngpt
   //   do ilay = 1, nlay
   //     do icol = 1, ncol
-  parallel_for( Bounds<3>({1,ngpt},{1,nlay},{1,ncol}) , YAKL_LAMBDA (int const indices[]) {
-    int igpt, ilay, icol;
-    storeIndices( indices , igpt,ilay,icol );
-
+  parallel_for_cpu_serial( Bounds<3>({1,ngpt},{1,nlay},{1,ncol}) , YAKL_LAMBDA (int igpt, int ilay, int icol) {
     // t=tau1 + tau2
     real tau12 = tau1(icol,ilay,igpt) + tau2(icol,ilay,igpt);
     // w=(tau1*ssa1 + tau2*ssa2) / t
@@ -272,10 +245,7 @@ extern "C" void increment_2stream_by_nstream(int ncol, int nlay, int ngpt, int n
   // do igpt = 1, ngpt
   //   do ilay = 1, nlay
   //     do icol = 1, ncol
-  parallel_for( Bounds<3>({1,ngpt},{1,nlay},{1,ncol}) , YAKL_LAMBDA (int const indices[]) {
-    int igpt, ilay, icol;
-    storeIndices( indices , igpt,ilay,icol );
-
+  parallel_for_cpu_serial( Bounds<3>({1,ngpt},{1,nlay},{1,ncol}) , YAKL_LAMBDA (int igpt, int ilay, int icol) {
     // t=tau1 + tau2
     real tau12 = tau1(icol,ilay,igpt) + tau2(icol,ilay,igpt);
     // w=(tau1*ssa1 + tau2*ssa2) / t
@@ -304,10 +274,7 @@ extern "C" void increment_nstream_by_1scalar(int ncol, int nlay, int ngpt, real 
   // do igpt = 1, ngpt
   //   do ilay = 1, nlay
   //     do icol = 1, ncol
-  parallel_for( Bounds<3>({1,ngpt},{1,nlay},{1,ncol}) , YAKL_LAMBDA (int const indices[]) {
-    int igpt, ilay, icol;
-    storeIndices( indices , igpt,ilay,icol );
-
+  parallel_for_cpu_serial( Bounds<3>({1,ngpt},{1,nlay},{1,ncol}) , YAKL_LAMBDA (int igpt, int ilay, int icol) {
     real tau12 = tau1(icol,ilay,igpt) + tau2(icol,ilay,igpt);
     if (tau12 > eps) {
       ssa1(icol,ilay,igpt) = tau1(icol,ilay,igpt) * ssa1(icol,ilay,igpt) / tau12;
@@ -336,10 +303,7 @@ extern "C" void increment_nstream_by_2stream(int ncol, int nlay, int ngpt, int n
   // do igpt = 1, ngpt
   //   do ilay = 1, nlay
   //     do icol = 1, ncol
-  parallel_for( Bounds<3>({1,ngpt},{1,nlay},{1,ncol}) , YAKL_LAMBDA (int const indices[]) {
-    int igpt, ilay, icol;
-    storeIndices( indices , igpt,ilay,icol );
-
+  parallel_for_cpu_serial( Bounds<3>({1,ngpt},{1,nlay},{1,ncol}) , YAKL_LAMBDA (int igpt, int ilay, int icol) {
     real tau12 = tau1(icol,ilay,igpt) + tau2(icol,ilay,igpt);
     real tauscat12 = tau1(icol,ilay,igpt) * ssa1(icol,ilay,igpt) + 
                      tau2(icol,ilay,igpt) * ssa2(icol,ilay,igpt);
@@ -378,10 +342,7 @@ extern "C" void increment_nstream_by_nstream(int ncol, int nlay, int ngpt, int n
   // do igpt = 1, ngpt
   //   do ilay = 1, nlay
   //     do icol = 1, ncol
-  parallel_for( Bounds<3>({1,ngpt},{1,nlay},{1,ncol}) , YAKL_LAMBDA (int const indices[]) {
-    int igpt, ilay, icol;
-    storeIndices( indices , igpt,ilay,icol );
-
+  parallel_for_cpu_serial( Bounds<3>({1,ngpt},{1,nlay},{1,ncol}) , YAKL_LAMBDA (int igpt, int ilay, int icol) {
     real tau12 = tau1(icol,ilay,igpt) + tau2(icol,ilay,igpt);
     real tauscat12 = tau1(icol,ilay,igpt) * ssa1(icol,ilay,igpt) + 
                      tau2(icol,ilay,igpt) * ssa2(icol,ilay,igpt);
@@ -411,10 +372,7 @@ extern "C" void inc_1scalar_by_2stream_bybnd(int ncol, int nlay, int ngpt, real 
   // do igpt = 1, ngpt
   //   do ilay = 1, nlay
   //     do icol = 1, ncol
-  parallel_for( Bounds<3>({1,ngpt},{1,nlay},{1,ncol}) , YAKL_LAMBDA (int const indices[]) {
-    int igpt, ilay, icol;
-    storeIndices( indices , igpt,ilay,icol );
-
+  parallel_for_cpu_serial( Bounds<3>({1,ngpt},{1,nlay},{1,ncol}) , YAKL_LAMBDA (int igpt, int ilay, int icol) {
     for (int ibnd=1; ibnd<=nbnd; ibnd++) {
       if (igpt >= gpt_lims(1, ibnd) && igpt <= gpt_lims(2, ibnd) ) {
         tau1(icol,ilay,igpt) = tau1(icol,ilay,igpt) + tau2(icol,ilay,ibnd) * (1._wp - ssa2(icol,ilay,ibnd));
@@ -436,10 +394,7 @@ extern "C" void inc_1scalar_by_nstream_bybnd(int ncol, int nlay, int ngpt, real 
   // do igpt = 1, ngpt
   //   do ilay = 1, nlay
   //     do icol = 1, ncol
-  parallel_for( Bounds<3>({1,ngpt},{1,nlay},{1,ncol}) , YAKL_LAMBDA (int const indices[]) {
-    int igpt, ilay, icol;
-    storeIndices( indices , igpt,ilay,icol );
-
+  parallel_for_cpu_serial( Bounds<3>({1,ngpt},{1,nlay},{1,ncol}) , YAKL_LAMBDA (int igpt, int ilay, int icol) {
     for (int ibnd=1; ibnd<=nbnd; ibnd++) {
       if (igpt >= gpt_lims(1, ibnd) && igpt <= gpt_lims(2, ibnd) ) {
         tau1(icol,ilay,igpt) = tau1(icol,ilay,igpt) + tau2(icol,ilay,ibnd) * (1._wp - ssa2(icol,ilay,ibnd));
@@ -463,10 +418,7 @@ extern "C" void inc_2stream_by_1scalar_bybnd(int ncol, int nlay, int ngpt, real 
   // do igpt = 1, ngpt
   //   do ilay = 1, nlay
   //     do icol = 1, ncol
-  parallel_for( Bounds<3>({1,ngpt},{1,nlay},{1,ncol}) , YAKL_LAMBDA (int const indices[]) {
-    int igpt, ilay, icol;
-    storeIndices( indices , igpt,ilay,icol );
-
+  parallel_for_cpu_serial( Bounds<3>({1,ngpt},{1,nlay},{1,ncol}) , YAKL_LAMBDA (int igpt, int ilay, int icol) {
     for (int ibnd=1; ibnd<=nbnd; ibnd++) {
       if (igpt >= gpt_lims(1, ibnd) && igpt <= gpt_lims(2, ibnd) ) {
         real tau12 = tau1(icol,ilay,igpt) + tau2(icol,ilay,ibnd);
@@ -495,10 +447,7 @@ extern "C" void inc_2stream_by_nstream_bybnd(int ncol, int nlay, int ngpt, int n
   // do igpt = 1, ngpt
   //   do ilay = 1, nlay
   //     do icol = 1, ncol
-  parallel_for( Bounds<3>({1,ngpt},{1,nlay},{1,ncol}) , YAKL_LAMBDA (int const indices[]) {
-    int igpt, ilay, icol;
-    storeIndices( indices , igpt,ilay,icol );
-
+  parallel_for_cpu_serial( Bounds<3>({1,ngpt},{1,nlay},{1,ncol}) , YAKL_LAMBDA (int igpt, int ilay, int icol) {
     for (int ibnd=1; ibnd<=nbnd; ibnd++) {
       if (igpt >= gpt_lims(1, ibnd) && igpt <= gpt_lims(2, ibnd) ) {
         // t=tau1 + tau2
@@ -530,10 +479,7 @@ extern "C" void inc_nstream_by_1scalar_bybnd(int ncol, int nlay, int ngpt, real 
   // do igpt = 1, ngpt
   //   do ilay = 1, nlay
   //     do icol = 1, ncol
-  parallel_for( Bounds<3>({1,ngpt},{1,nlay},{1,ncol}) , YAKL_LAMBDA (int const indices[]) {
-    int igpt, ilay, icol;
-    storeIndices( indices , igpt,ilay,icol );
-
+  parallel_for_cpu_serial( Bounds<3>({1,ngpt},{1,nlay},{1,ncol}) , YAKL_LAMBDA (int igpt, int ilay, int icol) {
     for (int ibnd=1; ibnd<=nbnd; ibnd++) {
       if (igpt >= gpt_lims(1, ibnd) && igpt <= gpt_lims(2, ibnd) ) {
         real tau12 = tau1(icol,ilay,igpt) + tau2(icol,ilay,ibnd);
@@ -565,10 +511,7 @@ extern "C" void inc_nstream_by_2stream_bybnd(int ncol, int nlay, int ngpt, int n
   // do igpt = 1, ngpt
   //   do ilay = 1, nlay
   //     do icol = 1, ncol
-  parallel_for( Bounds<3>({1,ngpt},{1,nlay},{1,ncol}) , YAKL_LAMBDA (int const indices[]) {
-    int igpt, ilay, icol;
-    storeIndices( indices , igpt,ilay,icol );
-
+  parallel_for_cpu_serial( Bounds<3>({1,ngpt},{1,nlay},{1,ncol}) , YAKL_LAMBDA (int igpt, int ilay, int icol) {
     for (int ibnd=1; ibnd<=nbnd; ibnd++) {
       if (igpt >= gpt_lims(1, ibnd) && igpt <= gpt_lims(2, ibnd) ) {
         real tau12 = tau1(icol,ilay,igpt) + tau2(icol,ilay,ibnd);
@@ -610,10 +553,7 @@ extern "C" void inc_nstream_by_nstream_bybnd(int ncol, int nlay, int ngpt, int n
   // do igpt = 1, ngpt
   //   do ilay = 1, nlay
   //     do icol = 1, ncol
-  parallel_for( Bounds<3>({1,ngpt},{1,nlay},{1,ncol}) , YAKL_LAMBDA (int const indices[]) {
-    int igpt, ilay, icol;
-    storeIndices( indices , igpt,ilay,icol );
-
+  parallel_for_cpu_serial( Bounds<3>({1,ngpt},{1,nlay},{1,ncol}) , YAKL_LAMBDA (int igpt, int ilay, int icol) {
     for (int ibnd=0; ibnd<=nbnd; ibnd++) {
       if (igpt >= gpt_lims(1, ibnd) && igpt <= gpt_lims(2, ibnd) ) {
         real tau12 = tau1(icol,ilay,igpt) + tau2(icol,ilay,ibnd);
@@ -643,10 +583,7 @@ extern "C" void extract_subset_dim1_3d(int ncol, int nlay, int ngpt, real *array
   // do igpt = 1, ngpt
   //   do ilay = 1, nlay
   //     do icol = colS, colE
-  parallel_for( Bounds<3>({1,ngpt},{1,nlay},{colS,colE}) , YAKL_LAMBDA (int const indices[]) {
-    int igpt, ilay, icol;
-    storeIndices( indices , igpt,ilay,icol );
-
+  parallel_for_cpu_serial( Bounds<3>({1,ngpt},{1,nlay},{colS,colE}) , YAKL_LAMBDA (int igpt, int ilay, int icol) {
     array_out(icol-colS+1, ilay, igpt) = array_in(icol, ilay, igpt);
   });
   std::cout << "WARNING: THIS ISN'T TESTED: " << __FILE__ << ": " << __LINE__ << "\n";
@@ -662,10 +599,7 @@ extern "C" void extract_subset_dim2_4d(int nmom, int ncol, int nlay, int ngpt, r
   //  do ilay = 1, nlay
   //    do icol = colS, colE
   //      do imom = 1, nmom
-  parallel_for( Bounds<4>({1,ngpt},{1,nlay},{colS,colE},{1,nmom}) , YAKL_LAMBDA (int const indices[]) {
-    int igpt, ilay, icol, imom;
-    storeIndices( indices , igpt,ilay,icol,imom );
-
+  parallel_for_cpu_serial( Bounds<4>({1,ngpt},{1,nlay},{colS,colE},{1,nmom}) , YAKL_LAMBDA (int igpt, int ilay, int icol, int imom) {
     array_out(imom, icol-colS+1, ilay, igpt) = array_in(imom, icol, ilay, igpt);
   });
   std::cout << "WARNING: THIS ISN'T TESTED: " << __FILE__ << ": " << __LINE__ << "\n";
@@ -681,10 +615,7 @@ extern "C" void extract_subset_absorption_tau(int ncol, int nlay, int ngpt, real
   // do igpt = 1, ngpt
   //   do ilay = 1, nlay
   //     do icol = colS, colE
-  parallel_for( Bounds<3>({1,ngpt},{1,nlay},{colS,colE}) , YAKL_LAMBDA (int const indices[]) {
-    int igpt, ilay, icol;
-    storeIndices( indices , igpt,ilay,icol );
-
+  parallel_for_cpu_serial( Bounds<3>({1,ngpt},{1,nlay},{colS,colE}) , YAKL_LAMBDA (int igpt, int ilay, int icol) {
     tau_out(icol-colS+1, ilay, igpt) = tau_in(icol, ilay, igpt) * (1._wp - ssa_in(icol, ilay, igpt));
   });
   std::cout << "WARNING: THIS ISN'T TESTED: " << __FILE__ << ": " << __LINE__ << "\n";

@@ -38,10 +38,7 @@ YAKL_INLINE void sw_source_2str(int ncol, int nlay, int ngpt, bool top_at_1, rea
   if (top_at_1) {
     // do igpt = 1, ngpt
     //   do icol = 1, ncol
-    parallel_for( Bounds<2>({1,ngpt},{1,ncol}) , YAKL_LAMBDA ( int const indices[] ) {
-      int igpt, icol;
-      storeIndices( indices , igpt,icol );
-
+    parallel_for_cpu_serial( Bounds<2>({1,ngpt},{1,ncol}) , YAKL_LAMBDA (int igpt, int icol) {
       for (int ilev=1; ilev<=nlay; ilev++) {
         source_up(icol,ilev,igpt)     =    Rdir(icol,ilev,igpt) * flux_dn_dir(icol,ilev,igpt);
         source_dn(icol,ilev,igpt)     =    Tdir(icol,ilev,igpt) * flux_dn_dir(icol,ilev,igpt);
@@ -56,10 +53,7 @@ YAKL_INLINE void sw_source_2str(int ncol, int nlay, int ngpt, bool top_at_1, rea
     // previous level is up (+1)
     // do igpt = 1, ngpt
     //   do icol = 1, ncol
-    parallel_for( Bounds<2>({1,ngpt},{1,ncol}) , YAKL_LAMBDA ( int const indices[] ) {
-      int igpt, icol;
-      storeIndices( indices , igpt,icol );
-
+    parallel_for_cpu_serial( Bounds<2>({1,ngpt},{1,ncol}) , YAKL_LAMBDA (int igpt, int icol) {
       for (int ilev=nlay; ilev>=1; ilev--) {
         source_up(icol,ilev,igpt)   =    Rdir(icol,ilev,igpt) * flux_dn_dir(icol,ilev+1,igpt);
         source_dn(icol,ilev,igpt)   =    Tdir(icol,ilev,igpt) * flux_dn_dir(icol,ilev+1,igpt);
@@ -82,10 +76,7 @@ YAKL_INLINE void lw_transport_noscat(int ncol, int nlay, int ngpt, bool top_at_1
     // Top of domain is index 1
     // do igpt = 1, ngpt
     //   do icol = 1, ncol
-    parallel_for( Bounds<2>({1,ngpt},{1,ncol}) , YAKL_LAMBDA ( int const indices[] ) {
-      int igpt, icol;
-      storeIndices( indices , igpt,icol );
-
+    parallel_for_cpu_serial( Bounds<2>({1,ngpt},{1,ncol}) , YAKL_LAMBDA (int igpt, int icol) {
       // Downward propagation
       for (int ilev=2; ilev<=nlay+1; ilev++) {
         radn_dn(icol,ilev,igpt) = trans(icol,ilev-1,igpt)*radn_dn(icol,ilev-1,igpt) + source_dn(icol,ilev-1,igpt);
@@ -103,10 +94,7 @@ YAKL_INLINE void lw_transport_noscat(int ncol, int nlay, int ngpt, bool top_at_1
     // Top of domain is index nlay+1
     // do igpt = 1, ngpt
     //   do icol = 1, ncol
-    parallel_for( Bounds<2>({1,ngpt},{1,ncol}) , YAKL_LAMBDA ( int const indices[] ) {
-      int igpt, icol;
-      storeIndices( indices , igpt,icol );
-
+    parallel_for_cpu_serial( Bounds<2>({1,ngpt},{1,ncol}) , YAKL_LAMBDA (int igpt, int icol) {
       // Downward propagation
       for (int ilev=nlay; ilev>=1; ilev--) {
         radn_dn(icol,ilev,igpt) = trans(icol,ilev  ,igpt)*radn_dn(icol,ilev+1,igpt) + source_dn(icol,ilev,igpt);
@@ -139,18 +127,14 @@ YAKL_INLINE void sw_two_stream(int ncol, int nlay, int ngpt, real1d const &mu0, 
 
   real eps = std::numeric_limits<real>::epsilon();
 
-  parallel_for( Bounds<1>({1,ncol}) , YAKL_LAMBDA (int const indices[]) {
-    int icol = indices[0];
+  parallel_for_cpu_serial( ncol , YAKL_LAMBDA (int icol) {
     mu0_inv(icol) = 1._wp/mu0(icol);
   });
 
   // do igpt = 1, ngpt
   //   do ilay = 1, nlay
   //     do icol = 1, ncol
-  parallel_for( Bounds<3>({1,ngpt},{1,nlay},{1,ncol}) , YAKL_LAMBDA ( int const indices[] ) {
-    int igpt, ilay, icol;
-    storeIndices( indices , igpt,ilay,icol );
-
+  parallel_for_cpu_serial( Bounds<3>({1,ngpt},{1,nlay},{1,ncol}) , YAKL_LAMBDA (int igpt, int ilay, int icol) {
     // Zdunkowski Practical Improved Flux Method "PIFM"
     //  (Zdunkowski et al., 1980;  Contributions to Atmospheric Physics 53, 147-66)
     real gamma1= (8._wp - w0(icol,ilay,igpt) * (5._wp + 3._wp * g(icol,ilay,igpt))) * .25_wp;

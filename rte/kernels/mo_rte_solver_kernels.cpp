@@ -10,19 +10,13 @@ extern "C" void apply_BC_0(int ncol, int nlay, int ngpt, bool top_at_1, real *fl
   if (top_at_1) {
     // do igpt = 1, ngpt
     //   do icol = 1, ncol
-    parallel_for( Bounds<2>({1,ngpt},{1,ncol}) , YAKL_LAMBDA ( int const indices[] ) {
-      int igpt, icol;
-      storeIndices( indices , igpt,icol );
-
+    parallel_for_cpu_serial( Bounds<2>({1,ngpt},{1,ncol}) , YAKL_LAMBDA (int igpt, int icol) {
       flux_dn(icol,      1, igpt)  = 0;
     });
   } else {
     // do igpt = 1, ngpt
     //   do icol = 1, ncol
-    parallel_for( Bounds<2>({1,ngpt},{1,ncol}) , YAKL_LAMBDA ( int const indices[] ) {
-      int igpt, icol;
-      storeIndices( indices , igpt,icol );
-
+    parallel_for_cpu_serial( Bounds<2>({1,ngpt},{1,ncol}) , YAKL_LAMBDA (int igpt, int icol) {
       flux_dn(icol, nlay+1, igpt)  = 0;
     });
   }
@@ -38,19 +32,13 @@ extern "C" void apply_BC_factor(int ncol, int nlay, int ngpt, bool top_at_1, rea
   if (top_at_1) {
     // do igpt = 1, ngpt
     //   do icol = 1, ncol
-    parallel_for( Bounds<2>({1,ngpt},{1,ncol}) , YAKL_LAMBDA ( int const indices[] ) {
-      int igpt, icol;
-      storeIndices( indices , igpt,icol );
-
+    parallel_for_cpu_serial( Bounds<2>({1,ngpt},{1,ncol}) , YAKL_LAMBDA (int igpt, int icol) {
       flux_dn(icol,      1, igpt)  = inc_flux(icol,igpt) * factor(icol);
     });
   } else {
     // do igpt = 1, ngpt
     //   do icol = 1, ncol
-    parallel_for( Bounds<2>({1,ngpt},{1,ncol}) , YAKL_LAMBDA ( int const indices[] ) {
-      int igpt, icol;
-      storeIndices( indices , igpt,icol );
-
+    parallel_for_cpu_serial( Bounds<2>({1,ngpt},{1,ncol}) , YAKL_LAMBDA (int igpt, int icol) {
       flux_dn(icol, nlay+1, igpt)  = inc_flux(icol,igpt) * factor(icol);
     });
   }
@@ -65,20 +53,14 @@ extern "C" void apply_BC_gpt(int ncol, int nlay, int ngpt, bool top_at_1, real2d
     //$acc  parallel loop collapse(2)
     // do igpt = 1, ngpt
     //   do icol = 1, ncol
-    parallel_for( Bounds<2>({1,ngpt},{1,ncol}) , YAKL_LAMBDA ( int const indices[] ) {
-      int igpt, icol;
-      storeIndices( indices , igpt,icol );
-
+    parallel_for_cpu_serial( Bounds<2>({1,ngpt},{1,ncol}) , YAKL_LAMBDA (int igpt, int icol) {
       flux_dn(icol,      1, igpt)  = inc_flux(icol,igpt);
     });
   } else {
     //$acc  parallel loop collapse(2)
     // do igpt = 1, ngpt
     //   do icol = 1, ncol
-    parallel_for( Bounds<2>({1,ngpt},{1,ncol}) , YAKL_LAMBDA ( int const indices[] ) {
-      int igpt, icol;
-      storeIndices( indices , igpt,icol );
-
+    parallel_for_cpu_serial( Bounds<2>({1,ngpt},{1,ncol}) , YAKL_LAMBDA (int igpt, int icol) {
       flux_dn(icol, nlay+1, igpt)  = inc_flux(icol,igpt);
     });
   }
@@ -102,10 +84,7 @@ extern "C" void adding(int ncol, int nlay, int ngpt, bool top_at_1, real2d const
   if (top_at_1) {
     // do igpt = 1, ngpt
     //   do icol = 1, ncol
-    parallel_for( Bounds<2>({1,ngpt},{1,ncol}) , YAKL_LAMBDA ( int const indices[] ) {
-      int igpt, icol;
-      storeIndices( indices , igpt,icol );
-
+    parallel_for_cpu_serial( Bounds<2>({1,ngpt},{1,ncol}) , YAKL_LAMBDA (int igpt, int icol) {
       int ilev = nlay + 1;
       // Albedo of lowest level is the surface albedo...
       albedo(icol,ilev,igpt)  = albedo_sfc(icol,igpt);
@@ -145,10 +124,7 @@ extern "C" void adding(int ncol, int nlay, int ngpt, bool top_at_1, real2d const
 
     // do igpt = 1, ngpt
     //   do icol = 1, ncol
-    parallel_for( Bounds<2>({1,ngpt},{1,ncol}) , YAKL_LAMBDA ( int const indices[] ) {
-      int igpt, icol;
-      storeIndices( indices , igpt,icol );
-
+    parallel_for_cpu_serial( Bounds<2>({1,ngpt},{1,ncol}) , YAKL_LAMBDA (int igpt, int icol) {
       int ilev = 1;
       // Albedo of lowest level is the surface albedo...
       albedo(icol,ilev,igpt)  = albedo_sfc(icol,igpt);
@@ -229,9 +205,7 @@ extern "C" void sw_solver_2stream(int ncol, int nlay, int ngpt, bool top_at_1, r
   // do igpt = 1, ngpt
   //   do ilay = 1, nlay+1
   //     do icol = 1, ncol
-  parallel_for( Bounds<3>({1,ngpt},{1,nlay+1},{1,ncol}) , YAKL_LAMBDA (int const indices[]) {
-    int igpt, ilay, icol;
-    storeIndices( indices , igpt,ilay,icol );
+  parallel_for_cpu_serial( Bounds<3>({1,ngpt},{1,nlay+1},{1,ncol}) , YAKL_LAMBDA (int igpt, int ilay, int icol) {
     flux_dn(icol,ilay,igpt) = flux_dn(icol,ilay,igpt) + flux_dir(icol,ilay,igpt);
   });
 }
@@ -276,10 +250,7 @@ extern "C" void lw_solver_noscat(int ncol, int nlay, int ngpt, bool top_at_1, re
 
   // do igpt = 1, ngpt
   //   do icol = 1, ncol
-  parallel_for( Bounds<2>({1,ngpt},{1,ncol}) , YAKL_LAMBDA ( int const indices[] ) {
-    int igpt, icol;
-    storeIndices( indices , igpt,icol );
-
+  parallel_for_cpu_serial( Bounds<2>({1,ngpt},{1,ncol}) , YAKL_LAMBDA (int igpt, int icol) {
     // Transport is for intensity
     //   convert flux at top of domain to intensity assuming azimuthal isotropy
     radn_dn(icol,top_level,igpt) = radn_dn(icol,top_level,igpt)/(2._wp * pi * weight);
@@ -292,9 +263,7 @@ extern "C" void lw_solver_noscat(int ncol, int nlay, int ngpt, bool top_at_1, re
   // do igpt = 1, ngpt
   //   do ilay = 1, nlay
   //     do icol = 1, ncol
-  parallel_for( Bounds<3>({1,ngpt},{1,nlay},{1,ncol}) , YAKL_LAMBDA (int const indices[]) {
-    int igpt, ilay, icol;
-    storeIndices( indices , igpt,ilay,icol );
+  parallel_for_cpu_serial( Bounds<3>({1,ngpt},{1,nlay},{1,ncol}) , YAKL_LAMBDA (int igpt, int ilay, int icol) {
     // Optical path and transmission, used in source function and transport calculations
     tau_loc(icol,ilay,igpt) = tau(icol,ilay,igpt)*D(icol,igpt);
     trans  (icol,ilay,igpt) = exp(-tau_loc(icol,ilay,igpt));
@@ -314,10 +283,7 @@ extern "C" void lw_solver_noscat(int ncol, int nlay, int ngpt, bool top_at_1, re
   // do igpt = 1, ngpt
   //   do ilev = 1, nlay+1
   //     do icol = 1, ncol
-  parallel_for( Bounds<3>({1,ngpt},{1,nlay+1},{1,ncol}) , YAKL_LAMBDA (int const indices[]) {
-    int igpt, ilev, icol;
-    storeIndices( indices , igpt,ilev,icol );
-
+  parallel_for_cpu_serial( Bounds<3>({1,ngpt},{1,nlay+1},{1,ncol}) , YAKL_LAMBDA (int igpt, int ilev, int icol) {
     radn_dn(icol,ilev,igpt) = 2._wp * pi * weight * radn_dn(icol,ilev,igpt);
     radn_up(icol,ilev,igpt) = 2._wp * pi * weight * radn_up(icol,ilev,igpt);
   });
@@ -350,10 +316,7 @@ extern "C" void lw_solver_noscat_GaussQuad(int ncol, int nlay, int ngpt, bool to
 
   // do igpt = 1, ngpt
   //   do icol = 1, ncol
-  parallel_for( Bounds<2>({1,ngpt},{1,ncol}) , YAKL_LAMBDA ( int const indices[] ) {
-    int igpt, icol;
-    storeIndices( indices , igpt,icol );
-
+  parallel_for_cpu_serial( Bounds<2>({1,ngpt},{1,ncol}) , YAKL_LAMBDA (int igpt, int icol) {
     Ds_ncol(icol, igpt) = Ds(1);
   });
 
@@ -367,10 +330,7 @@ extern "C" void lw_solver_noscat_GaussQuad(int ncol, int nlay, int ngpt, bool to
 
   // do igpt = 1, ngpt
   //   do icol = 1, ncol
-  parallel_for( Bounds<2>({1,ngpt},{1,ncol}) , YAKL_LAMBDA ( int const indices[] ) {
-    int igpt, icol;
-    storeIndices( indices , igpt,icol );
-
+  parallel_for_cpu_serial( Bounds<2>({1,ngpt},{1,ncol}) , YAKL_LAMBDA (int igpt, int icol) {
     flux_top(icol,igpt) = flux_dn(icol,top_level,igpt);
   });
 
@@ -379,10 +339,7 @@ extern "C" void lw_solver_noscat_GaussQuad(int ncol, int nlay, int ngpt, bool to
   for (int imu=2; imu<=nmus; imu++) {
     // do igpt = 1, ngpt
     //   do icol = 1, ncol
-    parallel_for( Bounds<2>({1,ngpt},{1,ncol}) , YAKL_LAMBDA ( int const indices[] ) {
-      int igpt, icol;
-      storeIndices( indices , igpt,icol );
-
+    parallel_for_cpu_serial( Bounds<2>({1,ngpt},{1,ncol}) , YAKL_LAMBDA (int igpt, int icol) {
       Ds_ncol(icol, igpt) = Ds(imu);
     });
 
@@ -394,10 +351,7 @@ extern "C" void lw_solver_noscat_GaussQuad(int ncol, int nlay, int ngpt, bool to
     // do igpt = 1, ngpt
     //   do ilev = 1, nlay+1
     //     do icol = 1, ncol
-    parallel_for( Bounds<3>({1,ngpt},{1,nlay+1},{1,ncol}) , YAKL_LAMBDA ( int const indices[] ) {
-      int igpt, ilev, icol;
-      storeIndices( indices , igpt,ilev,icol );
-
+    parallel_for_cpu_serial( Bounds<3>({1,ngpt},{1,nlay+1},{1,ncol}) , YAKL_LAMBDA (int igpt, int ilev, int icol) {
       flux_up(icol,ilev,ngpt) = flux_up(icol,ilev,ngpt) + radn_up(icol,ilev,ngpt);
       flux_dn(icol,ilev,ngpt) = flux_dn(icol,ilev,ngpt) + radn_dn(icol,ilev,ngpt);
     });
@@ -418,10 +372,7 @@ void lw_source_2str(int ncol, int nlay, int ngpt, bool top_at_1, real2d const &s
   // do igpt = 1, ngpt
   //   do ilay = 1, nlay
   //     do icol = 1, ncol
-  parallel_for( Bounds<3>({1,ngpt},{1,nlay},{1,ncol}) , YAKL_LAMBDA (int const indices[] ) {
-    int igpt, ilay, icol;
-    storeIndices( indices , igpt,ilay,icol );
-
+  parallel_for_cpu_serial( Bounds<3>({1,ngpt},{1,nlay},{1,ncol}) , YAKL_LAMBDA (int igpt, int ilay, int icol) {
     if ( tau(icol,ilay,ngpt) > 1.0e-8_wp ) {
       real lev_source_top, lev_source_bot;
       if (top_at_1) {
@@ -460,10 +411,7 @@ void lw_combine_sources(int ncol, int nlay, int ngpt, bool top_at_1, real3d cons
   // do igpt = 1, ngpt
   //   do ilay = 1, nlay+1
   //     do icol = 1, ncol
-  parallel_for( Bounds<3>({1,ngpt},{1,nlay+1},{1,ncol}) , YAKL_LAMBDA (int const indices[] ) {
-    int igpt, ilay, icol;
-    storeIndices( indices , igpt,ilay,icol );
-
+  parallel_for_cpu_serial( Bounds<3>({1,ngpt},{1,nlay+1},{1,ncol}) , YAKL_LAMBDA (int igpt, int ilay, int icol) {
     if (ilay == 1) {
       lev_source(icol, ilay, igpt) =      lev_src_dec(icol, ilay,   igpt);
     } else if (ilay == nlay+1) {
@@ -488,10 +436,7 @@ void lw_two_stream(int ncol, int nlay, int ngpt, real3d const &tau, real3d const
   // do igpt = 1, ngpt
   //   do ilay = 1, nlay
   //     do icol = 1, ncol
-  parallel_for( Bounds<3>({1,ngpt},{1,nlay},{1,ncol}) , YAKL_LAMBDA (int const indices[] ) {
-    int igpt, ilay, icol;
-    storeIndices( indices , igpt,ilay,icol );
-
+  parallel_for_cpu_serial( Bounds<3>({1,ngpt},{1,nlay},{1,ncol}) , YAKL_LAMBDA (int igpt, int ilay, int icol) {
     // Coefficients differ from SW implementation because the phase function is more isotropic
     //   Here we follow Fu et al. 1997, doi:10.1175/1520-0469(1997)054<2799:MSPITI>2.0.CO;2
     //   and use a diffusivity sec of 1.66
@@ -534,8 +479,7 @@ void sw_solver_noscat(int ncol, int nlay, int ngpt, bool top_at_1, real *tau_p, 
   
   real1d mu0_inv("mu0_inv",ncol);
 
-  parallel_for( Bounds<1>({1,ncol}) , YAKL_LAMBDA (int const indices[]) {
-    int icol = indices[0];
+  parallel_for_cpu_serial( ncol , YAKL_LAMBDA (int icol) {
     mu0_inv(icol) = 1._wp/mu0(icol);
   });
 
@@ -550,10 +494,7 @@ void sw_solver_noscat(int ncol, int nlay, int ngpt, bool top_at_1, real *tau_p, 
     // previous level is up (-1)
     // do igpt = 1, ngpt
     //   do icol = 1, ncol
-    parallel_for( Bounds<2>({1,ngpt},{1,ncol}) , YAKL_LAMBDA (int const indices[]) {
-      int igpt, icol;
-      storeIndices( indices , igpt,icol );
-      
+    parallel_for_cpu_serial( Bounds<2>({1,ngpt},{1,ncol}) , YAKL_LAMBDA (int igpt, int icol) {
       for (int ilev=2; ilev<=nlay+1; ilev++) {
         flux_dir(icol,ilev,igpt) = flux_dir(icol,ilev-1,igpt) * exp(-tau(icol,ilev,igpt)*mu0_inv(icol));
       }
@@ -563,10 +504,7 @@ void sw_solver_noscat(int ncol, int nlay, int ngpt, bool top_at_1, real *tau_p, 
     // previous level is up (+1)
     // do igpt = 1, ngpt
     //   do icol = 1, ncol
-    parallel_for( Bounds<2>({1,ngpt},{1,ncol}) , YAKL_LAMBDA (int const indices[]) {
-      int igpt, icol;
-      storeIndices( indices , igpt,icol );
-      
+    parallel_for_cpu_serial( Bounds<2>({1,ngpt},{1,ncol}) , YAKL_LAMBDA (int igpt, int icol) {
       for (int ilev=nlay; ilev>=1; ilev--) {
         flux_dir(icol,ilev,igpt) = flux_dir(icol,ilev+1,igpt) * exp(-tau(icol,ilev,igpt)*mu0_inv(icol));
       }
@@ -627,10 +565,7 @@ void lw_solver_2stream(int ncol, int nlay, int ngpt, bool top_at_1, real *tau_p,
 
   // do igpt = 1, ngpt
   //   do icol = 1, ncol
-  parallel_for( Bounds<2>({1,ngpt},{1,ncol}) , YAKL_LAMBDA (int const indices[]) {
-    int igpt, icol;
-    storeIndices( indices , igpt,icol );
-
+  parallel_for_cpu_serial( Bounds<2>({1,ngpt},{1,ncol}) , YAKL_LAMBDA (int igpt, int icol) {
     sfc_albedo(icol,igpt) = 1._wp - sfc_emis(icol,igpt);
   });
 
