@@ -579,31 +579,274 @@ public:
   }
 
 
+
+  // Initialize object based on data read from netCDF file however the user desires.
+  //  Rayleigh scattering tables may or may not be present; this is indicated with allocation status
+  // This interface is for the internal-sources object -- includes Plank functions and fractions
+  void load(GasConcs   const &available_gases,
+            string1d   const &gas_names,
+            intHost3d  const &key_species,  
+            intHost2d  const &band2gpt,
+            realHost2d const &band_lims_wavenum,                    
+            realHost1d const &press_ref,
+            real              press_ref_trop,
+            realHost1d const &temp_ref,            
+            real              temp_ref_p,
+            real              temp_ref_t,
+            realHost3d const &vmr_ref,                
+            realHost4d const &kmajor,
+            realHost3d const &kminor_lower,
+            realHost3d const &kminor_upper,             
+            string1d   const &gas_minor,
+            string1d   const &identifier_minor,                     
+            string1d   const &minor_gases_lower,
+            string1d   const &minor_gases_upper,           
+            intHost2d  const &minor_limits_gpt_lower,
+            intHost2d  const &minor_limits_gpt_upper, 
+            boolHost1d const &minor_scales_with_density_lower,                
+            boolHost1d const &minor_scales_with_density_upper,                
+            string1d   const &scaling_gas_lower,
+            string1d   const &scaling_gas_upper,           
+            boolHost1d const &scale_by_complement_lower,                      
+            boolHost1d const &scale_by_complement_upper,                      
+            intHost1d  const &kminor_start_lower,                             
+            intHost1d  const &kminor_start_upper,                             
+            realHost2d const &totplnk,
+            realHost4d const &planck_frac,
+            realHost3d const &rayl_lower,
+            realHost3d const &rayl_upper) {
+
+    init_abs_coeffs(available_gases, gas_names, key_species, band2gpt, band_lims_wavenum, press_ref, temp_ref,       
+                    press_ref_trop, temp_ref_p, temp_ref_t, vmr_ref, kmajor, kminor_lower, kminor_upper, 
+                    gas_minor, identifier_minor, minor_gases_lower, minor_gases_upper, minor_limits_gpt_lower, 
+                    minor_limits_gpt_upper, minor_scales_with_density_lower, minor_scales_with_density_upper, 
+                    scaling_gas_lower, scaling_gas_upper, scale_by_complement_lower, scale_by_complement_upper, 
+                    kminor_start_lower, kminor_start_upper, rayl_lower, rayl_upper);
+
+    // Planck function tables
+    this->totplnk = real2d("totplnk",size(totplnk,1),size(totplnk,2));
+    this->planck_frac = real4d("planck_frac",size(planck_frac,1),size(planck_frac,2),size(planck_frac,3),size(planck_frac,4));
+    totplnk    .deep_copy_to(this->totplnk);
+    planck_frac.deep_copy_to(this->planck_frac);
+    // Temperature steps for Planck function interpolation
+    //   Assumes that temperature minimum and max are the same for the absorption coefficient grid and the
+    //   Planck grid and the Planck grid is equally spaced
+    this->totplnk_delta = (this->temp_ref_max - this->temp_ref_min) / (size(this->totplnk,1)-1);
+  }
+
+
+
+  // Initialize object based on data read from netCDF file however the user desires.
+  //  Rayleigh scattering tables may or may not be present; this is indicated with allocation status
+  // This interface is for the external-sources object -- includes TOA source function table
+  void load(GasConcs   const &available_gases,
+            string1d   const &gas_names,
+            intHost3d  const &key_species,
+            intHost2d  const &band2gpt,
+            realHost2d const &band_lims_wavenum,
+            realHost1d const &press_ref,
+            real              press_ref_trop,
+            realHost1d const &temp_ref,
+            real              temp_ref_p,
+            real              temp_ref_t,
+            realHost3d const &vmr_ref,
+            realHost4d const &kmajor,
+            realHost3d const &kminor_lower,
+            realHost3d const &kminor_upper,
+            string1d   const &gas_minor,
+            string1d   const &identifier_minor,
+            string1d   const &minor_gases_lower,
+            string1d   const &minor_gases_upper,
+            intHost2d  const &minor_limits_gpt_lower,
+            intHost2d  const &minor_limits_gpt_upper,
+            boolHost1d const &minor_scales_with_density_lower,
+            boolHost1d const &minor_scales_with_density_upper,
+            string1d   const &scaling_gas_lower,
+            string1d   const &scaling_gas_upper,
+            boolHost1d const &scale_by_complement_lower,
+            boolHost1d const &scale_by_complement_upper,
+            intHost1d  const &kminor_start_lower,
+            intHost1d  const &kminor_start_upper,
+            realHost1d const &solar_src,
+            realHost3d const &rayl_lower,
+            realHost3d const &rayl_upper) {
+
+    init_abs_coeffs(available_gases,  gas_names, key_species, band2gpt, band_lims_wavenum, press_ref, temp_ref,
+                    press_ref_trop, temp_ref_p, temp_ref_t, vmr_ref, kmajor, kminor_lower, kminor_upper,
+                    gas_minor, identifier_minor, minor_gases_lower, minor_gases_upper, minor_limits_gpt_lower,
+                    minor_limits_gpt_upper, minor_scales_with_density_lower, minor_scales_with_density_upper,
+                    scaling_gas_lower, scaling_gas_upper, scale_by_complement_lower, scale_by_complement_upper,
+                    kminor_start_lower, kminor_start_upper, rayl_lower, rayl_upper);
+    
+    // Solar source table init
+    this->solar_src = real1d("solar_src",size(solar_src,1));
+    solar_src.deep_copy_to(this->solar_src);
+  }
+
+
+
+  // Two functions to define array sizes needed by gas_optics()
+  int get_ngas() { return size(this->gas_names,1); }
+
+
+
+  // return the number of distinct major gas pairs in the spectral bands (referred to as
+  // "flavors" - all bands have a flavor even if there is one or no major gas)
+  int get_nflav() { return size(this->flavor,2); }
+
+
+
+  string1d get_gases() { return this->gas_names; }
+
+
+
+  // return the minimum pressure on the interpolation grids
+  real get_press_min() { return this->press_ref_min; }
+
+
+
+  // return the maximum pressure on the interpolation grids
+  real get_press_max() { return this->press_ref_max; }
+
+
+
+  // return the minimum temparature on the interpolation grids
+  real get_temp_min() { return this->temp_ref_min; }
+
+
+
+  // return the maximum temparature on the interpolation grids
+  real get_temp_max() { return this->temp_ref_max; }
+
+
+
+  int get_neta() { return size(this->kmajor,2); }
+
+
+
+  // return the number of pressures in reference profile
+  //   absorption coefficient table is one bigger since a pressure is repeated in upper/lower atmos
+  int get_npres() { return size(this->kmajor,3)-1; }
+
+
+
+  int get_ntemp() { return size(this->kmajor,4); }
+
+
+
+  // return the number of temperatures for Planck function
+  int get_nPlanckTemp() { return size(this->totplnk,1); }
+
+
+
+  // Function to define names of key and minor gases to be used by gas_optics().
+  // The final list gases includes those that are defined in gas_optics_specification
+  // and are provided in ty_gas_concs.
+  string1d get_minor_list(this, GasConcs const &gas_desc, int ngas, string1d const &names_spec) {
+    // List of minor gases to be used in gas_optics()
+    boolHost1d gas_is_present("gas_is_present",size(name_spec,1));
+    for (int igas=1 ; igas <= this->get_ngas() ; igas++) {
+      gas_is_present(igas) = string_in_array(names_spec(igas), gas_desc.gas_name)
+    };
+    return pack(this->gas_names, gas_is_present);
+  }
+
+
+
+  // return true if initialized for internal sources, false otherwise
+  bool source_is_internal() { return allocated(this->totplnk) && allocated(this->planck_frac); }
+
+
+
+  // return true if initialized for external sources, false otherwise
+  bool source_is_external() { return allocated(this->solar_src); }
+
+
+
+  // Ensure that every key gas required by the k-distribution is present in the gas concentration object
+  void check_key_species_present(GasConcs const &gas_desc) {
+    string1d key_gas_names = pack(this->gas_names, this->is_key);
+    for (int igas=1 ; igas <= size(key_gas_names,1) ; igas++) {
+      if (! string_in_array(key_gas_names(igas), gas_desc.gas_name)) {
+        stoprun("gas required by k-distribution is not present in the GasConcs object");
+      }
+    }
+  }
+
+
+
+  // Compute gas optical depth and Planck source functions, given temperature, pressure, and composition
+  void gas_optics_int(real2d const &play, real2d const &plev, real2d const &tlay, real1d const &tsfc,
+                      GasConcs const &gas_desc, OpticalPropsArry &optical_props, SourceFuncLW &sources,
+                      real2d const &col_dry=real2d(), real2d const &tlev=real2d()) {
+    int ncol  = size(play,1);
+    int nlay  = size(play,2);
+    int ngpt  = this->get_ngpt();
+    int nband = this->get_nband();
+    // Interpolation coefficients for use in source function
+    int2d  jtemp ("jtemp"                         ,size(play,1),size(play,2));
+    int2d  jpress("jpress"                        ,size(play,1),size(play,2));
+    bool2d tropo ("tropo"                         ,size(play,1),size(play,2));
+    real6d fmajor("fmajor",2,2,2,this->get_nflav(),size(play,1),size(play,2));
+    int4d  jeta  ("jeta"  ,2    ,this->get_nflav(),size(play,1),size(play,2));
+    // Gas optics
+    compute_gas_taus(ncol, nlay, ngpt, nband, play, plev, tlay, gas_desc, optical_props, jtemp, jpress,
+                     jeta, tropo, fmajor, col_dry);
+
+    // External source -- check arrays sizes and values
+    // input data sizes and values
+    if (size(tsfc,1) != ncol) { stoprun("gas_optics(): array tsfc has wrong size"); }
+    if (anyLT(tsfc,this->temp_ref_min) || anyGT(tsfc,this->temp_ref_max)) {
+      stoprun("gas_optics(): array tsfc has values outside range");
+    }
+
+    if (allocated(tlev)) {
+      if (size(tlev,1) != ncol || size(tlev,2) != nlay+1) { stoprun("gas_optics(): array tlev has wrong size"); }
+      if (anyLT(tlev,this->temp_ref_min) || anyGT(tlev,this->temp_ref_max)) {
+        stoprun("gas_optics(): array tlev has values outside range");
+      }
+    }
+
+    // output extents
+    if (sources.get_ncol() != ncol || sources.get_nlay() != nlay || sources.get_ngpt() != ngpt) {
+      stoprun("gas_optics%gas_optics: source function arrays inconsistently sized");
+    }
+
+    // Interpolate source function
+    source(ncol, nlay, nband, ngpt, play, plev, tlay, tsfc, jtemp, jpress, jeta, tropo, fmajor, sources, tlev);
+  }
+
+
+
+  // Compute gas optical depth given temperature, pressure, and composition
+  function gas_optics_ext(real2d const &play, real2d const &plev, real2d const &tlay, GasConcs const &gas_desc,   
+                          OpticalPropsArry &optical_props, real2d &toa_src, real2d const &col_dry=real2d()) {
+    int ncol  = size(play,dim=1)
+    int nlay  = size(play,dim=2)
+    int ngpt  = this%get_ngpt()
+    int nband = this%get_nband()
+    int ngas  = this%get_ngas()
+    int nflav = get_nflav(this)
+    
+    // Interpolation coefficients for use in source function
+    int2d  jtemp ("jtemp"                         ,size(play,1),size(play,2));
+    int2d  jpress("jpress"                        ,size(play,1),size(play,2));
+    bool2d tropo ("tropo"                         ,size(play,1),size(play,2));
+    real6d fmajor("fmajor",2,2,2,this->get_nflav(),size(play,1),size(play,2));
+    int4d  jeta  ("jeta  ",2    ,this->get_nflav(),size(play,1),size(play,2));
+    // Gas optics
+    compute_gas_taus(ncol, nlay, ngpt, nband, play, plev, tlay, gas_desc, optical_props, jtemp, jpress, jeta,
+                     tropo, fmajor, col_dry);
+
+    // External source function is constant
+    if (size(toa_src,1) != ncol || size(toa_src,2) != ngpt) { stoprun("gas_optics(): array toa_src has wrong size"); }
+
+    auto &solar_source_loc = this->solar_src;
+    parallel_for_cpu_serial( Bounds<2>(ngpt,ncol) , YAKL_LAMBDA (int igpt, int icol) {
+      toa_src(icol,igpt) = solar_src_loc(igpt);
+    });
+  }
+
+
 };
 
-
-  type, extends(ty_gas_optics), public :: ty_gas_optics_rrtmgp
-    private
-    generic,   public :: load       => load_int,       load_ext
-    procedure, public :: source_is_internal
-    procedure, public :: source_is_external
-    procedure, public :: get_ngas
-    procedure, public :: get_gases
-    procedure, public :: get_press_min
-    procedure, public :: get_press_max
-    procedure, public :: get_temp_min
-    procedure, public :: get_temp_max
-    ! Internal procedures
-    procedure, private :: load_int
-    procedure, private :: load_ext
-    procedure, public  :: gas_optics_int
-    procedure, public  :: gas_optics_ext
-    procedure, private :: check_key_species_present
-    procedure, private :: get_minor_list
-    ! Interpolation table dimensions
-    procedure, private :: get_nflav
-    procedure, private :: get_neta
-    procedure, private :: get_npres
-    procedure, private :: get_ntemp
-    procedure, private :: get_nPlanckTemp
-  end type
