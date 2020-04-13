@@ -1,3 +1,5 @@
+#pragma once
+
 //
 // Contacts: Robert Pincus and Eli Mlawer
 // email:  rrtmgp@aer.com

@@ -12,3 +12,5 @@ extern "C" void lower_case( char *input_string , char *output_string ) {
   }
   output_string[i] = '\0';
 }
+
+

@@ -1,3 +1,6 @@
+
+#pragma once
+
 // This code is part of Radiative Transfer for Energetics (RTE)
 //
 // Contacts: Robert Pincus and Eli Mlawer

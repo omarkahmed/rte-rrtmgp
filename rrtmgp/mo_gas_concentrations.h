@@ -41,8 +41,8 @@ using yakl::memDevice;
 class GasConcs {
 public:
   static int constexpr GAS_NOT_IN_LIST = -1;
-  FArray<std::string,1,memHost  > gas_name;
-  FArray<real2d     ,1,memDevice> concs;
+  string1d gas_name;
+  FArray<real2d,1,memDevice> concs;
   int ncol;
   int nlay;
 

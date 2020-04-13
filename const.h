@@ -95,6 +95,8 @@ typedef FArray<bool,5,yakl::memHost> boolHost5d;
 typedef FArray<bool,6,yakl::memHost> boolHost6d;
 typedef FArray<bool,7,yakl::memHost> boolHost7d;
 
+typedef FArray<std::string,1,yakl::memHost> string1d;
+
 
 inline void stoprun( std::string str ) {
   throw str;
