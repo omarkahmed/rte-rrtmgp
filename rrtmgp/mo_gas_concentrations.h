@@ -14,23 +14,12 @@
 // Use and duplication is permitted under the terms of the
 //    BSD 3-clause license, see http://opensource.org/licenses/BSD-3-Clause
 // -------------------------------------------------------------------------------------------------
-// Encapsulates a collection of volume mixing ratios (concentrations) of gases.
-//   Each concentration is associated with a name, normally the chemical formula.
 //
-// Values may be provided as scalars, 1-dimensional profiles (nlay), or 2-D fields (ncol,nlay).
-//   (nlay and ncol are determined from the input arrays; self-consistency is enforced)
-//   example:
-//   error_msg = gas_concs.set_vmr('h2o', values(:,:))
-//   error_msg = gas_concs.set_vmr('o3' , values(:)  )
-//   error_msg = gas_concs.set_vmr('co2', value      )
+//  Stores, sets, and gets volume mixing ratios for a set of gasses
 //
-// Values can be requested as profiles (valid only if there are no 2D fields present in the object)
-//   or as 2D fields. Values for all columns are returned although the entire collection
-//   can be subsetted in the column dimension
+//  Volume Mixing Ratios passed to set_vmr are expected to be on the device
 //
-// Subsets can be extracted in the column dimension
-//
-// Functions return strings. Non-empty strings indicate an error.
+//  All loops involving strings are on the host. All loops involving concs are on the device
 //
 // -------------------------------------------------------------------------------------------------
 
@@ -38,8 +27,8 @@
 class GasConcs {
 public:
   static int constexpr GAS_NOT_IN_LIST = -1;
-  string1d gas_name;
-  real3d   concs;
+  string1d gas_name;  // List of gas names defined upon init
+  real3d   concs;     // List of gas concentrations (ngas,ncol,nlay)
   int      ncol;
   int      nlay;
   int      ngas;
@@ -57,14 +46,15 @@ public:
 
 
   void reset() {
-    gas_name = string1d();
-    concs    = real3d();
+    gas_name = string1d();  // Dealloc
+    concs    = real3d();    // Dealloc
     ncol = 0;
     nlay = 0;
   }
 
 
   void init(string1d &gas_names , int ncol , int nlay) {
+    this->reset();
     this->ngas = size(gas_names,1);
 
     // Transform gas names to lower case, and check for empty strings
@@ -78,82 +68,97 @@ public:
       }
     }
     
-    // Allocate fixed-size arrays
-    this->reset();
+    // Allocate
     this->ncol = ncol;
     this->nlay = nlay;
     this->gas_name = string1d("gas_name",ngas);
     this->concs    = real3d  ("concs"   ,ncol,nlay,ngas);
 
+    // Assign gas names
     for (int i=1; i<=ngas; i++) {
       this->gas_name(i) = gas_names(i);
     }
   }
 
 
-  // Set concentrations --- scalar, 1D, 2D
+  // Set concentration as a scalar copied to every column and level
   void set_vmr(std::string gas, real w) {
-    if (w < 0._wp || w > 1._wp) { stoprun("GasConcs::set_vmr(): concentrations should be >= 0, <= 1"); }
     int igas = this->find_gas(gas);
     if (igas == GAS_NOT_IN_LIST) {
       stoprun("GasConcs::set_vmr(): trying to set a gas whose name was not provided at initialization");
     }
-    for (int ilay=1; ilay<=this->nlay; ilay++) {
-      for (int icol=1; icol<=this->ncol; icol++) {
-        this->concs(icol,ilay,igas) = w;
-      }
-    }
+    if (w < 0._wp || w > 1._wp) { stoprun("GasConcs::set_vmr(): concentrations should be >= 0, <= 1"); }
+    auto &concs = this->concs;
+    // for (int ilay=1; ilay<=this->nlay; ilay++) {
+    //   for (int icol=1; icol<=this->ncol; icol++) {
+    parallel_for( Bounds<2>(nlay,ncol) , YAKL_LAMBDA (int ilay, int icol) {
+      concs(icol,ilay,igas) = w;
+    });
   }
 
 
-  void set_vmr(std::string gas, real1d &w) {
+  // Set concentration as a single column copied to all other columns
+  // w is expected to be in device memory
+  void set_vmr(std::string gas, real1d const &w) {
     if (size(w,1) != this->nlay) { stoprun("GasConcs::set_vmr: different dimension (nlay)"); }
-    for (int i=1; i<=size(w,1); i++) {
-      if (w(i) < 0._wp || w(i) > 1._wp) { stoprun("GasConcs::set_vmr(): concentrations should be >= 0, <= 1"); }
-    }
     int igas = this->find_gas(gas);
     if (igas == GAS_NOT_IN_LIST) {
       stoprun("GasConcs::set_vmr(): trying to set a gas whose name not provided at initialization");
     }
-    for (int ilay=1; ilay<=this->nlay; ilay++) {
-      for (int icol=1; icol<=this->ncol; icol++) {
-        this->concs(icol,ilay,igas) = w(ilay);
-      }
-    }
+    // Check for bad values in w
+    yakl::ScalarLiveOut<bool> badVal(false); // Scalar that must exist in device memory (equiv: bool badVal = false;)
+    // for (int i=1; i<=size(w,1); i++) {
+    parallel_for( Bounds<1>(size(w,1)) , YAKL_LAMBDA (int i) {
+      if (w(i) < 0._wp || w(i) > 1._wp) { badVal = true; }
+    });
+    if (badVal.hostRead()) { stoprun("GasConcs::set_vmr(): concentrations should be >= 0, <= 1"); }
+    auto &concs = this->concs;
+    // for (int ilay=1; ilay<=this->nlay; ilay++) {
+    //   for (int icol=1; icol<=this->ncol; icol++) {
+    parallel_for( Bounds<2>(nlay,ncol) , YAKL_LAMBDA (int ilay, int icol) {
+      concs(icol,ilay,igas) = w(ilay);
+    });
   }
   
 
-  void set_vmr(std::string gas, real2d &w) {
+  // Set concentration as a 2-D field of columns and levels
+  // w is expected to be in device memory
+  void set_vmr(std::string gas, real2d const &w) {
     if (size(w,1) != this->ncol) { stoprun("GasConcs::set_vmr: different dimension (ncol)" ); }
     if (size(w,2) != this->nlay) { stoprun("GasConcs::set_vmr: different dimension (nlay)" ); }
-    for (int j=1; j<=size(w,2); j++) {
-      for (int i=1; i<=size(w,1); i++) {
-        if (w(i,j) < 0._wp || w(i,j) > 1._wp) { stoprun("GasConcs::set_vmr(): concentrations should be >= 0, <= 1"); }
-      }
-    }
     int igas = this->find_gas(gas);
     if (igas == GAS_NOT_IN_LIST) {
       stoprun("GasConcs::set_vmr(): trying to set a gas whose name not provided at initialization" );
     }
-    for (int ilay=1; ilay<=this->nlay; ilay++) {
-      for (int icol=1; icol<=this->ncol; icol++) {
-        this->concs(icol,ilay,igas) = w(icol,ilay);
-      }
-    }
+    // Check for bad values in w
+    yakl::ScalarLiveOut<bool> badVal(false); // Scalar that must exist in device memory (equiv: bool badVal = false;)
+    // for (int j=1; j<=size(w,2); j++) {
+    //   for (int i=1; i<=size(w,1); i++) {
+    parallel_for( Bounds<2>(size(w,2),size(w,1)) , YAKL_LAMBDA (int j, int i) {
+      if (w(i,j) < 0._wp || w(i,j) > 1._wp) { badVal = true;}
+    });
+    if (badVal.hostRead()) { stoprun("GasConcs::set_vmr(): concentrations should be >= 0, <= 1"); }
+    auto &concs = this->concs;
+    // for (int ilay=1; ilay<=this->nlay; ilay++) {
+    //   for (int icol=1; icol<=this->ncol; icol++) {
+    parallel_for( Bounds<2>(nlay,ncol) , YAKL_LAMBDA (int ilay, int icol) {
+      concs(icol,ilay,igas) = w(icol,ilay);
+    });
   }
 
 
-  // 2D array (col, lay)
+  // Get concentration as a 2-D field of columns and levels
+  // array is expected to be in devide memory
   void get_vmr(std::string gas, real2d &array) {
     if (this->ncol != size(array,1)) { stoprun("ty_gas_concs->get_vmr; gas array is wrong size (ncol)" ); }
     if (this->nlay != size(array,2)) { stoprun("ty_gas_concs->get_vmr; gas array is wrong size (nlay)" ); }
     int igas = this->find_gas(gas);
     if (igas == GAS_NOT_IN_LIST) { stoprun("GasConcs::get_vmr; gas not found" ); }
-    for (int ilay=1; ilay<=size(array,2); ilay++) {
-      for (int icol=1; icol<=size(array,1); icol++) {
-        array(icol,ilay) = this->concs(icol,ilay,igas);
-      }
-    }
+    // for (int ilay=1; ilay<=size(array,2); ilay++) {
+    //   for (int icol=1; icol<=size(array,1); icol++) {
+    parallel_for( Bounds<2>(size(array,2),size(array,1)) , YAKL_LAMBDA (int ilay, int icol) {
+      array(icol,ilay) = this->concs(icol,ilay,igas);
+    });
   }
 
 
