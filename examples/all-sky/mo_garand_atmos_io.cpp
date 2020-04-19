@@ -6,7 +6,7 @@
 void read_atmos(std::string input_file, realHost2d &p_lay, realHost2d &t_lay, realHost2d &p_lev, realHost2d &t_lev,
                 GasConcs &gas_concs, realHost2d &col_dry, int ncol) {
   yakl::SimpleNetCDF io;
-  io.open(input_file,yakl::NETCDF_MODE_READ);
+  io.open(input_file , yakl::NETCDF_MODE_READ);
 
   int nlay = io.getDimSize("lay");
   int nlev = io.getDimSize("lev");

@@ -1,6 +1,8 @@
 
 #pragma once
 
+#include "mo_optical_props.h"
+
 // This code is part of RRTM for GCM Applications - Parallel (RRTMGP)
 //
 // Contacts: Robert Pincus and Eli Mlawer
@@ -309,23 +311,6 @@ public:
       }
     }
   }
-
-
-
-  // returns flavor index; -1 if not found
-  pure function key_species_pair2flavor(flavor, key_species_pair)
-    integer :: key_species_pair2flavor
-    integer, dimension(:,:), intent(in) :: flavor
-    integer, dimension(2), intent(in) :: key_species_pair
-    integer :: iflav
-    do iflav=1,size(flavor,2)
-      if (all(key_species_pair(:).eq.flavor(:,iflav))) then
-        key_species_pair2flavor = iflav
-        return
-      end if
-    end do
-    key_species_pair2flavor = -1
-  end function key_species_pair2flavor
 
 
 
@@ -686,63 +671,63 @@ public:
 
 
   // Two functions to define array sizes needed by gas_optics()
-  int get_ngas() { return size(this->gas_names,1); }
+  int get_ngas() const { return size(this->gas_names,1); }
 
 
 
   // return the number of distinct major gas pairs in the spectral bands (referred to as
   // "flavors" - all bands have a flavor even if there is one or no major gas)
-  int get_nflav() { return size(this->flavor,2); }
+  int get_nflav() const { return size(this->flavor,2); }
 
 
 
-  string1d get_gases() { return this->gas_names; }
+  string1d get_gases() const { return this->gas_names; }
 
 
 
   // return the minimum pressure on the interpolation grids
-  real get_press_min() { return this->press_ref_min; }
+  real get_press_min() const { return this->press_ref_min; }
 
 
 
   // return the maximum pressure on the interpolation grids
-  real get_press_max() { return this->press_ref_max; }
+  real get_press_max() const { return this->press_ref_max; }
 
 
 
   // return the minimum temparature on the interpolation grids
-  real get_temp_min() { return this->temp_ref_min; }
+  real get_temp_min()const  { return this->temp_ref_min; }
 
 
 
   // return the maximum temparature on the interpolation grids
-  real get_temp_max() { return this->temp_ref_max; }
+  real get_temp_max() const { return this->temp_ref_max; }
 
 
 
-  int get_neta() { return size(this->kmajor,2); }
+  int get_neta() const { return size(this->kmajor,2); }
 
 
 
   // return the number of pressures in reference profile
   //   absorption coefficient table is one bigger since a pressure is repeated in upper/lower atmos
-  int get_npres() { return size(this->kmajor,3)-1; }
+  int get_npres() const { return size(this->kmajor,3)-1; }
 
 
 
-  int get_ntemp() { return size(this->kmajor,4); }
+  int get_ntemp() const { return size(this->kmajor,4); }
 
 
 
   // return the number of temperatures for Planck function
-  int get_nPlanckTemp() { return size(this->totplnk,1); }
+  int get_nPlanckTemp() const { return size(this->totplnk,1); }
 
 
 
   // Function to define names of key and minor gases to be used by gas_optics().
   // The final list gases includes those that are defined in gas_optics_specification
   // and are provided in ty_gas_concs.
-  string1d get_minor_list(this, GasConcs const &gas_desc, int ngas, string1d const &names_spec) {
+  string1d get_minor_list(GasConcs const &gas_desc, int ngas, string1d const &names_spec) const {
     // List of minor gases to be used in gas_optics()
     boolHost1d gas_is_present("gas_is_present",size(name_spec,1));
     for (int igas=1 ; igas <= this->get_ngas() ; igas++) {
@@ -754,17 +739,17 @@ public:
 
 
   // return true if initialized for internal sources, false otherwise
-  bool source_is_internal() { return allocated(this->totplnk) && allocated(this->planck_frac); }
+  bool source_is_internal() const { return allocated(this->totplnk) && allocated(this->planck_frac); }
 
 
 
   // return true if initialized for external sources, false otherwise
-  bool source_is_external() { return allocated(this->solar_src); }
+  bool source_is_external() const { return allocated(this->solar_src); }
 
 
 
   // Ensure that every key gas required by the k-distribution is present in the gas concentration object
-  void check_key_species_present(GasConcs const &gas_desc) {
+  void check_key_species_present(GasConcs const &gas_desc) const {
     string1d key_gas_names = pack(this->gas_names, this->is_key);
     for (int igas=1 ; igas <= size(key_gas_names,1) ; igas++) {
       if (! string_in_array(key_gas_names(igas), gas_desc.gas_name)) {

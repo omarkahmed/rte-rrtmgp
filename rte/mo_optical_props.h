@@ -2,6 +2,13 @@
 #pragma once
 
 #include "const.h"
+#include "mo_optical_props_kernels.h"
+
+using yakl::fortran::anyLT;
+using yakl::fortran::anyGT;
+using yakl::fortran::allocated;
+using yakl::fortran::maxval;
+using yakl::fortran::epsilon;
 
 // Base class for optical properties
 //   Describes the spectral discretization including the wavenumber limits
@@ -16,7 +23,7 @@ public:
 
   // Base class: Initialization
   //   Values are assumed to be defined in bands a mapping between bands and g-points is provided
-  void init( real2d &band_lims_wvn , int2d &band_lims_gpt=ind2d() , std::string name="" ) {
+  void init( real2d const &band_lims_wvn , int2d const &band_lims_gpt=int2d() , std::string name="" ) {
     int2d band_lims_gpt_lcl("band_lims_gpt_lcl",2,size(band_lims_wvn,2));
     if (size(band_lims_wvn,1) != 2) { stoprun("optical_props::init(): band_lims_wvn 1st dim should be 2"); }
     if (anyLT(band_lims_wvn,0._wp)) { stoprun("optical_props::init(): band_lims_wvn has values <  0."); }
@@ -24,7 +31,7 @@ public:
       if (size(band_lims_gpt,2) != size(band_lims_wvn,2)) {
         stoprun("optical_props::init(): band_lims_gpt size inconsistent with band_lims_wvn");
       }
-      if (anyLT(band_lims_gpt,1._wp) ) { stoprun("optical_props%init(): band_lims_gpt has values < 1"); }
+      if (anyLT(band_lims_gpt,1) ) { stoprun("optical_props::init(): band_lims_gpt has values < 1"); }
       // for (int j=1; j <= size(band_lims_gpt,2); j++) {
       //   for (int i=1; i <= size(band_lims_gpt,1); i++) {
       parallel_for_cpu_serial( Bounds<2>(size(band_lims_gpt,2),size(band_lims_gpt,1)) , YAKL_LAMBDA (int j, int i) {
@@ -57,7 +64,7 @@ public:
   }
 
 
-  void init(OptcalProps const &in) {
+  void init(OpticalProps const &in) {
     if ( ! in.is_initialized() ) {
       stoprun("optical_props::init(): can't initialize based on un-initialized input");
     } else {
@@ -66,7 +73,7 @@ public:
   }
 
 
-  YAKL_INLINE bool is_initialized() { return allocated(this->band2gpt); }
+  YAKL_INLINE bool is_initialized() const { return allocated(this->band2gpt); }
 
 
   // Base class: finalize (deallocate memory)
@@ -79,25 +86,25 @@ public:
 
 
   // Number of bands
-  YAKL_INLINE int get_nband() {
+  YAKL_INLINE int get_nband() const {
     if (this->is_initialized()) { return size(this->band2gpt,2); }
     return 0;
   }
 
 
   // Number of g-points
-  YAKL_INLINE int get_ngpt()
+  YAKL_INLINE int get_ngpt() const {
     if (this->is_initialized()) { return maxval(this->band2gpt); }
     return 0;
   }
 
 
   // Bands for all the g-points at once;  dimension (ngpt)
-  int1d get_gpoint_bands() { return gpt2band; }
+  int1d get_gpoint_bands() const { return gpt2band; }
 
 
   // First and last g-point of a specific band
-  int1d convert_band2gpt(band) {
+  int1d convert_band2gpt(int band) const {
     int1d ret("band2gpt",2);
     if (this->is_initialized()) {
       ret(1) = this->band2gpt(1,band);
@@ -111,23 +118,23 @@ public:
 
 
   // Band associated with a specific g-point
-  int convert_gpt2band(int gpt) {
+  int convert_gpt2band(int gpt) const {
     if (this->is_initialized()) { return this->gpt2band(gpt); }
     return 0;
   }
 
 
   // The first and last g-point of all bands at once;  dimension (2, nbands)
-  int2d get_band_lims_gpoint() { return this%band2gpt; }
+  int2d get_band_lims_gpoint() const { return this->band2gpt; }
 
 
   // Lower and upper wavenumber of all bands
   // (upper and lower wavenumber by band) = band_lims_wvn(2,band)
-  real2d get_band_lims_wavenumber() { return this->band_lims_wvn; }
+  real2d get_band_lims_wavenumber() const { return this->band_lims_wvn; }
 
 
   // Lower and upper wavelength of all bands
-  real2d function get_band_lims_wavelength() {
+  real2d get_band_lims_wavelength() const {
     real2d ret("band_lim_wavelength",size(band_lims_wvn,1),size(band_lims_wvn,2));
     // for (int j = 1; j <= size(band_lims_wvn,2); j++) {
     //   for (int i = 1; i <= size(band_lims_wvn,1); i++) {
@@ -143,7 +150,7 @@ public:
 
 
   // Are the bands of two objects the same? (same number, same wavelength limits)
-  bool bands_are_equal(OpticalProps const &rhs) {
+  bool bands_are_equal(OpticalProps const &rhs) const {
     if ( this->get_nband() != rhs.get_nband() || this->get_nband() == 0) { return false; }
     // for (int j=1 ; j <= size(this->band_lims_wvn,2); j++) {
     //   for (int i=1 ; i <= size(this->band_lims_wvn,1); i++) {
@@ -158,10 +165,10 @@ public:
 
   // Is the g-point structure of two objects the same?
   //   (same bands, same number of g-points, same mapping between bands and g-points)
-  bool gpoints_are_equal(OpticalProps const &rhs) {
+  bool gpoints_are_equal(OpticalProps const &rhs) const {
     if ( ! this->bands_are_equal(rhs) || this->get_ngpt() != rhs.get_ngpt() ) { return false; }
     // for (int i=1; i <= size(this->gpt2bnd,1); i++) {
-    parallel_for_cpu_serial( Bounds<1>(size(this->gpt2bnd,1)) , YAKL_LAMBDA (int i) {
+    parallel_for_cpu_serial( Bounds<1>(size(this->gpt2band,1)) , YAKL_LAMBDA (int i) {
       if ( this->gpt2band(i) != rhs.gpt2band(i) ) { return false; }
     });
     return true;
@@ -169,9 +176,9 @@ public:
 
 
   // Expand an array of dimension arr_in(nband) to dimension arr_out(ngpt)
-  real1d expand(real1d &arr_in) {
+  real1d expand(real1d const &arr_in) const {
     real1d ret("arr_out",size(this->gpt2band,1));
-    // do iband=1,this%get_nband()
+    // do iband=1,this->get_nband()
     // TODO: I don't know if this needs to be serialize or not at first glance. Need to look at it more.
     parallel_for_cpu_serial( Bounds<1>(1) , YAKL_LAMBDA (int dummy) {
       for (int iband = 1 ; iband <= this->get_nband() ; iband++) {
@@ -180,13 +187,14 @@ public:
         }
       }
     });
+    return ret;
   }
 
 
   void set_name( std::string name ) { this->name = name; }
 
 
-  void get_name() { return this->name; }
+  std::string get_name() const { return this->name; }
 };
 
 
@@ -195,22 +203,27 @@ class OpticalPropsArry : public OpticalProps {
 public:
   real3d tau; // optical depth (ncol, nlay, ngpt)
 
-  YAKL_INLINE int get_ncol() { if (allocated(tau)) { return size(this->tau,1); } else { return 0; } }
-  YAKL_INLINE int get_nlay() { if (allocated(tau)) { return size(this->tau,2); } else { return 0; } }
+  YAKL_INLINE int get_ncol() const { if (allocated(tau)) { return size(this->tau,1); } else { return 0; } }
+  YAKL_INLINE int get_nlay() const { if (allocated(tau)) { return size(this->tau,2); } else { return 0; } }
 };
+
+
+
+// We need to know about 2str's existence because it is referenced in 1scl
+class OpticalProps2str;
 
 
 
 // Not implementing get_subset because it isn't used
 class OpticalProps1scl : public OpticalPropsArry {
 public:
-  void validate() {
+  void validate() const {
     if (! allocated(this->tau)) { stoprun("validate: tau not allocated/initialized"); }
     if (anyLT(this->tau,0._wp)) { stoprun("validate: tau values out of range"); }
   }
 
 
-  void delta_scale(real3d const &dummy) { }
+  void delta_scale(real3d const &dummy) const { }
 
 
   void alloc_1scl(int ncol, int nlay) {
@@ -221,7 +234,7 @@ public:
 
 
   // Initialization by specifying band limits and possibly g-point/band mapping
-  void alloc_1scl(int ncol, int nlay, real2d &band_lims_wvn, int2d const &band_lims_gpt=int2d(), std::string name="") {
+  void alloc_1scl(int ncol, int nlay, real2d const &band_lims_wvn, int2d const &band_lims_gpt=int2d(), std::string name="") {
     this->init(band_lims_wvn, band_lims_gpt, name);
     this->alloc_1scl(ncol, nlay);
   }
@@ -234,11 +247,11 @@ public:
   }
 
 
-  void increment(OpticalProps1scl &that) {
+  void increment(OpticalProps1scl const &that) {
     if (! this->bands_are_equal(that)) { stoprun("OpticalProps::increment: optical properties objects have different band structures"); }
-    int ncol = that.get_ncol()
-    int nlay = that.get_nlay()
-    int ngpt = that.get_ngpt()
+    int ncol = that.get_ncol();
+    int nlay = that.get_nlay();
+    int ngpt = that.get_ngpt();
     if (this->gpoints_are_equal(that)) {
       increment_1scalar_by_1scalar(ncol, nlay, ngpt, that.tau, this->tau);
     } else {
@@ -250,20 +263,9 @@ public:
   }
 
 
-  void increment(OpticalProps2str &that) {
-    if (! this->bands_are_equal(that)) { stoprun("OpticalProps::increment: optical properties objects have different band structures"); }
-    int ncol = that.get_ncol()
-    int nlay = that.get_nlay()
-    int ngpt = that.get_ngpt()
-    if (this->gpoints_are_equal(that)) {
-      increment_1scalar_by_2stream(ncol, nlay, ngpt, that.tau, this->tau, this->ssa);
-    } else {
-      if (this->get_ngpt() != that.get_nband()) {
-        stoprun("OpticalProps::increment: optical properties objects have incompatible g-point structures");
-      }
-      inc_1scalar_by_2stream_bybnd(ncol, nlay, ngpt, that.tau, this->tau, this->ssa, that.get_nband(), that.get_band_lims_gpoint());
-    }
-  }
+  // Implemented later because OpticalProps2str hasn't been created yet
+  void increment(OpticalProps2str const &that);
+
 };
 
 
@@ -271,12 +273,12 @@ public:
 // Not implementing get_subset because it isn't used
 class OpticalProps2str : public OpticalPropsArry {
 public:
-  real3d ssa // single-scattering albedo (ncol, nlay, ngpt)
-  real3d g   // asymmetry parameter (ncol, nlay, ngpt)
+  real3d ssa; // single-scattering albedo (ncol, nlay, ngpt)
+  real3d g;   // asymmetry parameter (ncol, nlay, ngpt)
 
 
-  void validate() {
-    if ( ! allocated(this%tau) || ! allocated(this%ssa) || ! allocated(this%g) ) {
+  void validate() const {
+    if ( ! allocated(this->tau) || ! allocated(this->ssa) || ! allocated(this->g) ) {
       stoprun("validate: arrays not allocated/initialized");
     }
     int d1 = size(this->tau,1);
@@ -310,8 +312,8 @@ public:
 
 
   void alloc_2str(int ncol, int nlay) {
-    if (! this->is_initialized()) { stoprun("optical_props%alloc: spectral discretization hasn't been provided"); }
-    if (ncol <= 0 || nlay <= 0) { stoprun("optical_props%alloc: must provide positive extents for ncol, nlay"); }
+    if (! this->is_initialized()) { stoprun("optical_props::alloc: spectral discretization hasn't been provided"); }
+    if (ncol <= 0 || nlay <= 0) { stoprun("optical_props::alloc: must provide positive extents for ncol, nlay"); }
     this->tau = real3d("tau",ncol,nlay,this->get_ngpt());
     this->ssa = real3d("ssa",ncol,nlay,this->get_ngpt());
     this->g   = real3d("g  ",ncol,nlay,this->get_ngpt());
@@ -331,7 +333,7 @@ public:
   }
 
 
-  void increment(OpticalProps1scl &that) {
+  void increment(OpticalProps1scl const &that) {
     if (! this->bands_are_equal(that)) { stoprun("OpticalProps::increment: optical properties objects have different band structures"); }
     int ncol = that.get_ncol()
     int nlay = that.get_nlay()
@@ -347,7 +349,7 @@ public:
   }
 
 
-  void increment(OpticalProps2str &that) {
+  void increment(OpticalProps2str const &that) {
     if (! this->bands_are_equal(that)) { stoprun("OpticalProps::increment: optical properties objects have different band structures"); }
     int ncol = that.get_ncol()
     int nlay = that.get_nlay()
@@ -362,6 +364,23 @@ public:
     }
   }
 };
+
+
+
+void OpticalProps1scl::increment(OpticalProps2str const &that) {
+  if (! this->bands_are_equal(that)) { stoprun("OpticalProps::increment: optical properties objects have different band structures"); }
+  int ncol = that.get_ncol();
+  int nlay = that.get_nlay();
+  int ngpt = that.get_ngpt();
+  if (this->gpoints_are_equal(that)) {
+    increment_1scalar_by_2stream(ncol, nlay, ngpt, that.tau, this->tau, this->ssa);
+  } else {
+    if (this->get_ngpt() != that.get_nband()) {
+      stoprun("OpticalProps::increment: optical properties objects have incompatible g-point structures");
+    }
+    inc_1scalar_by_2stream_bybnd(ncol, nlay, ngpt, that.tau, this->tau, this->ssa, that.get_nband(), that.get_band_lims_gpoint());
+  }
+}
 
 
 

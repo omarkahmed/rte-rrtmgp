@@ -53,7 +53,7 @@ public:
   }
 
 
-  void init(string1d &gas_names , int ncol , int nlay) {
+  void init(string1d const &gas_names , int ncol , int nlay) {
     this->reset();
     this->ngas = size(gas_names,1);
 
@@ -149,7 +149,7 @@ public:
 
   // Get concentration as a 2-D field of columns and levels
   // array is expected to be in devide memory
-  void get_vmr(std::string gas, real2d &array) {
+  void get_vmr(std::string gas, real2d &array) const {
     if (this->ncol != size(array,1)) { stoprun("ty_gas_concs->get_vmr; gas array is wrong size (ncol)" ); }
     if (this->nlay != size(array,2)) { stoprun("ty_gas_concs->get_vmr; gas array is wrong size (nlay)" ); }
     int igas = this->find_gas(gas);
@@ -162,14 +162,14 @@ public:
   }
 
 
-  int get_num_gases() { return size(gas_name,1); }
+  int get_num_gases() const { return size(gas_name,1); }
   
 
-  string1d get_gas_names() { return gas_name; }
+  string1d get_gas_names() const { return gas_name; }
 
 
   // find gas in list; GAS_NOT_IN_LIST if not found
-  int find_gas(std::string gas) {
+  int find_gas(std::string gas) const {
     if (ngas == 0) { return 0; }
     for (int igas=1; igas<=ngas; igas++) {
       if ( lower_case(gas) == this->gas_name(igas) ) {

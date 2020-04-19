@@ -3,6 +3,7 @@
 #include <cstdlib>
 #include "mo_gas_concentrations.h"
 #include "mo_garand_atmos_io.h"
+#include "mo_gas_optics_rrtmgp.h"
 #include "const.h"
 
 int main(int argc , char **argv) {
@@ -28,13 +29,20 @@ int main(int argc , char **argv) {
   realHost2d t_lay;
   realHost2d p_lev;
   realHost2d t_lev;
-  GasConcs gas_concs_garand;
+  GasConcs gas_concs;
   realHost2d col_dry;
 
   // Read data from the input file
-  read_atmos(input_file, p_lay, t_lay, p_lev, t_lev, gas_concs_garand, col_dry, ncol);
+  read_atmos(input_file, p_lay, t_lay, p_lev, t_lev, gas_concs, col_dry, ncol);
 
   int nlay = size(p_lay,2);
+
+  // load data into classes
+  GasOpticsRRTMGP k_dist;
+  load_and_init(k_dist, k_dist_file, gas_concs);
+
+  bool is_sw = k_dist.source_is_external();
+  bool is_lw = ! is_sw;
 
   yakl::finalize();
 }
