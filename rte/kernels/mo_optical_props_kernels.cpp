@@ -4,18 +4,10 @@
 
 
 // increment 2stream by 2stream
-extern "C" void inc_2stream_by_2stream_bybnd(int ncol, int nlay, int ngpt,
-                                             real *tau1_p, real *ssa1_p, real *g1_p,
-                                             real *tau2_p, real *ssa2_p, real *g2_p,
-                                             int nbnd, int *gpt_lims_p) {
-  umgReal3d tau1     ("tau1"     ,tau1_p     ,ncol,nlay,ngpt);
-  umgReal3d tau2     ("tau2"     ,tau2_p     ,ncol,nlay,nbnd);
-  umgReal3d ssa1     ("ssa1"     ,ssa1_p     ,ncol,nlay,ngpt);
-  umgReal3d ssa2     ("ssa2"     ,ssa2_p     ,ncol,nlay,nbnd);
-  umgReal3d g1       ("g1"       ,g1_p       ,ncol,nlay,ngpt);
-  umgReal3d g2       ("g2"       ,g2_p       ,ncol,nlay,nbnd);
-  umgInt2d  gpt_lims ("gpt_lims" ,gpt_lims_p ,2,nbnd);
-
+void inc_2stream_by_2stream_bybnd(int ncol, int nlay, int ngpt,
+                                  real3d       &tau1, real3d       &ssa1, real3d       &g1,
+                                  real3d const &tau2, real3d const &ssa2, real3d const &g2,
+                                  int nbnd, int2d const &gpt_lims) {
   real eps = 3*std::numeric_limits<real>::min();
 
   // do igpt = 1 , ngpt
@@ -42,12 +34,8 @@ extern "C" void inc_2stream_by_2stream_bybnd(int ncol, int nlay, int ngpt,
 
 // Incrementing when the second set of optical properties is defined at lower spectral resolution
 //   (e.g. by band instead of by gpoint)
-extern "C" void inc_1scalar_by_1scalar_bybnd(int ncol, int nlay, int ngpt, real *tau1_p, real *tau2_p,             
-                                             int nbnd, int *gpt_lims_p) {
-  umgReal3d tau1    ("tau1"    ,tau1_p    ,ncol,nlay,ngpt);
-  umgReal3d tau2    ("tau2"    ,tau2_p    ,ncol,nlay,nbnd);
-  umgInt2d  gpt_lims("gpt_lims",gpt_lims_p,2,nbnd);
-
+void inc_1scalar_by_1scalar_bybnd(int ncol, int nlay, int ngpt, real3d &tau1, real3d const &tau2,
+                                  int nbnd, int2d const &gpt_lims) {
   // do igpt = 1 , ngpt
   //   do ilay = 1 , nlay
   //     do icol = 1 , ncol
@@ -64,11 +52,7 @@ extern "C" void inc_1scalar_by_1scalar_bybnd(int ncol, int nlay, int ngpt, real 
 
 // Delta-scale
 //   f = g*g
-extern "C" void delta_scale_2str_k(int ncol, int nlay, int ngpt, real *tau_p, real *ssa_p, real *g_p) {
-  umgReal3d tau("tau",tau_p,ncol,nlay,ngpt);
-  umgReal3d ssa("ssa",ssa_p,ncol,nlay,ngpt);
-  umgReal3d g  ("g"  ,g_p  ,ncol,nlay,ngpt);
-
+void delta_scale_2str_k(int ncol, int nlay, int ngpt, real3d &tau, real3d &ssa, real3d &g) {
   real eps = 3*std::numeric_limits<real>::min();
 
   // do igpt = 1, ngpt
@@ -90,12 +74,7 @@ extern "C" void delta_scale_2str_k(int ncol, int nlay, int ngpt, real *tau_p, re
 // -------------------------------------------------------------------------------------------------
 // Delta-scale
 //   user-provided value of f (forward scattering)
-extern "C" void delta_scale_2str_f_k(int ncol, int nlay, int ngpt, real *tau_p, real *ssa_p, real *g_p, real *f_p) {
-  umgReal3d tau ("tau",tau_p,ncol, nlay, ngpt);
-  umgReal3d ssa ("ssa",ssa_p,ncol, nlay, ngpt);
-  umgReal3d g   ("g  ",g_p  ,ncol, nlay, ngpt);
-  umgReal3d f   ("f  ",f_p  ,ncol, nlay, ngpt);
-
+void delta_scale_2str_f_k(int ncol, int nlay, int ngpt, real3d &tau, real3d &ssa, real3d &g, real3d const &f) {
   real eps = 3*std::numeric_limits<real>::min();
 
   // do igpt = 1, ngpt
@@ -126,10 +105,7 @@ extern "C" void delta_scale_2str_f_k(int ncol, int nlay, int ngpt, real *tau_p, 
 //   properties are defined at the same spectral resolution. There is also a set of routines
 //   to add properties defined at lower spectral resolution to a set defined at higher spectral
 //   resolution (adding properties defined by band to those defined by g-point)
-extern "C" void increment_1scalar_by_1scalar(int ncol, int nlay, int ngpt, real *tau1_p, real *tau2_p) {
-  umgReal3d tau1("tau1",tau1_p,ncol,nlay,ngpt);
-  umgReal3d tau2("tau2",tau2_p,ncol,nlay,ngpt);
-
+void increment_1scalar_by_1scalar(int ncol, int nlay, int ngpt, real3d &tau1, real3d const &tau2) {
   // do igpt = 1, ngpt
   //   do ilay = 1, nlay
   //     do icol = 1, ncol
@@ -142,11 +118,7 @@ extern "C" void increment_1scalar_by_1scalar(int ncol, int nlay, int ngpt, real 
 
 
 // increment 1scalar by 2stream
-extern "C" void increment_1scalar_by_2stream(int ncol, int nlay, int ngpt, real *tau1_p, real *tau2_p, real *ssa2_p) {
-  umgReal3d tau1("tau1",tau1_p,ncol,nlay,ngpt);
-  umgReal3d tau2("tau2",tau2_p,ncol,nlay,ngpt);
-  umgReal3d ssa2("ssa2",ssa2_p,ncol,nlay,ngpt);
-
+void increment_1scalar_by_2stream(int ncol, int nlay, int ngpt, real3d &tau1, real3d const &tau2, real3d const &ssa2) {
   // do igpt = 1, ngpt
   //   do ilay = 1, nlay
   //     do icol = 1, ncol
@@ -159,11 +131,7 @@ extern "C" void increment_1scalar_by_2stream(int ncol, int nlay, int ngpt, real 
 
 
 // increment 1scalar by nstream
-extern "C" void increment_1scalar_by_nstream(int ncol, int nlay, int ngpt, real *tau1_p, real *tau2_p, real *ssa2_p) {
-  umgReal3d tau1("tau1",tau1_p,ncol,nlay,ngpt);
-  umgReal3d tau2("tau2",tau2_p,ncol,nlay,ngpt);
-  umgReal3d ssa2("ssa2",ssa2_p,ncol,nlay,ngpt);
-
+void increment_1scalar_by_nstream(int ncol, int nlay, int ngpt, real3d &tau1, real3d const &tau2, real3d const &ssa2) {
   // do igpt = 1, ngpt
   //   do ilay = 1, nlay
   //     do icol = 1, ncol
@@ -176,11 +144,7 @@ extern "C" void increment_1scalar_by_nstream(int ncol, int nlay, int ngpt, real 
 
 
 // increment 2stream by 1scalar
-extern "C" void increment_2stream_by_1scalar(int ncol, int nlay, int ngpt, real *tau1_p, real *ssa1_p, real *tau2_p) {
-  umgReal3d tau1("tau1",tau1_p,ncol,nlay,ngpt);
-  umgReal3d ssa1("ssa1",ssa1_p,ncol,nlay,ngpt);
-  umgReal3d tau2("tau2",tau2_p,ncol,nlay,ngpt);
-
+void increment_2stream_by_1scalar(int ncol, int nlay, int ngpt, real3d &tau1, real3d &ssa1, real3d const &tau2) {
   real eps = 3*std::numeric_limits<real>::min();
 
   // do igpt = 1, ngpt
@@ -200,14 +164,8 @@ extern "C" void increment_2stream_by_1scalar(int ncol, int nlay, int ngpt, real 
 
 
 // increment 2stream by 2stream
-extern "C" void increment_2stream_by_2stream(int ncol, int nlay, int ngpt, real *tau1_p, real *ssa1_p, real *g1_p, real *tau2_p, real *ssa2_p, real *g2_p) {
-  umgReal3d tau1("tau1",tau1_p,ncol,nlay,ngpt);
-  umgReal3d ssa1("ssa1",ssa1_p,ncol,nlay,ngpt);
-  umgReal3d g1  ("g1  ",g1_p  ,ncol,nlay,ngpt);
-  umgReal3d tau2("tau2",tau2_p,ncol,nlay,ngpt);
-  umgReal3d ssa2("ssa2",ssa2_p,ncol,nlay,ngpt);
-  umgReal3d g2  ("g2  ",g2_p  ,ncol,nlay,ngpt);
-
+void increment_2stream_by_2stream(int ncol, int nlay, int ngpt, real3d &tau1, real3d &ssa1, real3d &g1,
+                                  real3d const &tau2, real3d const &ssa2, real3d const &g2) {
   real eps = 3*std::numeric_limits<real>::min();
 
   // do igpt = 1, ngpt
@@ -232,14 +190,8 @@ extern "C" void increment_2stream_by_2stream(int ncol, int nlay, int ngpt, real 
 
 
 // increment 2stream by nstream
-extern "C" void increment_2stream_by_nstream(int ncol, int nlay, int ngpt, int nmom2, real *tau1_p, real *ssa1_p, real *g1_p, real *tau2_p, real *ssa2_p, real *p2_p) {
-  umgReal3d tau1 ("tau1",tau1_p,ncol,nlay,ngpt      );
-  umgReal3d ssa1 ("ssa1",ssa1_p,ncol,nlay,ngpt      );
-  umgReal3d g1   ("g1  ",g1_p  ,ncol,nlay,ngpt      );
-  umgReal3d tau2 ("tau2",tau2_p,ncol,nlay,ngpt      );
-  umgReal3d ssa2 ("ssa2",ssa2_p,ncol,nlay,ngpt      );
-  umgReal4d p2   ("p2  ",p2_p  ,nmom2,ncol,nlay,ngpt);
-
+void increment_2stream_by_nstream(int ncol, int nlay, int ngpt, int nmom2, real3d &tau1, real3d &ssa1,
+                                  real3d &g1, real3d const &tau2, real3d const &ssa2, real4d const &p2) {
   real eps = 3*std::numeric_limits<real>::min();
 
   // do igpt = 1, ngpt
@@ -264,11 +216,7 @@ extern "C" void increment_2stream_by_nstream(int ncol, int nlay, int ngpt, int n
 
 
 // increment nstream by 1scalar
-extern "C" void increment_nstream_by_1scalar(int ncol, int nlay, int ngpt, real *tau1_p, real *ssa1_p, real *tau2_p) {
-  umgReal3d tau1 ("tau1",tau1_p,ncol,nlay,ngpt);
-  umgReal3d ssa1 ("ssa1",ssa1_p,ncol,nlay,ngpt);
-  umgReal3d tau2 ("tau2",tau2_p,ncol,nlay,ngpt);
-
+void increment_nstream_by_1scalar(int ncol, int nlay, int ngpt, real3d &tau1, real3d &ssa1, real3d const &tau2) {
   real eps = 3*std::numeric_limits<real>::min();
 
   // do igpt = 1, ngpt
@@ -288,16 +236,9 @@ extern "C" void increment_nstream_by_1scalar(int ncol, int nlay, int ngpt, real 
 
 
 // increment nstream by 2stream
-extern "C" void increment_nstream_by_2stream(int ncol, int nlay, int ngpt, int nmom1, real *tau1_p, real *ssa1_p, real *p1_p, real *tau2_p, real *ssa2_p, real *g2_p) {
-  umgReal3d tau1("tau1",tau1_p,ncol,nlay,ngpt      );
-  umgReal3d ssa1("ssa1",ssa1_p,ncol,nlay,ngpt      );
-  umgReal4d p1  ("p1  ",p1_p  ,nmom1,ncol,nlay,ngpt);
-  umgReal3d tau2("tau2",tau2_p,ncol,nlay,ngpt      );
-  umgReal3d ssa2("ssa2",ssa2_p,ncol,nlay,ngpt      );
-  umgReal3d g2  ("g2  ",g2_p  ,ncol,nlay,ngpt      );
-
+void increment_nstream_by_2stream(int ncol, int nlay, int ngpt, int nmom1, real3d &tau1, real3d &ssa1,
+                                  real4d &p1, real3d const &tau2, real3d const &ssa2, real3d const &g2) {
   real1d temp_moms("temp_moms",nmom1);
-
   real eps = 3*std::numeric_limits<real>::min();
 
   // do igpt = 1, ngpt
@@ -327,16 +268,9 @@ extern "C" void increment_nstream_by_2stream(int ncol, int nlay, int ngpt, int n
 
 
 // increment nstream by nstream
-extern "C" void increment_nstream_by_nstream(int ncol, int nlay, int ngpt, int nmom1, int nmom2, real *tau1_p, real *ssa1_p, real *p1_p, real *tau2_p, real *ssa2_p, real *p2_p) {
-  umgReal3d tau1 ("tau1",tau1_p,ncol,nlay,ngpt      );
-  umgReal3d ssa1 ("ssa1",ssa1_p,ncol,nlay,ngpt      );
-  umgReal4d p1   ("p1  ",p1_p  ,nmom1,ncol,nlay,ngpt);
-  umgReal3d tau2 ("tau2",tau2_p,ncol,nlay,ngpt      );
-  umgReal3d ssa2 ("ssa2",ssa2_p,ncol,nlay,ngpt      );
-  umgReal4d p2   ("p2  ",p2_p  ,nmom2,ncol,nlay,ngpt);
-
+void increment_nstream_by_nstream(int ncol, int nlay, int ngpt, int nmom1, int nmom2, real3d &tau1,
+                                  real3d &ssa1, real4d &p1, real3d const &tau2, real3d const &ssa2, real4d const &p2) {
   real eps = 3*std::numeric_limits<real>::min();
-
   int mom_lim = min(nmom1, nmom2);
 
   // do igpt = 1, ngpt
@@ -363,12 +297,8 @@ extern "C" void increment_nstream_by_nstream(int ncol, int nlay, int ngpt, int n
 
 
 // increment 1scalar by 2stream
-extern "C" void inc_1scalar_by_2stream_bybnd(int ncol, int nlay, int ngpt, real *tau1_p, real *tau2_p, real *ssa2_p, int nbnd, int *gpt_lims_p) {
-  umgReal3d tau1     ("tau1    ",tau1_p    ,ncol,nlay,ngpt);
-  umgReal3d tau2     ("tau2    ",tau2_p    ,ncol,nlay,nbnd);
-  umgReal3d ssa2     ("ssa2    ",ssa2_p    ,ncol,nlay,nbnd);
-  umgInt2d  gpt_lims ("gpt_lims",gpt_lims_p,2,nbnd        );
-
+void inc_1scalar_by_2stream_bybnd(int ncol, int nlay, int ngpt, real3d &tau1, real3d const &tau2,
+                                  real3d const &ssa2, int nbnd, int2d const &gpt_lims) {
   // do igpt = 1, ngpt
   //   do ilay = 1, nlay
   //     do icol = 1, ncol
@@ -385,12 +315,8 @@ extern "C" void inc_1scalar_by_2stream_bybnd(int ncol, int nlay, int ngpt, real 
 
 
 // increment 1scalar by nstream
-extern "C" void inc_1scalar_by_nstream_bybnd(int ncol, int nlay, int ngpt, real *tau1_p, real *tau2_p, real *ssa2_p, int nbnd, int *gpt_lims_p) {
-  umgReal3d tau1     ("tau1    ",tau1_p    ,ncol,nlay,ngpt);
-  umgReal3d tau2     ("tau2    ",tau2_p    ,ncol,nlay,nbnd);
-  umgReal3d ssa2     ("ssa2    ",ssa2_p    ,ncol,nlay,nbnd);
-  umgInt2d  gpt_lims ("gpt_lims",gpt_lims_p,2,nbnd        );
-
+void inc_1scalar_by_nstream_bybnd(int ncol, int nlay, int ngpt, real3d &tau1, real3d const &tau2,
+                                  real3d const &ssa2, int nbnd, int2d const &gpt_lims) {
   // do igpt = 1, ngpt
   //   do ilay = 1, nlay
   //     do icol = 1, ncol
@@ -407,12 +333,8 @@ extern "C" void inc_1scalar_by_nstream_bybnd(int ncol, int nlay, int ngpt, real 
 
 
 // increment 2stream by 1scalar
-extern "C" void inc_2stream_by_1scalar_bybnd(int ncol, int nlay, int ngpt, real *tau1_p, real *ssa1_p, real *tau2_p, int nbnd, int *gpt_lims_p) {
-  umgReal3d tau1    ("tau1    ",tau1_p    ,ncol,nlay,ngpt);
-  umgReal3d ssa1    ("ssa1    ",ssa1_p    ,ncol,nlay,ngpt);
-  umgReal3d tau2    ("tau2    ",tau2_p    ,ncol,nlay,nbnd);
-  umgInt2d  gpt_lims("gpt_lims",gpt_lims_p,2,nbnd        );
-
+void inc_2stream_by_1scalar_bybnd(int ncol, int nlay, int ngpt, real3d &tau1, real3d &ssa1,
+                                  real3d const &tau2, int nbnd, int2d const &gpt_lims) {
   real eps = 3*std::numeric_limits<real>::min();
 
   // do igpt = 1, ngpt
@@ -433,15 +355,9 @@ extern "C" void inc_2stream_by_1scalar_bybnd(int ncol, int nlay, int ngpt, real 
 
 
 // increment 2stream by nstream
-extern "C" void inc_2stream_by_nstream_bybnd(int ncol, int nlay, int ngpt, int nmom2, real *tau1_p, real *ssa1_p, real *g1_p, real *tau2_p, real *ssa2_p, real *p2_p, int nbnd, int *gpt_lims_p) {
-  umgReal3d tau1     ("tau1    ",tau1_p    ,ncol,nlay,ngpt      );
-  umgReal3d ssa1     ("ssa1    ",ssa1_p    ,ncol,nlay,ngpt      );
-  umgReal3d g1       ("g1      ",g1_p      ,ncol,nlay,ngpt      );
-  umgReal3d tau2     ("tau2    ",tau2_p    ,ncol,nlay,nbnd      );
-  umgReal3d ssa2     ("ssa2    ",ssa2_p    ,ncol,nlay,nbnd      );
-  umgReal4d p2       ("p2      ",p2_p      ,nmom2,ncol,nlay,nbnd);
-  umgInt2d  gpt_lims ("gpt_lims",gpt_lims_p,2,nbnd              );
-
+void inc_2stream_by_nstream_bybnd(int ncol, int nlay, int ngpt, int nmom2, real3d &tau1, real3d &ssa1,
+                                  real3d &g1, real3d const &tau2, real3d const &ssa2, real4d const &p2,
+                                  int nbnd, int2d const &gpt_lims) {
   real eps = 3*std::numeric_limits<real>::min();
 
   // do igpt = 1, ngpt
@@ -468,12 +384,8 @@ extern "C" void inc_2stream_by_nstream_bybnd(int ncol, int nlay, int ngpt, int n
 
 
 // increment nstream by 1scalar
-extern "C" void inc_nstream_by_1scalar_bybnd(int ncol, int nlay, int ngpt, real *tau1_p, real *ssa1_p, real *tau2_p, int nbnd, int *gpt_lims_p) {
-  umgReal3d tau1    ("tau1    ",tau1_p    ,ncol,nlay,ngpt);
-  umgReal3d ssa1    ("ssa1    ",ssa1_p    ,ncol,nlay,ngpt);
-  umgReal3d tau2    ("tau2    ",tau2_p    ,ncol,nlay,nbnd);
-  umgInt2d  gpt_lims("gpt_lims",gpt_lims_p,2,nbnd        );
-
+void inc_nstream_by_1scalar_bybnd(int ncol, int nlay, int ngpt, real3d &tau1, real3d &ssa1, real3d const &tau2,
+                                  int nbnd, int2d const &gpt_lims) {
   real eps = 3*std::numeric_limits<real>::min();
 
   // do igpt = 1, ngpt
@@ -495,17 +407,10 @@ extern "C" void inc_nstream_by_1scalar_bybnd(int ncol, int nlay, int ngpt, real 
 
 
 // increment nstream by 2stream
-extern "C" void inc_nstream_by_2stream_bybnd(int ncol, int nlay, int ngpt, int nmom1, real *tau1_p, real *ssa1_p, real *p1_p, real *tau2_p, real *ssa2_p, real *g2_p, int nbnd, int *gpt_lims_p) {
-  umgReal3d tau1     ("tau1    ",tau1_p    ,ncol,nlay,ngpt      );
-  umgReal3d ssa1     ("ssa1    ",ssa1_p    ,ncol,nlay,ngpt      );
-  umgReal4d p1       ("p1      ",p1_p      ,nmom1,ncol,nlay,ngpt);
-  umgReal3d tau2     ("tau2    ",tau2_p    ,ncol,nlay,nbnd      );
-  umgReal3d ssa2     ("ssa2    ",ssa2_p    ,ncol,nlay,nbnd      );
-  umgReal3d g2       ("g2      ",g2_p      ,ncol,nlay,nbnd      );
-  umgInt2d  gpt_lims ("gpt_lims",gpt_lims_p,2,nbnd              );
-
+void inc_nstream_by_2stream_bybnd(int ncol, int nlay, int ngpt, int nmom1, real3d &tau1, real3d &ssa1, real4d &p1,
+                                  real3d const &tau2, real3d const &ssa2, real3d const &g2, int nbnd,
+                                  int2d const &gpt_lims) {
   real1d temp_moms("temp_moms",nmom1);
-
   real eps = 3*std::numeric_limits<real>::min();
 
   // do igpt = 1, ngpt
@@ -537,17 +442,9 @@ extern "C" void inc_nstream_by_2stream_bybnd(int ncol, int nlay, int ngpt, int n
 
 
 // increment nstream by nstream
-extern "C" void inc_nstream_by_nstream_bybnd(int ncol, int nlay, int ngpt, int nmom1, int nmom2, real *tau1_p, real *ssa1_p, real *p1_p, real *tau2_p, real *ssa2_p, real *p2_p, int nbnd, int *gpt_lims_p) {
-  umgReal3d tau1     ("tau1    ",tau1_p    ,ncol,nlay,ngpt      );
-  umgReal3d ssa1     ("ssa1    ",ssa1_p    ,ncol,nlay,ngpt      );
-  umgReal4d p1       ("p1      ",p1_p      ,nmom1,ncol,nlay,ngpt);
-  umgReal3d tau2     ("tau2    ",tau2_p    ,ncol,nlay,nbnd      );
-  umgReal3d ssa2     ("ssa2    ",ssa2_p    ,ncol,nlay,nbnd      );
-  umgReal4d p2       ("p2      ",p2_p      ,nmom2,ncol,nlay,nbnd);
-  umgInt2d  gpt_lims ("gpt_lims",gpt_lims_p,2,nbnd              );
-
+void inc_nstream_by_nstream_bybnd(int ncol, int nlay, int ngpt, int nmom1, int nmom2, real3d &tau1, real3d &ssa1, real4d &p1,
+                                  real3d const &tau2, real3d const &ssa2, real4d const &p2, int nbnd, int2d const &gpt_lims) {
   real eps = 3*std::numeric_limits<real>::min();
-
   int mom_lim = min(nmom1, nmom2);
 
   // do igpt = 1, ngpt
@@ -576,10 +473,7 @@ extern "C" void inc_nstream_by_nstream_bybnd(int ncol, int nlay, int ngpt, int n
 
 
 // Subsetting, meaning extracting some portion of the 3D domain
-extern "C" void extract_subset_dim1_3d(int ncol, int nlay, int ngpt, real *array_in_p, int colS, int colE, real *array_out_p) {
-  umgReal3d array_in ("array_in ",array_in_p ,ncol,nlay,ngpt       );
-  umgReal3d array_out("array_out",array_out_p,colE-colS+1,nlay,ngpt);
-
+void extract_subset_dim1_3d(int ncol, int nlay, int ngpt, real3d const &array_in, int colS, int colE, real3d &array_out) {
   // do igpt = 1, ngpt
   //   do ilay = 1, nlay
   //     do icol = colS, colE
@@ -591,10 +485,7 @@ extern "C" void extract_subset_dim1_3d(int ncol, int nlay, int ngpt, real *array
 
 
 
-extern "C" void extract_subset_dim2_4d(int nmom, int ncol, int nlay, int ngpt, real *array_in_p, int colS, int colE, real *array_out_p) {
-  umgReal4d array_in ("array_in ",array_in_p ,nmom,ncol,nlay,ngpt       );
-  umgReal4d array_out("array_out",array_out_p,nmom,colE-colS+1,nlay,ngpt);
-
+void extract_subset_dim2_4d(int nmom, int ncol, int nlay, int ngpt, real3d const &array_in, int colS, int colE, real3d &array_out) {
   //do igpt = 1, ngpt
   //  do ilay = 1, nlay
   //    do icol = colS, colE
@@ -607,11 +498,8 @@ extern "C" void extract_subset_dim2_4d(int nmom, int ncol, int nlay, int ngpt, r
 
 
 // Extract the absorption optical thickness which requires mulitplying by 1 - ssa
-extern "C" void extract_subset_absorption_tau(int ncol, int nlay, int ngpt, real *tau_in_p, real *ssa_in_p, int colS, int colE, real *tau_out_p) {
-  umgReal3d tau_in ("tau_in ",tau_in_p ,ncol,nlay,ngpt       );
-  umgReal3d ssa_in ("ssa_in ",ssa_in_p ,ncol,nlay,ngpt       );
-  umgReal3d tau_out("tau_out",tau_out_p,colE-colS+1,nlay,ngpt);
-
+void extract_subset_absorption_tau(int ncol, int nlay, int ngpt, real3d const &tau_in, real3d const &ssa_in, int colS, int colE,
+                                   real3d &tau_out) {
   // do igpt = 1, ngpt
   //   do ilay = 1, nlay
   //     do icol = colS, colE
