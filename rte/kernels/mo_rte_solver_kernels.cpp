@@ -3,9 +3,7 @@
 
 
 
-extern "C" void apply_BC_0(int ncol, int nlay, int ngpt, bool top_at_1, real *flux_dn_p) {
-  umgReal3d flux_dn("flux_dn",flux_dn_p,ncol,nlay+1,ngpt);
-
+void apply_BC_0(int ncol, int nlay, int ngpt, bool top_at_1, real3d &flux_dn) {
   //   Upper boundary condition
   if (top_at_1) {
     // do igpt = 1, ngpt
@@ -24,11 +22,8 @@ extern "C" void apply_BC_0(int ncol, int nlay, int ngpt, bool top_at_1, real *fl
 
 
 
-extern "C" void apply_BC_factor(int ncol, int nlay, int ngpt, bool top_at_1, real *inc_flux_p, real *factor_p, real *flux_dn_p) {
-  umgReal2d inc_flux("inc_flux",inc_flux_p,ncol       ,ngpt);
-  umgReal1d factor  ("factor"  ,factor_p  ,ncol            );
-  umgReal3d flux_dn ("flux_dn" ,flux_dn_p ,ncol,nlay+1,ngpt);
-
+void apply_BC_factor(int ncol, int nlay, int ngpt, bool top_at_1, real2d const &inc_flux,
+                     real1d const &factor, real3d &flux_dn) {
   if (top_at_1) {
     // do igpt = 1, ngpt
     //   do icol = 1, ncol
@@ -47,7 +42,7 @@ extern "C" void apply_BC_factor(int ncol, int nlay, int ngpt, bool top_at_1, rea
 
 
 // Upper boundary condition
-extern "C" void apply_BC_gpt(int ncol, int nlay, int ngpt, bool top_at_1, real2d const &inc_flux, real3d &flux_dn) {
+void apply_BC_gpt(int ncol, int nlay, int ngpt, bool top_at_1, real2d const &inc_flux, real3d &flux_dn) {
   //   Upper boundary condition
   if (top_at_1) {
     //$acc  parallel loop collapse(2)
@@ -71,9 +66,8 @@ extern "C" void apply_BC_gpt(int ncol, int nlay, int ngpt, bool top_at_1, real2d
 // Transport of diffuse radiation through a vertically layered atmosphere.
 //   Equations are after Shonk and Hogan 2008, doi:10.1175/2007JCLI1940.1 (SH08)
 //   This routine is shared by longwave and shortwave
-extern "C" void adding(int ncol, int nlay, int ngpt, bool top_at_1, real2d const &albedo_sfc,             
-                       real3d const &rdif, real3d const &tdif, real3d const &src_dn, real3d const &src_up, real2d const &src_sfc, 
-                       real3d &flux_up, real3d &flux_dn) {
+void adding(int ncol, int nlay, int ngpt, bool top_at_1, real2d const &albedo_sfc, real3d const &rdif, real3d const &tdif,
+            real3d const &src_dn, real3d const &src_up, real2d const &src_sfc, real3d &flux_up, real3d &flux_dn) {
   real3d albedo("albedo",ncol,nlay+1,ngpt);
   real3d src   ("src   ",ncol,nlay+1,ngpt);
   real3d denom ("denom ",ncol,nlay  ,ngpt);
@@ -165,19 +159,9 @@ extern "C" void adding(int ncol, int nlay, int ngpt, bool top_at_1, real2d const
 
 
 
-extern "C" void sw_solver_2stream(int ncol, int nlay, int ngpt, bool top_at_1, real *tau_p, real *ssa_p, real *g_p,
-                                  real *mu0_p, real *sfc_alb_dir_p, real *sfc_alb_dif_p, real *flux_up_p,
-                                  real *flux_dn_p, real *flux_dir_p) {
-  umgReal3d tau         ("tau        ",tau_p        ,ncol,nlay,  ngpt);
-  umgReal3d ssa         ("ssa        ",ssa_p        ,ncol,nlay,  ngpt);
-  umgReal3d g           ("g          ",g_p          ,ncol,nlay,  ngpt);
-  umgReal1d mu0         ("mu0        ",mu0_p        ,ncol            );
-  umgReal2d sfc_alb_dir ("sfc_alb_dir",sfc_alb_dir_p,ncol,       ngpt);
-  umgReal2d sfc_alb_dif ("sfc_alb_dif",sfc_alb_dif_p,ncol,       ngpt);
-  umgReal3d flux_up     ("flux_up    ",flux_up_p    ,ncol,nlay+1,ngpt);
-  umgReal3d flux_dn     ("flux_dn    ",flux_dn_p    ,ncol,nlay+1,ngpt);
-  umgReal3d flux_dir    ("flux_dir   ",flux_dir_p   ,ncol,nlay+1,ngpt);
-  
+void sw_solver_2stream(int ncol, int nlay, int ngpt, bool top_at_1, real3d const &tau, real3d const &ssa, real3d const &g,
+                       real1d const &mu0, real2d const &sfc_alb_dir, real2d const &sfc_alb_dif, real3d &flux_up,
+                       real3d &flux_dn, real3d &flux_dir) {
   real3d Rdif      ("Rdif      ",ncol,nlay,ngpt);         
   real3d Tdif      ("Tdif      ",ncol,nlay,ngpt);         
   real3d Rdir      ("Rdir      ",ncol,nlay,ngpt);         
@@ -217,9 +201,9 @@ extern "C" void sw_solver_2stream(int ncol, int nlay, int ngpt, bool top_at_1, r
 // LW fluxes, no scattering, mu (cosine of integration angle) specified by column
 //   Does radiation calculation at user-supplied angles; converts radiances to flux
 //   using user-supplied weights
-extern "C" void lw_solver_noscat(int ncol, int nlay, int ngpt, bool top_at_1, real2d const &D, real weight,
-                                 real3d const &tau, real3d const &lay_source, real3d const &lev_source_inc, real3d const &lev_source_dec,
-                                 real2d const &sfc_emis, real2d const &sfc_src, real3d &radn_up, real3d &radn_dn) {
+void lw_solver_noscat(int ncol, int nlay, int ngpt, bool top_at_1, real2d const &D, real weight, real3d const &tau,
+                      real3d const &lay_source, real3d const &lev_source_inc, real3d const &lev_source_dec,
+                      real2d const &sfc_emis, real2d const &sfc_src, real3d &radn_up, real3d &radn_dn) {
   real3d tau_loc   ("tau_loc   ",ncol,nlay,ngpt);             
   real3d trans     ("trans     ",ncol,nlay,ngpt);             
   real3d source_dn ("source_dn ",ncol,nlay,ngpt);             
@@ -294,20 +278,9 @@ extern "C" void lw_solver_noscat(int ncol, int nlay, int ngpt, bool top_at_1, re
 // LW transport, no scattering, multi-angle quadrature
 //   Users provide a set of weights and quadrature angles
 //   Routine sums over single-angle solutions for each sets of angles/weights
-extern "C" void lw_solver_noscat_GaussQuad(int ncol, int nlay, int ngpt, bool top_at_1, int nmus, real *Ds_p, real *weights_p, 
-                                           real *tau_p, real *lay_source_p, real *lev_source_inc_p, real *lev_source_dec_p,
-                                           real *sfc_emis_p, real *sfc_src_p, real *flux_up_p, real *flux_dn_p) {
-  umgReal1d Ds             ("Ds            ",Ds_p            ,nmus            );
-  umgReal1d weights        ("weights       ",weights_p       ,nmus            );
-  umgReal3d tau            ("tau           ",tau_p           ,ncol,nlay,  ngpt);
-  umgReal3d lay_source     ("lay_source    ",lay_source_p    ,ncol,nlay,  ngpt);
-  umgReal3d lev_source_inc ("lev_source_inc",lev_source_inc_p,ncol,nlay,  ngpt);
-  umgReal3d lev_source_dec ("lev_source_dec",lev_source_dec_p,ncol,nlay,  ngpt);
-  umgReal2d sfc_emis       ("sfc_emis      ",sfc_emis_p      ,ncol,       ngpt);
-  umgReal2d sfc_src        ("sfc_src       ",sfc_src_p       ,ncol,       ngpt);
-  umgReal3d flux_dn        ("flux_dn       ",flux_dn_p       ,ncol,nlay+1,ngpt);
-  umgReal3d flux_up        ("flux_up       ",flux_up_p       ,ncol,nlay+1,ngpt);
-
+void lw_solver_noscat_GaussQuad(int ncol, int nlay, int ngpt, bool top_at_1, int nmus, real1d const &Ds, real1d const &weights, 
+                                real3d const &tau, real3d const &lay_source, real3d const &lev_source_inc, real3d const &lev_source_dec,
+                                real2d const &sfc_emis, real2d const &sfc_src, real3d &flux_up, real3d &flux_dn) {
   // Local variables
   real3d radn_dn ("radn_dn ",ncol,nlay+1,ngpt);  
   real3d radn_up ("radn_up ",ncol,nlay+1,ngpt);  
@@ -364,9 +337,10 @@ extern "C" void lw_solver_noscat_GaussQuad(int ncol, int nlay, int ngpt, bool to
 // Compute LW source function for upward and downward emission at levels using linear-in-tau assumption
 //   This version straight from ECRAD
 //   Source is provided as W/m2-str; factor of pi converts to flux units
-void lw_source_2str(int ncol, int nlay, int ngpt, bool top_at_1, real2d const &sfc_emis, real2d const &sfc_src, real3d const &lay_source,
-                    real3d const &lev_source, real3d const &gamma1, real3d const &gamma2, real3d const &rdif, real3d const &tdif, real3d const &tau,
-                    real3d &source_dn, real3d &source_up, real2d &source_sfc) {
+void lw_source_2str(int ncol, int nlay, int ngpt, bool top_at_1, real2d const &sfc_emis, real2d const &sfc_src,
+                    real3d const &lay_source, real3d const &lev_source, real3d const &gamma1, real3d const &gamma2,
+                    real3d const &rdif, real3d const &tdif, real3d const &tau, real3d &source_dn, real3d &source_up,
+                    real2d &source_sfc) {
   real constexpr pi = 3.14159265358979323846;
 
   // do igpt = 1, ngpt
@@ -407,7 +381,8 @@ void lw_source_2str(int ncol, int nlay, int ngpt, bool top_at_1, real2d const &s
 // RRTMGP provides two source functions at each level
 //   using the spectral mapping from each of the adjascent layers.
 //   Need to combine these for use in two-stream calculation.
-void lw_combine_sources(int ncol, int nlay, int ngpt, bool top_at_1, real3d const &lev_src_inc, real3d const &lev_src_dec, real3d &lev_source) {
+void lw_combine_sources(int ncol, int nlay, int ngpt, bool top_at_1, real3d const &lev_src_inc, real3d const &lev_src_dec,
+                        real3d &lev_source) {
   // do igpt = 1, ngpt
   //   do ilay = 1, nlay+1
   //     do icol = 1, ncol
@@ -430,7 +405,8 @@ void lw_combine_sources(int ncol, int nlay, int ngpt, bool top_at_1, real3d cons
 //    with optical depth tau, single scattering albedo w0, and asymmetery parameter g.
 // Equations are developed in Meador and Weaver, 1980,
 //    doi:10.1175/1520-0469(1980)037<0630:TSATRT>2.0.CO;2
-void lw_two_stream(int ncol, int nlay, int ngpt, real3d const &tau, real3d const &w0, real3d const &g, real3d &gamma1, real3d &gamma2, real3d &Rdif, real3d &Tdif) {
+void lw_two_stream(int ncol, int nlay, int ngpt, real3d const &tau, real3d const &w0, real3d const &g, real3d &gamma1,
+                   real3d &gamma2, real3d &Rdif, real3d &Tdif) {
   real constexpr LW_diff_sec = 1.66;  // 1./cos(diffusivity angle)
 
   // do igpt = 1, ngpt
@@ -472,11 +448,7 @@ void lw_two_stream(int ncol, int nlay, int ngpt, real3d const &tau, real3d const
 //   Top-level shortwave kernels
 // -------------------------------------------------------------------------------------------------
 //   Extinction-only i.e. solar direct beam
-void sw_solver_noscat(int ncol, int nlay, int ngpt, bool top_at_1, real *tau_p, real *mu0_p, real *flux_dir_p) {
-  umgReal3d tau     ("tau     ",tau_p     ,ncol,nlay,  ngpt);
-  umgReal1d mu0     ("mu0     ",mu0_p     ,ncol            );
-  umgReal3d flux_dir("flux_dir",flux_dir_p,ncol,nlay+1,ngpt);
-  
+void sw_solver_noscat(int ncol, int nlay, int ngpt, bool top_at_1, real3d const &tau, real1d const &mu0, real3d &flux_dir) {
   real1d mu0_inv("mu0_inv",ncol);
 
   parallel_for_cpu_serial( ncol , YAKL_LAMBDA (int icol) {
@@ -520,20 +492,9 @@ void sw_solver_noscat(int ncol, int nlay, int ngpt, bool top_at_1, real *tau_p, 
 //   compute layer reflectance, transmittance
 //   compute total source function at levels using linear-in-tau
 //   transport
-void lw_solver_2stream(int ncol, int nlay, int ngpt, bool top_at_1, real *tau_p, real *ssa_p, real *g_p,
-                                  real *lay_source_p, real *lev_source_inc_p, real *lev_source_dec_p, real *sfc_emis_p,
-                                  real *sfc_src_p, real *flux_up_p, real *flux_dn_p) {
-  umgReal3d tau           ("tau           ",tau_p           ,ncol,nlay,  ngpt);
-  umgReal3d ssa           ("ssa           ",ssa_p           ,ncol,nlay,  ngpt);
-  umgReal3d g             ("g             ",g_p             ,ncol,nlay,  ngpt);
-  umgReal3d lay_source    ("lay_source    ",lay_source_p    ,ncol,nlay,ngpt  );
-  umgReal3d lev_source_inc("lev_source_inc",lev_source_inc_p,ncol,nlay,ngpt  );
-  umgReal3d lev_source_dec("lev_source_dec",lev_source_dec_p,ncol,nlay,ngpt  );
-  umgReal2d sfc_emis      ("sfc_emis      ",sfc_emis_p      ,ncol,       ngpt);
-  umgReal2d sfc_src       ("sfc_src       ",sfc_src_p       ,ncol,       ngpt);
-  umgReal3d flux_up       ("flux_up       ",flux_up_p       ,ncol,nlay+1,ngpt);
-  umgReal3d flux_dn       ("flux_dn       ",flux_dn_p       ,ncol,nlay+1,ngpt);
-  
+void lw_solver_2stream(int ncol, int nlay, int ngpt, bool top_at_1, real3d const &tau, real3d const &ssa, real3d const &g,
+                       real3d const &lay_source, real3d const &lev_source_inc, real3d const &lev_source_dec,
+                       real2d const &sfc_emis, real2d const &sfc_src, real3d &flux_up, real3d &flux_dn) {
   real3d Rdif      ("Rdif      ",ncol,nlay  ,ngpt);    
   real3d Tdif      ("Tdif      ",ncol,nlay  ,ngpt);    
   real3d gamma1    ("gamma1    ",ncol,nlay  ,ngpt);      

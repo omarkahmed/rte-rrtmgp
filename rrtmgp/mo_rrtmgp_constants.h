@@ -23,3 +23,7 @@ extern real m_dry;
 extern real grav;
 extern real cp_dry;
 
+
+void init_constants(real gravity, real mol_weight_dry_air, real heat_capacity_dry_air);
+
+

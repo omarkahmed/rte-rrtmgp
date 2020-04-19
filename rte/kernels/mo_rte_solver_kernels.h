@@ -22,9 +22,9 @@ YAKL_INLINE void lw_source_noscat_stencil(int ncol, int nlay, int ngpt, int icol
                         tau(icol,ilay,igpt) > tau_thresh);
   // Equation below is developed in Clough et al., 1992, doi:10.1029/92JD01419, Eq 13
   source_dn(icol,ilay,igpt) = (1._wp - trans(icol,ilay,igpt)) * lev_source_dn(icol,ilay,igpt) + 
-          2._wp * fact * (lay_source(icol,ilay,igpt) - lev_source_dn(icol,ilay,igpt));
+                              2._wp * fact * (lay_source(icol,ilay,igpt) - lev_source_dn(icol,ilay,igpt));
   source_up(icol,ilay,igpt) = (1._wp - trans(icol,ilay,igpt)) * lev_source_up(icol,ilay,igpt) + 
-          2._wp * fact * (lay_source(icol,ilay,igpt) - lev_source_up(icol,ilay,igpt));
+                              2._wp * fact * (lay_source(icol,ilay,igpt) - lev_source_up(icol,ilay,igpt));
 }
 
 
@@ -200,32 +200,32 @@ YAKL_INLINE void sw_two_stream(int ncol, int nlay, int ngpt, real1d const &mu0, 
 
 
 
-extern "C" void apply_BC_0(int ncol, int nlay, int ngpt, bool top_at_1, real *flux_dn_p);
+void apply_BC_0(int ncol, int nlay, int ngpt, bool top_at_1, real3d &flux_dn);
 
 
 
-extern "C" void apply_BC_factor(int ncol, int nlay, int ngpt, bool top_at_1, real *inc_flux_p, real *factor_p, real *flux_dn_p);
+void apply_BC_factor(int ncol, int nlay, int ngpt, bool top_at_1, real2d const &inc_flux,
+                     real1d const &factor, real3d &flux_dn);
 
 
 
 // Upper boundary condition
-extern "C" void apply_BC_gpt(int ncol, int nlay, int ngpt, bool top_at_1, real2d const &inc_flux, real3d &flux_dn);
+void apply_BC_gpt(int ncol, int nlay, int ngpt, bool top_at_1, real2d const &inc_flux, real3d &flux_dn);
 
 
 
 // Transport of diffuse radiation through a vertically layered atmosphere.
 //   Equations are after Shonk and Hogan 2008, doi:10.1175/2007JCLI1940.1 (SH08)
 //   This routine is shared by longwave and shortwave
-extern "C" void adding(int ncol, int nlay, int ngpt, bool top_at_1, real2d const &albedo_sfc,             
-                       real3d const &rdif, real3d const &tdif, real3d const &src_dn, real3d const &src_up, real2d const &src_sfc, 
-                       real3d &flux_up, real3d &flux_dn);
+void adding(int ncol, int nlay, int ngpt, bool top_at_1, real2d const &albedo_sfc, real3d const &rdif, real3d const &tdif,
+            real3d const &src_dn, real3d const &src_up, real2d const &src_sfc, real3d &flux_up, real3d &flux_dn);
 
 
 
 
-extern "C" void sw_solver_2stream(int ncol, int nlay, int ngpt, bool top_at_1, real *tau_p, real *ssa_p, real *g_p,
-                                  real *mu0_p, real *sfc_alb_dir_p, real *sfc_alb_dif_p, real *flux_up_p,
-                                  real *flux_dn_p, real *flux_dir_p);
+void sw_solver_2stream(int ncol, int nlay, int ngpt, bool top_at_1, real3d const &tau, real3d const &ssa, real3d const &g,
+                       real1d const &mu0, real2d const &sfc_alb_dir, real2d const &sfc_alb_dif, real3d &flux_up,
+                       real3d &flux_dn, real3d &flux_dir);
 
 
 
@@ -234,27 +234,28 @@ extern "C" void sw_solver_2stream(int ncol, int nlay, int ngpt, bool top_at_1, r
 // LW fluxes, no scattering, mu (cosine of integration angle) specified by column
 //   Does radiation calculation at user-supplied angles; converts radiances to flux
 //   using user-supplied weights
-extern "C" void lw_solver_noscat(int ncol, int nlay, int ngpt, bool top_at_1, real2d const &D, real weight,
-                                 real3d const &tau, real3d const &lay_source, real3d const &lev_source_inc, real3d const &lev_source_dec,
-                                 real2d const &sfc_emis, real2d const &sfc_src, real3d &radn_up, real3d &radn_dn);
+void lw_solver_noscat(int ncol, int nlay, int ngpt, bool top_at_1, real2d const &D, real weight,
+                      real3d const &tau, real3d const &lay_source, real3d const &lev_source_inc, real3d const &lev_source_dec,
+                      real2d const &sfc_emis, real2d const &sfc_src, real3d &radn_up, real3d &radn_dn);
 
 
 
 // LW transport, no scattering, multi-angle quadrature
 //   Users provide a set of weights and quadrature angles
 //   Routine sums over single-angle solutions for each sets of angles/weights
-extern "C" void lw_solver_noscat_GaussQuad(int ncol, int nlay, int ngpt, bool top_at_1, int nmus, real *Ds_p, real *weights_p, 
-                                           real *tau_p, real *lay_source_p, real *lev_source_inc_p, real *lev_source_dec_p,
-                                           real *sfc_emis_p, real *sfc_src_p, real *flux_up_p, real *flux_dn_p);
+void lw_solver_noscat_GaussQuad(int ncol, int nlay, int ngpt, bool top_at_1, int nmus, real1d const &Ds, real1d const &weights, 
+                                real3d const &tau, real3d const &lay_source, real3d const &lev_source_inc, real3d const &lev_source_dec,
+                                real2d const &sfc_emis, real2d const &sfc_src, real3d &flux_up, real3d &flux_dn);
 
 
 
 // Compute LW source function for upward and downward emission at levels using linear-in-tau assumption
 //   This version straight from ECRAD
 //   Source is provided as W/m2-str; factor of pi converts to flux units
-void lw_source_2str(int ncol, int nlay, int ngpt, bool top_at_1, real2d const &sfc_emis, real2d const &sfc_src, real3d const &lay_source,
-                    real3d const &lev_source, real3d const &gamma1, real3d const &gamma2, real3d const &rdif, real3d const &tdif, real3d const &tau,
-                    real3d &source_dn, real3d &source_up, real2d &source_sfc);
+void lw_source_2str(int ncol, int nlay, int ngpt, bool top_at_1, real2d const &sfc_emis, real2d const &sfc_src,
+                    real3d const &lay_source, real3d const &lev_source, real3d const &gamma1, real3d const &gamma2,
+                    real3d const &rdif, real3d const &tdif, real3d const &tau, real3d &source_dn, real3d &source_up,
+                    real2d &source_sfc);
 
 
 
@@ -262,7 +263,8 @@ void lw_source_2str(int ncol, int nlay, int ngpt, bool top_at_1, real2d const &s
 // RRTMGP provides two source functions at each level
 //   using the spectral mapping from each of the adjascent layers.
 //   Need to combine these for use in two-stream calculation.
-void lw_combine_sources(int ncol, int nlay, int ngpt, bool top_at_1, real3d const &lev_src_inc, real3d const &lev_src_dec, real3d &lev_source);
+void lw_combine_sources(int ncol, int nlay, int ngpt, bool top_at_1, real3d const &lev_src_inc, real3d const &lev_src_dec,
+                        real3d &lev_source);
 
 
 
@@ -270,14 +272,15 @@ void lw_combine_sources(int ncol, int nlay, int ngpt, bool top_at_1, real3d cons
 //    with optical depth tau, single scattering albedo w0, and asymmetery parameter g.
 // Equations are developed in Meador and Weaver, 1980,
 //    doi:10.1175/1520-0469(1980)037<0630:TSATRT>2.0.CO;2
-void lw_two_stream(int ncol, int nlay, int ngpt, real3d const &tau, real3d const &w0, real3d const &g, real3d &gamma1, real3d &gamma2, real3d &Rdif, real3d &Tdif);
+void lw_two_stream(int ncol, int nlay, int ngpt, real3d const &tau, real3d const &w0, real3d const &g, real3d &gamma1,
+                   real3d &gamma2, real3d &Rdif, real3d &Tdif);
 
 
 
 //   Top-level shortwave kernels
 // -------------------------------------------------------------------------------------------------
 //   Extinction-only i.e. solar direct beam
-void sw_solver_noscat(int ncol, int nlay, int ngpt, bool top_at_1, real *tau_p, real *mu0_p, real *flux_dir_p);
+void sw_solver_noscat(int ncol, int nlay, int ngpt, bool top_at_1, real3d const &tau, real1d const &mu0, real3d &flux_dir);
 
 
 
@@ -286,9 +289,9 @@ void sw_solver_noscat(int ncol, int nlay, int ngpt, bool top_at_1, real *tau_p, 
 //   compute layer reflectance, transmittance
 //   compute total source function at levels using linear-in-tau
 //   transport
-void lw_solver_2stream(int ncol, int nlay, int ngpt, bool top_at_1, real *tau_p, real *ssa_p, real *g_p,
-                       real *lay_source_p, real *lev_source_inc_p, real *lev_source_dec_p, real *sfc_emis_p,
-                       real *sfc_src_p, real *flux_up_p, real *flux_dn_p);
+void lw_solver_2stream(int ncol, int nlay, int ngpt, bool top_at_1, real3d const &tau, real3d const &ssa, real3d const &g,
+                       real3d const &lay_source, real3d const &lev_source_inc, real3d const &lev_source_dec,
+                       real2d const &sfc_emis, real2d const &sfc_src, real3d &flux_up, real3d &flux_dn);
 
 
 
