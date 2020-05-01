@@ -2,6 +2,18 @@
 #pragma once
 
 #include "mo_optical_props.h"
+#include "mo_source_functions.h"
+#include "mo_rrtmgp_util_string.h"
+#include "FortranIntrinsics.h"
+#include "mo_gas_optics_kernels.h"
+#include "mo_rrtmgp_constants.h"
+#include "mo_rrtmgp_util_reorder.h"
+
+using yakl::fortran::count;
+using yakl::fortran::pack;
+using yakl::fortran::lbound;
+using yakl::fortran::ubound;
+using yakl::COLON;
 
 // This code is part of RRTM for GCM Applications - Parallel (RRTMGP)
 //
@@ -135,7 +147,7 @@ public:
                            intHost1d        &kminor_start_atm_red) {
 
     int nm = size(minor_gases_atm,1);  // Size of the larger list of minor gases
-    int tot_g = 0;                     // TODO: Not documented in the original code
+    int tot_g = 0;
     int red_nm = 0;                    // Reduced number of minor gasses (only the ones we need)
     boolHost1d gas_is_present("gas_is_present",1,nm);   // Determines whether a gas in the list is needed
     // Determine the gasses needed
@@ -223,7 +235,6 @@ public:
   void create_idx_minor_scaling(string1d const &gas_names, string1d const &scaling_gas_atm,
                                 intHost1d &idx_minor_scaling_atm) {
     idx_minor_scaling_atm = intHost1d("idx_minor_scaling_atm",size(scaling_gas_atm,1));
-    do imnr = 1, size(scaling_gas_atm,dim=1) ! loop over minor absorbers in each band
     for (int imnr=1 ; imnr <= size(scaling_gas_atm,1) ; imnr++) {
       // This will be -1 if there's no interacting gas
       idx_minor_scaling_atm(imnr) = string_loc_in_array(scaling_gas_atm(imnr), gas_names);
@@ -240,7 +251,7 @@ public:
     key_species_red = intHost3d("key_species_red",np,na,nt);
     key_species_present_init = boolHost1d("key_species_present_init",size(gas_names,1));
 
-    for (int i=1 ; i <= size(gase_names,1) ; i++) {
+    for (int i=1 ; i <= size(gas_names,1) ; i++) {
       key_species_present_init(i) = true;
     }
 
@@ -333,7 +344,7 @@ public:
             key_species_pair2flavor = iflav;
           }
         }
-        gpoint_flavor(iatm,igpt) = key_speciespair2flavor;
+        gpoint_flavor(iatm,igpt) = key_species_pair2flavor;
       }
     }
   }
@@ -373,7 +384,7 @@ public:
                        realHost3d const &rayl_lower,
                        realHost3d const &rayl_upper) {
 
-    OpticalProps::init(band_lims_wavenum, band2gpt);
+    OpticalProps::init(band_lims_wavenum.createDeviceCopy(), band2gpt.createDeviceCopy());
     // Which gases known to the gas optics are present in the host model (available_gases)?
     int ngas = size(gas_names,1);
     boolHost1d gas_is_present("gas_is_present",ngas);
@@ -393,9 +404,8 @@ public:
         vmr_ref_red(j,0,k) = vmr_ref(j,1,k);
       }
     }
-    do i = 1, ngas
     for (int i=1 ; i <= ngas ; i++) {
-      int idx = string_loc_in_array(this%gas_names(i), gas_names);
+      int idx = string_loc_in_array(this->gas_names(i), gas_names);
       for (int k=1 ; k <= size(vmr_ref,3) ; k++) {
         for (int j=1 ; j <= size(vmr_ref,1) ; j++) {
           vmr_ref_red(j,i,k) = vmr_ref(j,idx+1,k);
@@ -440,23 +450,23 @@ public:
     boolHost1d scale_by_complement_upper_red;
     intHost1d  kminor_start_upper_red;
 
-    call reduce_minor_arrays(available_gases, 
-                             gas_names, 
-                             gas_minor,identifier_minor,
-                             kminor_upper, 
-                             minor_gases_upper, 
-                             minor_limits_gpt_upper, 
-                             minor_scales_with_density_upper, 
-                             scaling_gas_upper, 
-                             scale_by_complement_upper, 
-                             kminor_start_upper, 
-                             kminor_upper_red, 
-                             minor_gases_upper_red, 
-                             minor_limits_gpt_upper_red, 
-                             minor_scales_with_density_upper_red, 
-                             scaling_gas_upper_red, 
-                             scale_by_complement_upper_red, 
-                             kminor_start_upper_red)
+    reduce_minor_arrays(available_gases, 
+                        gas_names, 
+                        gas_minor,identifier_minor,
+                        kminor_upper, 
+                        minor_gases_upper, 
+                        minor_limits_gpt_upper, 
+                        minor_scales_with_density_upper, 
+                        scaling_gas_upper, 
+                        scale_by_complement_upper, 
+                        kminor_start_upper, 
+                        kminor_upper_red, 
+                        minor_gases_upper_red, 
+                        minor_limits_gpt_upper_red, 
+                        minor_scales_with_density_upper_red, 
+                        scaling_gas_upper_red, 
+                        scale_by_complement_upper_red, 
+                        kminor_start_upper_red);
 
     // Copy Host temps to class device data members
     kminor_upper_red                   .deep_copy_to(this->kminor_upper                   );
@@ -517,21 +527,21 @@ public:
     // Get index of gas (if present) that has special treatment in density scaling
     intHost1d idx_minor_scaling_lower_tmp;
     intHost1d idx_minor_scaling_upper_tmp;
-    create_idx_minor_scaling(this%gas_names, scaling_gas_lower_red, idx_minor_scaling_lower_tmp);
-    create_idx_minor_scaling(this%gas_names, scaling_gas_upper_red, idx_minor_scaling_upper_tmp);
+    create_idx_minor_scaling(this->gas_names, scaling_gas_lower_red, idx_minor_scaling_lower_tmp);
+    create_idx_minor_scaling(this->gas_names, scaling_gas_upper_red, idx_minor_scaling_upper_tmp);
     idx_minor_scaling_lower_tmp.deep_copy_to(this->idx_minor_scaling_lower);
     idx_minor_scaling_upper_tmp.deep_copy_to(this->idx_minor_scaling_upper);
 
     // create flavor list
     // Reduce (remap) key_species list; checks that all key gases are present in incoming
     boolHost1d key_species_present_init;
-    intHost2d  key_species_red;
+    intHost3d  key_species_red;
     create_key_species_reduce(gas_names, this->gas_names, key_species, key_species_red, key_species_present_init);
     // create flavor and gpoint_flavor lists
     intHost2d flavor_tmp;
     intHost2d gpoint_flavor_tmp;
     create_flavor       (key_species_red, flavor_tmp);
-    create_gpoint_flavor(key_species_red, this->get_gpoint_bands(), flavor_tmp, gpoint_flavor_tmp);
+    create_gpoint_flavor(key_species_red, this->get_gpoint_bands().createHostCopy(), flavor_tmp, gpoint_flavor_tmp);
     this->flavor        = int2d("flavor",size(       flavor_tmp,1),size(       flavor_tmp,2));
     this->gpoint_flavor = int2d("flavor",size(gpoint_flavor_tmp,1),size(gpoint_flavor_tmp,2));
     flavor_tmp       .deep_copy_to(this->flavor       );
@@ -555,11 +565,11 @@ public:
     auto &flavor_loc = this->flavor;
     parallel_for_cpu_serial( Bounds<1>( this->get_ngas() ) , YAKL_LAMBDA (int i) {
       is_key_loc(i) = false;
-    };
+    });
     // do j = 1, size(this%flavor, 2)
     //   do i = 1, size(this%flavor, 1) ! extents should be 2
     parallel_for_cpu_serial( Bounds<2>( size(this->flavor,2) , size(this->flavor,1) ) , YAKL_LAMBDA (int j, int i) {
-      if (flavor_loc(i,j) /= 0) { is_key_loc(flavor_loc(i,j)) = true; }
+      if (flavor_loc(i,j) != 0) { is_key_loc(flavor_loc(i,j)) = true; }
     });
   }
 
@@ -727,12 +737,12 @@ public:
   // Function to define names of key and minor gases to be used by gas_optics().
   // The final list gases includes those that are defined in gas_optics_specification
   // and are provided in ty_gas_concs.
-  string1d get_minor_list(GasConcs const &gas_desc, int ngas, string1d const &names_spec) const {
+  string1d get_minor_list(GasConcs const &gas_desc, int ngas, string1d const &name_spec) const {
     // List of minor gases to be used in gas_optics()
     boolHost1d gas_is_present("gas_is_present",size(name_spec,1));
     for (int igas=1 ; igas <= this->get_ngas() ; igas++) {
-      gas_is_present(igas) = string_in_array(names_spec(igas), gas_desc.gas_name)
-    };
+      gas_is_present(igas) = string_in_array(name_spec(igas), gas_desc.gas_name);
+    }
     return pack(this->gas_names, gas_is_present);
   }
 
@@ -750,7 +760,7 @@ public:
 
   // Ensure that every key gas required by the k-distribution is present in the gas concentration object
   void check_key_species_present(GasConcs const &gas_desc) const {
-    string1d key_gas_names = pack(this->gas_names, this->is_key);
+    string1d key_gas_names = pack(this->gas_names, this->is_key.createHostCopy());
     for (int igas=1 ; igas <= size(key_gas_names,1) ; igas++) {
       if (! string_in_array(key_gas_names(igas), gas_desc.gas_name)) {
         stoprun("gas required by k-distribution is not present in the GasConcs object");
@@ -798,20 +808,20 @@ public:
     }
 
     // Interpolate source function
-    source(ncol, nlay, nband, ngpt, play, plev, tlay, tsfc, jtemp, jpress, jeta, tropo, fmajor, sources, tlev);
+    this->source(ncol, nlay, nband, ngpt, play, plev, tlay, tsfc, jtemp, jpress, jeta, tropo, fmajor, sources, tlev);
   }
 
 
 
   // Compute gas optical depth given temperature, pressure, and composition
-  function gas_optics_ext(real2d const &play, real2d const &plev, real2d const &tlay, GasConcs const &gas_desc,   
-                          OpticalPropsArry &optical_props, real2d &toa_src, real2d const &col_dry=real2d()) {
-    int ncol  = size(play,dim=1)
-    int nlay  = size(play,dim=2)
-    int ngpt  = this%get_ngpt()
-    int nband = this%get_nband()
-    int ngas  = this%get_ngas()
-    int nflav = get_nflav(this)
+  void gas_optics_ext(real2d const &play, real2d const &plev, real2d const &tlay, GasConcs const &gas_desc,   
+                      OpticalPropsArry &optical_props, real2d &toa_src, real2d const &col_dry=real2d()) {
+    int ncol  = size(play,1);
+    int nlay  = size(play,2);
+    int ngpt  = this->get_ngpt();
+    int nband = this->get_nband();
+    int ngas  = this->get_ngas();
+    int nflav = get_nflav();
     
     // Interpolation coefficients for use in source function
     int2d  jtemp ("jtemp"                         ,size(play,1),size(play,2));
@@ -826,10 +836,254 @@ public:
     // External source function is constant
     if (size(toa_src,1) != ncol || size(toa_src,2) != ngpt) { stoprun("gas_optics(): array toa_src has wrong size"); }
 
-    auto &solar_source_loc = this->solar_src;
+    auto &solar_src_loc = this->solar_src;
     parallel_for_cpu_serial( Bounds<2>(ngpt,ncol) , YAKL_LAMBDA (int igpt, int icol) {
       toa_src(icol,igpt) = solar_src_loc(igpt);
     });
+  }
+
+
+
+  // Returns optical properties and interpolation coefficients
+  template <class T>
+  void compute_gas_taus(int ncol, int nlay, int ngpt, int nband, real2d const &play, real2d const &plev, real2d const &tlay,
+                        GasConcs const &gas_desc, T &optical_props, int2d &jtemp, int2d &jpress, int4d &jeta,
+                        bool2d &tropo, real6d &fmajor, real2d const &col_dry=real2d() ) {
+    // Number of molecules per cm^2
+    real3d tau         ("tau"         ,ngpt,nlay,ncol);
+    real3d tau_rayleigh("tau_rayleigh",ngpt,nlay,ncol);
+    // Interpolation variables used in major gas but not elsewhere, so don't need exporting
+    real3d vmr         ("vmr"         ,ncol,nlay,this->get_ngas());
+    real3d col_gas     ("col_gas"     ,ncol,nlay,{0,this->get_ngas()});
+    real4d col_mix     ("col_mix"     ,2,this->get_nflav(),ncol,nlay); // combination of major species's column amounts
+                                                                       // index(1) : reference temperature level
+                                                                       // index(2) : flavor
+                                                                       // index(3) : layer
+    real5d fminor      ("fminor"      ,2,2,this->get_nflav(),ncol,nlay); // interpolation fractions for minor species
+                                                                         // index(1) : reference eta level (temperature dependent)
+                                                                         // index(2) : reference temperature level
+                                                                         // index(3) : flavor
+                                                                         // index(4) : layer
+    // Error checking
+    bool use_rayl = allocated(this->krayl);
+    // Check for initialization
+    if (! this->is_initialized()) { stoprun("ERROR: spectral configuration not loaded"); }
+    // Check for presence of key species in ty_gas_concs; return error if any key species are not present
+    this->check_key_species_present(gas_desc);
+    // Check input data sizes and values
+    if (size(play,1) != ncol || size(play,2) != nlay  ) { stoprun("gas_optics(): array play has wrong size"); }
+    if (size(tlay,1) != ncol || size(tlay,2) != nlay  ) { stoprun("gas_optics(): array tlay has wrong size"); }
+    if (size(plev,1) != ncol || size(plev,2) != nlay+1) { stoprun("gas_optics(): array plev has wrong size"); }
+    if ( anyLT(play,this->press_ref_min) || anyGT(play,this->press_ref_max) ) {
+      stoprun("gas_optics(): array play has values outside range");
+    }
+    if ( anyLT(plev,this->press_ref_min) || anyGT(plev,this->press_ref_max) ) {
+      stoprun("gas_optics(): array plev has values outside range");
+    }
+    if ( anyLT(tlay,this->temp_ref_min) || anyGT(tlay,this->temp_ref_max) ) {
+      stoprun("gas_optics(): array play has values outside range");
+    }
+    if (allocated(col_dry)) {
+      if (size(col_dry,1) != ncol || size(col_dry,2) != nlay) { stoprun("gas_optics(): array col_dry has wrong size"); }
+      if (anyLT(col_dry,0._wp)) { stoprun("gas_optics(): array col_dry has values outside range"); }
+    }
+
+    int ngas  = this->get_ngas();
+    int nflav = this->get_nflav();
+    int neta  = this->get_neta();
+    int npres = this->get_npres();
+    int ntemp = this->get_ntemp();
+    // number of minor contributors, total num absorption coeffs
+    int nminorlower  = size(this->minor_scales_with_density_lower, 1);
+    int nminorklower = size(this->kminor_lower, 1);
+    int nminorupper  = size(this->minor_scales_with_density_upper, 1);
+    int nminorkupper = size(this->kminor_upper, 1);
+    // Fill out the array of volume mixing ratios
+    for (int igas = 1 ; igas <= ngas ; igas++) {
+      // Get vmr if  gas is provided in ty_gas_concs
+      for (int igas2 = lbound(gas_desc.gas_name,1) ; igas2 <= ubound(gas_desc.gas_name,1) ; igas2++) {
+        if ( lower_case(this->gas_names(igas)) == lower_case(gas_desc.gas_name(igas2)) ) {
+           auto vmr_slice = vmr.slice<2>({COLON,COLON,igas});
+           gas_desc.get_vmr(this->gas_names(igas), vmr_slice);
+        }
+      }
+    }
+    // Compute dry air column amounts (number of molecule per cm^2) if user hasn't provided them
+    int idx_h2o = string_loc_in_array("h2o", this->gas_names);
+    real2d col_dry_wk;
+    if (allocated(col_dry)) {
+      col_dry_wk = col_dry;
+    } else {
+      real2d vmr_slice = vmr.slice<2>({COLON,COLON,idx_h2o});
+      real2d col_dry_arr = this->get_col_dry(vmr_slice,plev); // dry air column amounts computation
+      col_dry_wk = col_dry_arr;
+    }
+    // compute column gas amounts [molec/cm^2]
+    // do ilay = 1, nlay
+    //   do icol = 1, ncol
+    parallel_for( Bounds<2>(nlay,ncol) , YAKL_LAMBDA (int icol, int ilay) {
+      col_gas(icol,ilay,0) = col_dry_wk(icol,ilay);
+    });
+    // do igas = 1, ngas
+    //   do ilay = 1, nlay
+    //     do icol = 1, ncol
+    parallel_for( Bounds<3>(ngas,nlay,ncol) , YAKL_LAMBDA (int igas, int ilay, int icol) {
+      col_gas(icol,ilay,igas) = vmr(icol,ilay,igas) * col_dry_wk(icol,ilay);
+    });
+    // ---- calculate gas optical depths ----
+    parallel_for( Bounds<3>(ngpt,nlay,ncol) , YAKL_LAMBDA (int igpt, int ilay, int icol) {
+      tau(igpt,ilay,icol) = 0;
+    });
+
+    interpolation(ncol, nlay, ngas, nflav, neta, npres, ntemp, this->flavor, this->press_ref_log, this->temp_ref,
+                  this->press_ref_log_delta, this->temp_ref_min, this->temp_ref_delta, this->press_ref_trop_log,
+                  this->vmr_ref, play, tlay, col_gas, jtemp, fmajor, fminor, col_mix, tropo, jeta, jpress);
+
+    compute_tau_absorption(ncol, nlay, nband, ngpt, ngas, nflav, neta, npres, ntemp, nminorlower, nminorklower,
+                           nminorupper, nminorkupper, idx_h2o, this->gpoint_flavor, this->get_band_lims_gpoint(),
+                           this->kmajor, this->kminor_lower, this->kminor_upper, this->minor_limits_gpt_lower,
+                           this->minor_limits_gpt_upper, this->minor_scales_with_density_lower,
+                           this->minor_scales_with_density_upper, this->scale_by_complement_lower,      
+                           this->scale_by_complement_upper, this->idx_minor_lower, this->idx_minor_upper,                
+                           this->idx_minor_scaling_lower, this->idx_minor_scaling_upper, this->kminor_start_lower,             
+                           this->kminor_start_upper, tropo, col_mix, fmajor, fminor, play, tlay, col_gas,                    
+                           jeta, jtemp, jpress, tau);
+
+    if (allocated(this->krayl)) {
+      compute_tau_rayleigh( ncol, nlay, nband, ngpt, ngas, nflav, neta, npres, ntemp, this->gpoint_flavor,
+                            this->get_band_lims_gpoint(), this->krayl, idx_h2o, col_dry_wk, col_gas, 
+                            fminor, jeta, tropo, jtemp, tau_rayleigh);
+    }
+  }
+
+
+
+  // Compute Planck source functions at layer centers and levels
+  void source(int ncol, int nlay, int nbnd, int ngpt, real2d const &play, real2d const &plev, real2d const &tlay,
+              real1d const &tsfc, int2d const &jtemp, int2d const &jpress, int4d const &jeta, bool2d const &tropo,
+              real6d const &fmajor, SourceFuncLW &sources, real2d const &tlev=real2d()) {
+    real3d lay_source_t    ("lay_source_t    ",ngpt,nlay,ncol);
+    real3d lev_source_inc_t("lev_source_inc_t",ngpt,nlay,ncol);
+    real3d lev_source_dec_t("lev_source_dec_t",ngpt,nlay,ncol);
+    real2d sfc_source_t    ("sfc_source_t    ",ngpt     ,ncol);
+    // Variables for temperature at layer edges [K] (ncol, nlay+1)
+    real2d tlev_arr("tlev_arr",ncol,nlay+1);
+
+    // Source function needs temperature at interfaces/levels and at layer centers
+    real2d tlev_wk;
+    if (allocated(tlev)) {
+      //   Users might have provided these
+      tlev_wk = tlev;
+    } else {
+      tlev_wk = real2d("tlev_wk",ncol,nlay+1);
+      // Interpolate temperature to levels if not provided
+      //   Interpolation and extrapolation at boundaries is weighted by pressure
+      // do ilay = 1, nlay+1
+      //   do icol = 1, ncol
+      parallel_for( Bounds<2>(nlay+1,ncol) , YAKL_LAMBDA (int ilay, int icol) {
+        if (ilay == 1) {
+          tlev_wk(icol,1) = tlay(icol,1) + (plev(icol,1)-play(icol,1))*(tlay(icol,2)-tlay(icol,1)) / (play(icol,2)-play(icol,1));
+        }
+        tlev_wk(icol,ilay) = ( play(icol,ilay-1)*tlay(icol,ilay-1)*(plev(icol,ilay  )-play(icol,ilay))  +
+                               play(icol,ilay  )*tlay(icol,ilay  )*(play(icol,ilay-1)-plev(icol,ilay)) ) /
+                             (plev(icol,ilay)*(play(icol,ilay-1) - play(icol,ilay)));
+        if (ilay == nlay+1) {
+          tlev_wk(icol,nlay+1) = tlay(icol,nlay) + (plev(icol,nlay+1)-play(icol,nlay))*(tlay(icol,nlay)-tlay(icol,nlay-1)) / 
+                                                   (play(icol,nlay)-play(icol,nlay-1));
+        }
+      });
+    }
+    // Compute internal (Planck) source functions at layers and levels,
+    //  which depend on mapping from spectral space that creates k-distribution.
+    auto playHost = play.createHostCopy();
+    int nlayTmp = merge( 1 , nlay , playHost(1,1) > playHost(1,nlay) );
+    compute_Planck_source(ncol, nlay, nbnd, ngpt, this->get_nflav(), this->get_neta(), this->get_npres(), this->get_ntemp(),
+                          this->get_nPlanckTemp(), tlay, tlev_wk, tsfc, nlayTmp, fmajor, jeta, tropo, jtemp, jpress,
+                          this->get_gpoint_bands(), this->get_band_lims_gpoint(), this->planck_frac, this->temp_ref_min,
+                          this->totplnk_delta, this->totplnk, this->gpoint_flavor, sfc_source_t, lay_source_t, lev_source_inc_t,
+                          lev_source_dec_t);
+    // do igpt = 1, ngpt
+    //   do icol = 1, ncol
+    parallel_for( Bounds<2>(ngpt,ncol) , YAKL_LAMBDA (int igpt, int icol) {
+      sources.sfc_source(icol,igpt) = sfc_source_t(igpt,icol);
+    });
+    reorder123x321(ngpt, nlay, ncol, lay_source_t    , sources.lay_source    );
+    reorder123x321(ngpt, nlay, ncol, lev_source_inc_t, sources.lev_source_inc);
+    reorder123x321(ngpt, nlay, ncol, lev_source_dec_t, sources.lev_source_dec);
+  }
+
+
+
+  // Utility function, provided for user convenience
+  // computes column amounts of dry air using hydrostatic equation
+  real2d get_col_dry(real2d const &vmr_h2o, real2d const &plev, real1d const &latitude=real1d()) {
+    // first and second term of Helmert formula
+    real constexpr helmert1 = 9.80665_wp;
+    real constexpr helmert2 = 0.02586_wp;
+    int ncol = size(plev,1);
+    int nlev = size(plev,2);
+    real1d g0("g0",size(plev,1));
+    if (allocated(latitude)) {
+      // A purely OpenACC implementation would probably compute g0 within the kernel below
+      // do icol = 1, ncol
+      parallel_for( Bounds<1>(ncol) , YAKL_LAMBDA (int icol) {
+        g0(icol) = helmert1 - helmert2 * cos(2.0_wp * M_PI * latitude(icol) / 180.0_wp); // acceleration due to gravity [m/s^2]
+      });
+    } else {
+      // do icol = 1, ncol
+      parallel_for( Bounds<1>(ncol) , YAKL_LAMBDA (int icol) {
+        g0(icol) = grav;
+      });
+    }
+
+    real2d col_dry("col_dry",size(plev,1),size(plev,2)-1);
+    // do ilev = 1, nlev-1
+    //   do icol = 1, ncol
+    parallel_for( Bounds<2>(nlev-1,ncol) , YAKL_LAMBDA (int ilev , int icol) {
+      real delta_plev = abs(plev(icol,ilev) - plev(icol,ilev+1));
+      // Get average mass of moist air per mole of moist air
+      real fact = 1._wp / (1.+vmr_h2o(icol,ilev));
+      real m_air = (m_dry + m_h2o * vmr_h2o(icol,ilev)) * fact;
+      col_dry(icol,ilev) = 10._wp * delta_plev * avogad * fact/(1000._wp*m_air*100._wp*g0(icol));
+    });
+    return col_dry;
+  }
+
+
+
+ // Utility function to combine optical depths from gas absorption and Rayleigh scattering
+ //   (and reorder them for convenience, while we're at it)
+ void combine_and_reorder(real3d const &tau, real3d const &tau_rayleigh, bool has_rayleigh, OpticalProps1scl &optical_props) {
+    int ncol = size(tau,3);
+    int nlay = size(tau,2);
+    int ngpt = size(tau,1);
+    if (has_rayleigh) {
+      // index reorder (ngpt, nlay, ncol) -> (ncol,nlay,gpt)
+      reorder123x321(ngpt, nlay, ncol, tau, optical_props.tau);
+    } else {
+      // combine optical depth and rayleigh scattering
+      // User is asking for absorption optical depth
+      reorder123x321(ngpt, nlay, ncol, tau, optical_props.tau);
+    }
+  }
+
+
+
+ // Utility function to combine optical depths from gas absorption and Rayleigh scattering
+ //   (and reorder them for convenience, while we're at it)
+ void combine_and_reorder(real3d const &tau, real3d const &tau_rayleigh, bool has_rayleigh, OpticalProps2str &optical_props) {
+    int ncol = size(tau,3);
+    int nlay = size(tau,2);
+    int ngpt = size(tau,1);
+    if (has_rayleigh) {
+      // index reorder (ngpt, nlay, ncol) -> (ncol,nlay,gpt)
+      reorder123x321(ngpt, nlay, ncol, tau, optical_props.tau);
+      zero_array(optical_props.ssa);
+      zero_array(optical_props.g  );
+    } else {
+      // combine optical depth and rayleigh scattering
+      combine_and_reorder_2str(ncol, nlay, ngpt, tau, tau_rayleigh, optical_props.tau, optical_props.ssa, optical_props.g);
+    }
   }
 
 

@@ -21,6 +21,7 @@
 class FluxesBroadband {
 public:
   real2d flux_up;
+  real2d flux_dn;
   real2d flux_net;
   real2d flux_dn_dir;
 
@@ -65,9 +66,9 @@ public:
     if (allocated(this->flux_net   )) {
       // Reuse down and up results if possible
       if (allocated(this->flux_dn) .and. allocated(this->flux_up)) {
-        call net_broadband(ncol, nlev,      this->flux_dn, this->flux_up, this->flux_net);
+        net_broadband(ncol, nlev,      this->flux_dn, this->flux_up, this->flux_net);
       } else {
-        call net_broadband(ncol, nlev, ngpt,  gpt_flux_dn,   gpt_flux_up, this->flux_net);
+        net_broadband(ncol, nlev, ngpt,  gpt_flux_dn,   gpt_flux_up, this->flux_net);
       }
     }
   }

@@ -102,10 +102,16 @@ inline void stoprun( std::string str ) {
   throw str;
 }
 
-inline std::string lower_case( std::string str ) {
-  std::string ret = str;
-  std::transform(ret.begin(), ret.end(), ret.begin(), [](unsigned char c){ return std::tolower(c); });
-  return ret;
+
+template <class T , int rank , int myStyle> inline void zero_array( yakl::Array<T,rank,yakl::memHost,myStyle> &arr ) {
+  for (int i=0; i < arr.totElems() ; i++) { arr.myData[i] = 0; }
+}
+
+
+template <class T , int rank , int myStyle> inline void zero_array( yakl::Array<T,rank,yakl::memDevice,myStyle> &arr ) {
+  yakl::c::parallel_for( yakl::c::Bounds<1>(arr.totElems()) , YAKL_LAMBDA (int i) {
+    arr.myData[i] = 0;
+  });
 }
 
 

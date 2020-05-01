@@ -52,7 +52,7 @@ void inc_1scalar_by_1scalar_bybnd(int ncol, int nlay, int ngpt, real3d &tau1, re
 
 // Delta-scale
 //   f = g*g
-void delta_scale_2str_k(int ncol, int nlay, int ngpt, real3d &tau, real3d &ssa, real3d &g) {
+void delta_scale_2str_kernel(int ncol, int nlay, int ngpt, real3d &tau, real3d &ssa, real3d &g) {
   real eps = 3*std::numeric_limits<real>::min();
 
   // do igpt = 1, ngpt
@@ -74,7 +74,7 @@ void delta_scale_2str_k(int ncol, int nlay, int ngpt, real3d &tau, real3d &ssa, 
 // -------------------------------------------------------------------------------------------------
 // Delta-scale
 //   user-provided value of f (forward scattering)
-void delta_scale_2str_f_k(int ncol, int nlay, int ngpt, real3d &tau, real3d &ssa, real3d &g, real3d const &f) {
+void delta_scale_2str_kernel(int ncol, int nlay, int ngpt, real3d &tau, real3d &ssa, real3d &g, real3d const &f) {
   real eps = 3*std::numeric_limits<real>::min();
 
   // do igpt = 1, ngpt

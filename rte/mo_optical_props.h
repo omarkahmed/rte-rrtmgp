@@ -247,7 +247,7 @@ public:
   }
 
 
-  void increment(OpticalProps1scl const &that) {
+  void increment(OpticalProps1scl &that) {
     if (! this->bands_are_equal(that)) { stoprun("OpticalProps::increment: optical properties objects have different band structures"); }
     int ncol = that.get_ncol();
     int nlay = that.get_nlay();
@@ -264,7 +264,7 @@ public:
 
 
   // Implemented later because OpticalProps2str hasn't been created yet
-  void increment(OpticalProps2str const &that);
+  inline void increment(OpticalProps2str &that);
 
 };
 
@@ -285,7 +285,7 @@ public:
     int d2 = size(this->tau,2);
     int d3 = size(this->tau,3);
     if ( d1 != size(this->ssa,1) || d2 != size(this->ssa,2) || d3 != size(this->ssa,3) || 
-         d1 != size(this->g  ,1) || d2 != size(this->g  ,2) || d3 != size(this->g  ,3) {
+         d1 != size(this->g  ,1) || d2 != size(this->g  ,2) || d3 != size(this->g  ,3) ) {
       stoprun("validate: arrays not sized consistently");
     }
     if (anyLT(this->tau,0._wp)                          ) { stoprun("validate: tau values out of range"); }
@@ -304,9 +304,9 @@ public:
         stoprun("delta_scale: dimension of 'forward' don't match optical properties arrays");
       }
       if (anyLT(forward,0._wp) || anyGT(forward,1._wp)) { stoprun("delta_scale: values of 'forward' out of bounds [0,1]"); }
-      delta_scale_2str_kernel(ncol, nlay, ngpt, this->tau, this->ssa, this->g, forward)
+      delta_scale_2str_kernel(ncol, nlay, ngpt, this->tau, this->ssa, this->g, forward);
     } else {
-      delta_scale_2str_kernel(ncol, nlay, ngpt, this->tau, this->ssa, this->g)
+      delta_scale_2str_kernel(ncol, nlay, ngpt, this->tau, this->ssa, this->g);
     }
   }
 
@@ -333,27 +333,27 @@ public:
   }
 
 
-  void increment(OpticalProps1scl const &that) {
+  void increment(OpticalProps1scl &that) {
     if (! this->bands_are_equal(that)) { stoprun("OpticalProps::increment: optical properties objects have different band structures"); }
-    int ncol = that.get_ncol()
-    int nlay = that.get_nlay()
-    int ngpt = that.get_ngpt()
+    int ncol = that.get_ncol();
+    int nlay = that.get_nlay();
+    int ngpt = that.get_ngpt();
     if (this->gpoints_are_equal(that)) {
-      increment_2stream_by_1scalar(ncol, nlay, ngpt, that.tau, that.ssa, this->tau);
+      increment_1scalar_by_2stream(ncol, nlay, ngpt, that.tau, this->tau, this->ssa);
     } else {
       if (this->get_ngpt() != that.get_nband()) {
         stoprun("OpticalProps::increment: optical properties objects have incompatible g-point structures");
       }
-      inc_2stream_by_1scalar_bybnd(ncol, nlay, ngpt, that.tau, that.ssa, this->tau, that.get_nband(), that.get_band_lims_gpoint());
+      inc_1scalar_by_2stream_bybnd(ncol, nlay, ngpt, that.tau, this->tau, this->ssa, that.get_nband(), that.get_band_lims_gpoint());
     }
   }
 
 
-  void increment(OpticalProps2str const &that) {
+  void increment(OpticalProps2str &that) {
     if (! this->bands_are_equal(that)) { stoprun("OpticalProps::increment: optical properties objects have different band structures"); }
-    int ncol = that.get_ncol()
-    int nlay = that.get_nlay()
-    int ngpt = that.get_ngpt()
+    int ncol = that.get_ncol();
+    int nlay = that.get_nlay();
+    int ngpt = that.get_ngpt();
     if (this->gpoints_are_equal(that)) {
       increment_2stream_by_2stream(ncol, nlay, ngpt, that.tau, that.ssa, that.g, this->tau, this->ssa, this->g);
     } else {
@@ -367,18 +367,18 @@ public:
 
 
 
-void OpticalProps1scl::increment(OpticalProps2str const &that) {
+inline void OpticalProps1scl::increment(OpticalProps2str &that) {
   if (! this->bands_are_equal(that)) { stoprun("OpticalProps::increment: optical properties objects have different band structures"); }
   int ncol = that.get_ncol();
   int nlay = that.get_nlay();
   int ngpt = that.get_ngpt();
   if (this->gpoints_are_equal(that)) {
-    increment_1scalar_by_2stream(ncol, nlay, ngpt, that.tau, this->tau, this->ssa);
+    increment_2stream_by_1scalar(ncol, nlay, ngpt, that.tau, that.ssa, this->tau);
   } else {
     if (this->get_ngpt() != that.get_nband()) {
       stoprun("OpticalProps::increment: optical properties objects have incompatible g-point structures");
     }
-    inc_1scalar_by_2stream_bybnd(ncol, nlay, ngpt, that.tau, this->tau, this->ssa, that.get_nband(), that.get_band_lims_gpoint());
+    inc_2stream_by_1scalar_bybnd(ncol, nlay, ngpt, that.tau, that.ssa, this->tau, that.get_nband(), that.get_band_lims_gpoint());
   }
 }
 

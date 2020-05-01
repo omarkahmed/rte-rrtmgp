@@ -2,6 +2,7 @@
 #pragma once
 
 #include "const.h"
+#include "mo_rrtmgp_util_string.h"
 
 // This code is part of RRTM for GCM Applications - Parallel (RRTMGP)
 //
@@ -37,6 +38,7 @@ public:
   GasConcs() {
     ncol = 0;
     nlay = 0;
+    ngas = 0;
   }
 
 
@@ -50,14 +52,17 @@ public:
     concs    = real3d();    // Dealloc
     ncol = 0;
     nlay = 0;
+    ngas = 0;
   }
 
 
   void init(string1d const &gas_names , int ncol , int nlay) {
     this->reset();
     this->ngas = size(gas_names,1);
+    this->ncol = ncol;
+    this->nlay = nlay;
 
-    // Transform gas names to lower case, and check for empty strings
+    // Transform gas names to lower case, check for empty strings, check for duplicates
     for (int i=1; i<=ngas; i++) {
       gas_names(i) = lower_case( gas_names(i) );
       // Empty string
@@ -69,8 +74,6 @@ public:
     }
     
     // Allocate
-    this->ncol = ncol;
-    this->nlay = nlay;
     this->gas_name = string1d("gas_name",ngas);
     this->concs    = real3d  ("concs"   ,ncol,nlay,ngas);
 
@@ -170,7 +173,7 @@ public:
 
   // find gas in list; GAS_NOT_IN_LIST if not found
   int find_gas(std::string gas) const {
-    if (ngas == 0) { return 0; }
+    if (ngas == 0) { return GAS_NOT_IN_LIST; }
     for (int igas=1; igas<=ngas; igas++) {
       if ( lower_case(gas) == this->gas_name(igas) ) {
         return igas;

@@ -5,6 +5,7 @@
 #include "mo_garand_atmos_io.h"
 #include "mo_gas_optics_rrtmgp.h"
 #include "const.h"
+#include "mo_load_coefficients.h"
 
 int main(int argc , char **argv) {
   yakl::init();

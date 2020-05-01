@@ -24,8 +24,8 @@
 class SourceFuncLW : public OpticalProps {
 public:
   real3d lay_source;
-  real3d lay_source_inc;
-  real3d lay_source_dec;
+  real3d lev_source_inc;
+  real3d lev_source_dec;
   real2d sfc_source;
 
 
@@ -35,11 +35,11 @@ public:
   void alloc(int ncol, int nlay) {
     if (! this->is_initialized()) { stoprun("source_func_lw%alloc: not initialized so can't allocate"); }
     if (ncol <= 0 || nlay <= 0) { stoprun("source_func_lw%alloc: must provide positive extents for ncol, nlay"); }
-    int ngpt = this%get_ngpt();
-    this->sfc_source     = real3d("sfc_source"    ,ncol,ngpt);
+    int ngpt = this->get_ngpt();
+    this->sfc_source     = real2d("sfc_source"    ,ncol,ngpt);
     this->lay_source     = real3d("lay_source"    ,ncol,nlay,ngpt);
-    this->lev_source_inc = real3d("sfc_source_inc",ncol,nlay,ngpt);
-    this->lev_source_dec = real3d("sfc_source_dec",ncol,nlay,ngpt);
+    this->lev_source_inc = real3d("lev_source_inc",ncol,nlay,ngpt);
+    this->lev_source_dec = real3d("lev_source_dec",ncol,nlay,ngpt);
   }
 
 
@@ -90,7 +90,7 @@ public:
   }
 
 
-  void alloc(int ncol, OpticalProps const &op) result(err_message)
+  void alloc(int ncol, OpticalProps const &op) {
     if (! op.is_initialized()) { stoprun("source_func_sw::alloc: op not initialized"); }
     this->init(op);
     this->alloc(ncol);
@@ -103,8 +103,8 @@ public:
   }
 
 
-  int function get_ncol() {
-    if (this->is_allocated()) { return size(this%toa_source,1); } else { return 0; }
+  int get_ncol() {
+    if (this->is_allocated()) { return size(this->toa_source,1); } else { return 0; }
   }
 };
 

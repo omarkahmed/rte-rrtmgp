@@ -34,7 +34,7 @@ void interpolation(int ncol, int nlay, int ngas, int nflav, int neta, int npres,
 
 // Combine absoprtion and Rayleigh optical depths for total tau, ssa, g
 void combine_and_reorder_2str(int ncol, int nlay, int ngpt, real3d const &tau_abs, real3d const &tau_rayleigh,
-                              real3d &tau, real3d &ssa, real3d &g) {
+                              real3d &tau, real3d &ssa, real3d &g);
 
 
 

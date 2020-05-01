@@ -81,14 +81,18 @@ void rte_lw(OpticalProps1scl const &optical_props, bool top_at_1, SourceFuncLW c
   // Compute the radiative transfer...
   // No scattering two-stream calculation
   optical_props.validate();
-  lw_solver_noscat_GaussQuad(ncol, nlay, ngpt, logical(top_at_1, wl), &
-                   n_quad_angs, gauss_Ds(1:n_quad_angs,n_quad_angs), gauss_wts(1:n_quad_angs,n_quad_angs), &
-                   optical_props.tau,                                                  &
-                   sources.lay_source, sources.lev_source_inc, sources.lev_source_dec, &
-                   sfc_emis_gpt, sources.sfc_source,  &
-                   gpt_flux_up, gpt_flux_dn)
+  real1d tmp_Ds ("tmp_Ds" ,n_quad_angs);
+  real1d tmp_wts("tmp_wts",n_quad_angs);
+  // for (int i=1 ; i <= n_quad_angs ; i++) {
+  parallel_for( Bounds<1>(n_quad_ags) , YAKL_LAMBDA (int i) {
+    tmp_Ds (i) = gauss_Ds (i,n_quad_angs);
+    tmp_wts(i) = gauss_wts(i,n_quad_angs);
+  });
+  lw_solver_noscat_GaussQuad(ncol, nlay, ngpt, top_at_1, n_quad_angs, tmp_Ds, tmp_wts, optical_props.tau,                                                  
+                             sources.lay_source, sources.lev_source_inc, sources.lev_source_dec, 
+                             sfc_emis_gpt, sources.sfc_source, gpt_flux_up, gpt_flux_dn);
   // ...and reduce spectral fluxes to desired output quantities
-  fluxes.reduce(gpt_flux_up, gpt_flux_dn, optical_props, top_at_1)
+  fluxes.reduce(gpt_flux_up, gpt_flux_dn, optical_props, top_at_1);
 }
 
 

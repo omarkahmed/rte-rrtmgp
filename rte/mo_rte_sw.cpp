@@ -38,8 +38,8 @@ void rte_sw(OpticalProps2str const &atmos, bool top_at_1, real1d const &mu0, rea
   sfc_alb_dif_gpt = real2d("sfc_alb_dif_gpt",ncol, ngpt);
   // Lower boundary condition -- expand surface albedos by band to gpoints
   //   and switch dimension ordering
-  call expand_and_transpose(atmos, sfc_alb_dir, sfc_alb_dir_gpt);
-  call expand_and_transpose(atmos, sfc_alb_dif, sfc_alb_dif_gpt);
+  expand_and_transpose(atmos, sfc_alb_dir, sfc_alb_dir_gpt);
+  expand_and_transpose(atmos, sfc_alb_dif, sfc_alb_dif_gpt);
 
   // Compute the radiative transfer...
   // Apply boundary conditions
@@ -47,16 +47,16 @@ void rte_sw(OpticalProps2str const &atmos, bool top_at_1, real1d const &mu0, rea
   //   direct and diffuse to represent the total, consistent with the LW
   apply_BC(ncol, nlay, ngpt, top_at_1, inc_flux, mu0, gpt_flux_dir);
   if (allocated(inc_flux_dif)) {
-    call apply_BC(ncol, nlay, ngpt, top_at_1, inc_flux_dif,  gpt_flux_dn );
+    apply_BC(ncol, nlay, ngpt, top_at_1, inc_flux_dif,  gpt_flux_dn );
   } else {
-    call apply_BC(ncol, nlay, ngpt, top_at_1,                gpt_flux_dn );
+    apply_BC(ncol, nlay, ngpt, top_at_1,                gpt_flux_dn );
   }
 
   // two-stream calculation with scattering
   atmos.validate();
-  sw_solver_2stream(ncol, nlay, ngpt, logical(top_at_1, wl), &
-                    atmos.tau, atmos.ssa, atmos.g, mu0,      &
-                    sfc_alb_dir_gpt, sfc_alb_dif_gpt,        &
+  sw_solver_2stream(ncol, nlay, ngpt, top_at_1, 
+                    atmos.tau, atmos.ssa, atmos.g, mu0,      
+                    sfc_alb_dir_gpt, sfc_alb_dif_gpt,        
                     gpt_flux_up, gpt_flux_dn, gpt_flux_dir);
 
   // ...and reduce spectral fluxes to desired output quantities
