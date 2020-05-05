@@ -1,6 +1,13 @@
 
 #pragma once
 
+#include "const.h"
+#include "mo_optical_props.h"
+#include "mo_source_functions.h"
+#include "mo_fluxes.h"
+#include "expand_and_transpose.h"
+#include "mo_rte_solver_kernels.h"
+
 // This code is part of Radiative Transfer for Energetics (RTE)
 //
 // Contacts: Robert Pincus and Eli Mlawer
@@ -40,6 +47,6 @@
 
 // Interface using only optical properties and source functions as inputs; fluxes as outputs.
 void rte_lw(OpticalProps1scl const &optical_props, bool top_at_1, SourceFuncLW const &sources, real2d const &sfc_emis,
-            Fluxes &fluxes, real2d const &inc_flux=real2d(), int n_gauss_angles=-1);
+            FluxesBroadband &fluxes, real2d const &inc_flux=real2d(), int n_gauss_angles=-1);
 
 

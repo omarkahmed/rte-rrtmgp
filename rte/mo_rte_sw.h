@@ -1,6 +1,13 @@
 
 #pragma once
 
+#include "const.h"
+#include "mo_optical_props.h"
+#include "mo_source_functions.h"
+#include "mo_fluxes.h"
+#include "expand_and_transpose.h"
+#include "mo_rte_solver_kernels.h"
+
 // This code is part of Radiative Transfer for Energetics (RTE)
 //
 // Contacts: Robert Pincus and Eli Mlawer
@@ -33,7 +40,7 @@
 
 
 void rte_sw(OpticalProps2str const &atmos, bool top_at_1, real1d const &mu0, real2d const &inc_flux,
-            real2d const &sfc_alb_dir, real2d const &sfc_alb_dif, Fluxes &fluxes, real2d const &inc_flux_dif=real2d());
+            real2d const &sfc_alb_dir, real2d const &sfc_alb_dif, FluxesBroadband &fluxes, real2d const &inc_flux_dif=real2d());
 
 
 

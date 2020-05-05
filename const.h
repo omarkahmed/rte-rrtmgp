@@ -19,6 +19,7 @@ using yakl::fortran::Bounds;
 using yakl::max;
 using yakl::min;
 using yakl::abs;
+using yakl::fortran::mod;
 using yakl::fortran::merge;
 using yakl::fortran::size;
 
@@ -111,6 +112,18 @@ template <class T , int rank , int myStyle> inline void zero_array( yakl::Array<
 template <class T , int rank , int myStyle> inline void zero_array( yakl::Array<T,rank,yakl::memDevice,myStyle> &arr ) {
   yakl::c::parallel_for( yakl::c::Bounds<1>(arr.totElems()) , YAKL_LAMBDA (int i) {
     arr.myData[i] = 0;
+  });
+}
+
+
+template <class T , int rank , int myStyle> inline void memset( yakl::Array<T,rank,yakl::memHost,myStyle> &arr , T val) {
+  for (int i=0; i < arr.totElems() ; i++) { arr.myData[i] = val; }
+}
+
+
+template <class T , int rank , int myStyle> inline void memset( yakl::Array<T,rank,yakl::memDevice,myStyle> &arr , T val) {
+  yakl::c::parallel_for( yakl::c::Bounds<1>(arr.totElems()) , YAKL_LAMBDA (int i) {
+    arr.myData[i] = val;
   });
 }
 

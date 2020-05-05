@@ -3,7 +3,7 @@
 
 // Interface using only optical properties and source functions as inputs; fluxes as outputs.
 void rte_lw(OpticalProps1scl const &optical_props, bool top_at_1, SourceFuncLW const &sources, real2d const &sfc_emis,
-            Fluxes &fluxes, real2d const &inc_flux=real2d(), int n_gauss_angles=-1) {
+            FluxesBroadband &fluxes, real2d const &inc_flux, int n_gauss_angles) {
   real3d gpt_flux_up;
   real3d gpt_flux_dn;
   real2d sfc_emis_gpt;
@@ -35,7 +35,7 @@ void rte_lw(OpticalProps1scl const &optical_props, bool top_at_1, SourceFuncLW c
   if (! fluxes.are_desired()) { stoprun("rte_lw: no space allocated for fluxes"); }
 
   // Source functions
-  if (sources.get_ncol() != ncol || sources.get_nlay() != lay || sources.get_ngpt() != ngpt) {
+  if (sources.get_ncol() != ncol || sources.get_nlay() != nlay || sources.get_ngpt() != ngpt) {
     stoprun("rte_lw: sources and optical properties inconsistently sized");
   }
 
@@ -84,7 +84,7 @@ void rte_lw(OpticalProps1scl const &optical_props, bool top_at_1, SourceFuncLW c
   real1d tmp_Ds ("tmp_Ds" ,n_quad_angs);
   real1d tmp_wts("tmp_wts",n_quad_angs);
   // for (int i=1 ; i <= n_quad_angs ; i++) {
-  parallel_for( Bounds<1>(n_quad_ags) , YAKL_LAMBDA (int i) {
+  parallel_for( Bounds<1>(n_quad_angs) , YAKL_LAMBDA (int i) {
     tmp_Ds (i) = gauss_Ds (i,n_quad_angs);
     tmp_wts(i) = gauss_wts(i,n_quad_angs);
   });

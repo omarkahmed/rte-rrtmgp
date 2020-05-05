@@ -5,5 +5,13 @@
 #include "YAKL_netcdf.h"
 #include "mo_gas_concentrations.h"
 
-void read_atmos(std::string input_file, realHost2d &p_lay, realHost2d &t_lay, realHost2d &p_lev, realHost2d &t_lev,
-                GasConcs &gas_concs, realHost2d &col_dry, int ncol);
+void read_atmos(std::string input_file, real2d &p_lay, real2d &t_lay, real2d &p_lev, real2d &t_lev,
+                GasConcs &gas_concs, real2d &col_dry, int ncol);
+
+
+void write_sw_fluxes(std::string fileName, real2d const &flux_up, real2d const &flux_dn, real2d const &flux_dir);
+
+
+void write_lw_fluxes(std::string fileName, real2d const &flux_up, real2d const &flux_dn);
+
+

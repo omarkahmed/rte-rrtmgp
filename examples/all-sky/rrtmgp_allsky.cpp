@@ -6,9 +6,15 @@
 #include "mo_gas_optics_rrtmgp.h"
 #include "const.h"
 #include "mo_load_coefficients.h"
+#include "mo_load_cloud_coefficients.h"
+#include "mo_fluxes.h"
+#include "mo_rte_lw.h"
+#include "mo_rte_sw.h"
 
 int main(int argc , char **argv) {
   yakl::init();
+
+  bool constexpr use_luts = true;
 
   if (argc < 5) { stoprun("Error: Fewer than 4 command line arguments provided"); }
   std::string input_file        =      argv[1];
@@ -25,25 +31,194 @@ int main(int argc , char **argv) {
     exit(0);
   }
 
+  std::cout << "Parameters: \n";
+  std::cout << "    Input file:        " << input_file        << "\n";
+  std::cout << "    k_dist file:       " << k_dist_file       << "\n";
+  std::cout << "    Cloud Optics file: " << cloud_optics_file << "\n";
+  std::cout << "    ncol:              " << ncol              << "\n";
+  std::cout << "    nloops:            " << nloops            << "\n\n";
+
   // Read temperature, pressure, gas concentrations. Arrays are allocated as they are read
-  realHost2d p_lay;
-  realHost2d t_lay;
-  realHost2d p_lev;
-  realHost2d t_lev;
+  real2d p_lay;
+  real2d t_lay;
+  real2d p_lev;
+  real2d t_lev;
   GasConcs gas_concs;
-  realHost2d col_dry;
+  real2d col_dry;
 
   // Read data from the input file
+  std::cout << "Reading input file\n\n";
   read_atmos(input_file, p_lay, t_lay, p_lev, t_lev, gas_concs, col_dry, ncol);
 
   int nlay = size(p_lay,2);
 
   // load data into classes
+  std::cout << "Reading k_dist file\n\n";
   GasOpticsRRTMGP k_dist;
   load_and_init(k_dist, k_dist_file, gas_concs);
 
   bool is_sw = k_dist.source_is_external();
   bool is_lw = ! is_sw;
 
+  std::cout << "Reading cloud optics file\n\n";
+  CloudOptics cloud_optics;
+  if (use_luts) {
+    load_cld_lutcoeff (cloud_optics, cloud_optics_file);
+  } else {
+    load_cld_padecoeff(cloud_optics, cloud_optics_file);
+  }
+  cloud_optics.set_ice_roughness(2);
+
+  // Problem sizes
+  int nbnd = k_dist.get_nband();
+  int ngpt = k_dist.get_ngpt();
+  auto p_lay_host = p_lay.createHostCopy();
+  bool top_at_1 = p_lay_host(1, 1) < p_lay_host(1, nlay);
+
+  // LW calculations neglect scattering; SW calculations use the 2-stream approximation
+  if (is_sw) {  // Shortwave
+
+    std::cout << "This is a shortwave simulation\n\n";
+    OpticalProps2str atmos;
+    OpticalProps2str clouds;
+
+    // Clouds optical props are defined by band
+    clouds.init(k_dist.get_band_lims_wavenumber());
+
+    // Allocate arrays for the optical properties themselves.
+    atmos .alloc_2str(ncol, nlay, k_dist);
+    clouds.alloc_2str(ncol, nlay);
+
+    //  Boundary conditions depending on whether the k-distribution being supplied
+    real2d toa_flux   ("toa_flux"   ,ncol,ngpt);
+    real2d sfc_alb_dir("sfc_alb_dir",nbnd,ncol);
+    real2d sfc_alb_dif("sfc_alb_dif",nbnd,ncol);
+    real1d mu0        ("mu0"        ,ncol);
+    // Ocean-ish values for no particular reason
+    memset( sfc_alb_dir , 0.06_wp );
+    memset( sfc_alb_dif , 0.06_wp );
+    memset( mu0         , 0.86_wp );
+
+    // Fluxes
+    real2d flux_up ("flux_up" ,ncol,nlay+1);
+    real2d flux_dn ("flux_dn" ,ncol,nlay+1);
+    real2d flux_dir("flux_dir",ncol,nlay+1);
+
+    // Clouds
+    real2d lwp("lwp",ncol,nlay);
+    real2d iwp("iwp",ncol,nlay);
+    real2d rel("rel",ncol,nlay);
+    real2d rei("rei",ncol,nlay);
+    bool2d cloud_mask("cloud_mask",ncol,nlay);
+
+    // Restrict clouds to troposphere (> 100 hPa = 100*100 Pa) and not very close to the ground (< 900 hPa), and
+    // put them in 2/3 of the columns since that's roughly the total cloudiness of earth
+    real rel_val = 0.5 * (cloud_optics.get_min_radius_liq() + cloud_optics.get_max_radius_liq());
+    real rei_val = 0.5 * (cloud_optics.get_min_radius_ice() + cloud_optics.get_max_radius_ice());
+    // do ilay=1,nlay
+    //   do icol=1,ncol
+    parallel_for( Bounds<2>(nlay,ncol) , YAKL_LAMBDA (int ilay, int icol) {
+      cloud_mask(icol,ilay) = p_lay(icol,ilay) > 100._wp * 100._wp && p_lay(icol,ilay) < 900._wp * 100._wp && mod(icol, 3) != 0;
+      // Ice and liquid will overlap in a few layers
+      lwp(icol,ilay) = merge(10._wp,  0._wp, cloud_mask(icol,ilay) && t_lay(icol,ilay) > 263._wp);
+      iwp(icol,ilay) = merge(10._wp,  0._wp, cloud_mask(icol,ilay) && t_lay(icol,ilay) < 273._wp);
+      rel(icol,ilay) = merge(rel_val, 0._wp, lwp(icol,ilay) > 0._wp);
+      rei(icol,ilay) = merge(rei_val, 0._wp, iwp(icol,ilay) > 0._wp);
+    });
+
+    std::cout << "Running the main loop\n\n";
+    for (int iloop = 1 ; iloop <= nloops ; iloop++) {
+      cloud_optics.cloud_optics(lwp, iwp, rel, rei, clouds);
+
+      // Solvers
+      FluxesBroadband fluxes;
+      fluxes.flux_up     = flux_up ;
+      fluxes.flux_dn     = flux_dn ;
+      fluxes.flux_dn_dir = flux_dir;
+
+      k_dist.gas_optics(p_lay, p_lev, t_lay, gas_concs, atmos, toa_flux);
+      clouds.delta_scale();
+      clouds.increment(atmos);
+      rte_sw(atmos, top_at_1, mu0, toa_flux, sfc_alb_dir, sfc_alb_dif, fluxes);
+    }
+
+    std::cout << "Writing fluxes\n\n";
+    write_sw_fluxes(input_file, flux_up, flux_dn, flux_dir);
+
+  } else {  // Longwave
+
+    std::cout << "This is a longwave simulation\n\n";
+    OpticalProps1scl atmos;
+    OpticalProps1scl clouds;
+
+    // Clouds optical props are defined by band
+    clouds.init(k_dist.get_band_lims_wavenumber());
+
+    // Allocate arrays for the optical properties themselves.
+    atmos .alloc_1scl(ncol, nlay, k_dist);
+    clouds.alloc_1scl(ncol, nlay);
+
+    //  Boundary conditions depending on whether the k-distribution being supplied
+    //   is LW or SW
+    SourceFuncLW lw_sources;
+    lw_sources.alloc(ncol, nlay, k_dist);
+
+    real1d t_sfc   ("t_sfc"        ,ncol);
+    real2d emis_sfc("emis_sfc",nbnd,ncol);
+    // Surface temperature
+    auto t_lev_host = t_lev.createHostCopy();
+    memset( t_sfc    , t_lev_host(1, merge(nlay+1, 1, top_at_1)) );
+    memset( emis_sfc , 0.98_wp                                   );
+
+    // Fluxes
+    real2d flux_up ("flux_up" ,ncol,nlay+1);
+    real2d flux_dn ("flux_dn" ,ncol,nlay+1);
+
+    // Clouds
+    real2d lwp("lwp",ncol,nlay);
+    real2d iwp("iwp",ncol,nlay);
+    real2d rel("rel",ncol,nlay);
+    real2d rei("rei",ncol,nlay);
+    bool2d cloud_mask("cloud_mask",ncol,nlay);
+
+    // Restrict clouds to troposphere (> 100 hPa = 100*100 Pa)
+    //   and not very close to the ground (< 900 hPa), and
+    //   put them in 2/3 of the columns since that's roughly the
+    //   total cloudiness of earth
+    real rel_val = 0.5 * (cloud_optics.get_min_radius_liq() + cloud_optics.get_max_radius_liq());
+    real rei_val = 0.5 * (cloud_optics.get_min_radius_ice() + cloud_optics.get_max_radius_ice());
+    // do ilay=1,nlay
+    //   do icol=1,ncol
+    parallel_for( Bounds<2>(nlay,ncol) , YAKL_LAMBDA (int ilay, int icol) {
+      cloud_mask(icol,ilay) = p_lay(icol,ilay) > 100._wp * 100._wp && p_lay(icol,ilay) < 900._wp * 100._wp && mod(icol, 3) != 0;
+      // Ice and liquid will overlap in a few layers
+      lwp(icol,ilay) = merge(10._wp,  0._wp, cloud_mask(icol,ilay) && t_lay(icol,ilay) > 263._wp);
+      iwp(icol,ilay) = merge(10._wp,  0._wp, cloud_mask(icol,ilay) && t_lay(icol,ilay) < 273._wp);
+      rel(icol,ilay) = merge(rel_val, 0._wp, lwp(icol,ilay) > 0._wp);
+      rei(icol,ilay) = merge(rei_val, 0._wp, iwp(icol,ilay) > 0._wp);
+    });
+
+    // Multiple iterations for big problem sizes, and to help identify data movement
+    //   For CPUs we can introduce OpenMP threading over loop iterations
+    std::cout << "Running the main loop\n\n";
+    for (int iloop = 1 ; iloop <= nloops ; iloop++) {
+      cloud_optics.cloud_optics(lwp, iwp, rel, rei, clouds);
+
+      // Solvers
+      FluxesBroadband fluxes;
+      fluxes.flux_up = flux_up;
+      fluxes.flux_dn = flux_dn;
+      k_dist.gas_optics(p_lay, p_lev, t_lay, t_sfc, gas_concs, atmos, lw_sources, t_lev);
+      clouds.increment(atmos);
+      rte_lw(atmos, top_at_1, lw_sources, emis_sfc, fluxes);
+    }
+
+    std::cout << "Writing fluxes\n\n";
+    write_lw_fluxes(input_file, flux_up, flux_dn);
+
+  }  // if (is_sw)
+
   yakl::finalize();
 }
+
+

@@ -2,7 +2,7 @@
 #include "mo_rte_sw.h"
 
 void rte_sw(OpticalProps2str const &atmos, bool top_at_1, real1d const &mu0, real2d const &inc_flux,
-            real2d const &sfc_alb_dir, real2d const &sfc_alb_dif, Fluxes &fluxes, real2d const &inc_flux_dif=real2d()) {
+            real2d const &sfc_alb_dir, real2d const &sfc_alb_dif, FluxesBroadband &fluxes, real2d const &inc_flux_dif) {
   real3d gpt_flux_up;
   real3d gpt_flux_dn;
   real3d gpt_flux_dir;
@@ -16,7 +16,7 @@ void rte_sw(OpticalProps2str const &atmos, bool top_at_1, real1d const &mu0, rea
   // Error checking -- consistency of sizes and validity of values
   if (! fluxes.are_desired()) { stoprun("rte_sw: no space allocated for fluxes"); }
 
-  if (size(mu0,1) != ncol) { storun("rte_sw: mu0 inconsistently sized"); }
+  if (size(mu0,1) != ncol) { stoprun("rte_sw: mu0 inconsistently sized"); }
   if (anyLT(mu0,0._wp) || anyGT(mu0,1._wp)) { stoprun("rte_sw: one or more mu0 <= 0 or > 1"); }
 
   if (size(inc_flux,1) != ncol || size(inc_flux,2) != ngpt) { stoprun("rte_sw: inc_flux inconsistently sized"); }

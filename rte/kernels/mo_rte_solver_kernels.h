@@ -200,17 +200,15 @@ YAKL_INLINE void sw_two_stream(int ncol, int nlay, int ngpt, real1d const &mu0, 
 
 
 
-void apply_BC_0(int ncol, int nlay, int ngpt, bool top_at_1, real3d &flux_dn);
+void apply_BC(int ncol, int nlay, int ngpt, bool top_at_1, real3d &flux_dn);
 
 
 
-void apply_BC_factor(int ncol, int nlay, int ngpt, bool top_at_1, real2d const &inc_flux,
-                     real1d const &factor, real3d &flux_dn);
-
+void apply_BC(int ncol, int nlay, int ngpt, bool top_at_1, real2d const &inc_flux, real1d const &factor, real3d &flux_dn);
 
 
 // Upper boundary condition
-void apply_BC_gpt(int ncol, int nlay, int ngpt, bool top_at_1, real2d const &inc_flux, real3d &flux_dn);
+void apply_BC(int ncol, int nlay, int ngpt, bool top_at_1, real2d const &inc_flux, real3d &flux_dn);
 
 
 

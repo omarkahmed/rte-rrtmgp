@@ -29,7 +29,7 @@ public:
   real2d sfc_source;
 
 
-  bool is_allocated() { return this->is_initialized() && allocated(this->sfc_source); }
+  bool is_allocated() const  { return this->is_initialized() && allocated(this->sfc_source); }
 
 
   void alloc(int ncol, int nlay) {
@@ -60,12 +60,12 @@ public:
   }
 
 
-  int get_ncol() {
+  int get_ncol() const {
     if (this->is_allocated()) { return size(this->lay_source,1); } else { return 0; }
   }
 
 
-  int get_nlay() {
+  int get_nlay() const {
     if (this->is_allocated()) { return size(this->lay_source,2); } else { return 0; }
   }
 
@@ -80,7 +80,7 @@ public:
   real2d toa_source;
 
 
-  bool is_allocated() { return this->is_initialized() && allocated(this->toa_source); }
+  bool is_allocated() const { return this->is_initialized() && allocated(this->toa_source); }
 
 
   void alloc(int ncol) {
@@ -103,7 +103,7 @@ public:
   }
 
 
-  int get_ncol() {
+  int get_ncol() const {
     if (this->is_allocated()) { return size(this->toa_source,1); } else { return 0; }
   }
 };

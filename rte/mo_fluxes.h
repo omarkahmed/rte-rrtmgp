@@ -1,5 +1,8 @@
 #pragma once
 
+#include "const.h"
+#include "mo_fluxes_broadband_kernels.h"
+
 //
 // Contacts: Robert Pincus and Eli Mlawer
 // email:  rrtmgp@aer.com
@@ -54,7 +57,7 @@ public:
     if (allocated(this->flux_dn_dir)) {
       if (size(this->flux_dn_dir,1) != ncol || size(this->flux_dn_dir,2) != nlev) { stoprun("reduce: flux_dn_dir array incorrectly sized"); }
     }
-    ! Self-consistency -- shouldn't be asking for direct beam flux if it isn't supplied
+    // Self-consistency -- shouldn't be asking for direct beam flux if it isn't supplied
     if (allocated(this->flux_dn_dir) && ! allocated(gpt_flux_dn_dir)) {
       stoprun("reduce: requesting direct downward flux but this hasn't been supplied");
     }
@@ -65,7 +68,7 @@ public:
     if (allocated(this->flux_dn_dir)) { sum_broadband(ncol, nlev, ngpt, gpt_flux_dn_dir, this->flux_dn_dir); }
     if (allocated(this->flux_net   )) {
       // Reuse down and up results if possible
-      if (allocated(this->flux_dn) .and. allocated(this->flux_up)) {
+      if (allocated(this->flux_dn) && allocated(this->flux_up)) {
         net_broadband(ncol, nlev,      this->flux_dn, this->flux_up, this->flux_net);
       } else {
         net_broadband(ncol, nlev, ngpt,  gpt_flux_dn,   gpt_flux_up, this->flux_net);
@@ -74,7 +77,7 @@ public:
   }
 
 
-  bool are_desired() {
+  bool are_desired() const {
     return allocated(this->flux_up) || allocated(this->flux_dn) || allocated(this->flux_dn_dir) || allocated(this->flux_net);
   }
 };

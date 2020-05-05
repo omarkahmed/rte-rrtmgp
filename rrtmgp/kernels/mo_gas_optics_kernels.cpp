@@ -226,11 +226,11 @@ void compute_tau_rayleigh(int ncol, int nlay, int nbnd, int ngpt, int ngas, int 
 
 // compute minor species optical depths
 void gas_optical_depths_minor(int ncol, int nlay, int ngpt, int ngas, int nflav, int ntemp, int neta,
-                              int nminor, int nminork, int idx_h2o, int idx_tropo, int2d &gpt_flv,
-                              real3d &kminor, int2d &minor_limits_gpt, bool1d &minor_scales_with_density,
-                              bool1d &scale_by_complement, int1d &idx_minor, int1d &idx_minor_scaling,
-                              int1d &kminor_start, real2d &play, real2d &tlay, real3d &col_gas, real5d &fminor,
-                              int4d &jeta, int2d &layer_limits, int2d &jtemp, real3d &tau) {
+                              int nminor, int nminork, int idx_h2o, int idx_tropo, int2d const &gpt_flv,
+                              real3d const &kminor, int2d const &minor_limits_gpt, bool1d const &minor_scales_with_density,
+                              bool1d const &scale_by_complement, int1d const &idx_minor, int1d const &idx_minor_scaling,
+                              int1d const &kminor_start, real2d const &play, real2d const &tlay, real3d const &col_gas,
+                              real5d const &fminor, int4d const &jeta, int2d const &layer_limits, int2d const &jtemp, real3d &tau) {
   real constexpr PaTohPa = 0.01;
 
   int extent = nminor;
@@ -310,9 +310,9 @@ void gas_optical_depths_minor(int ncol, int nlay, int ngpt, int ngas, int nflav,
 
 // compute minor species optical depths
 void gas_optical_depths_major(int ncol, int nlay, int nbnd, int ngpt, int nflav, int neta, int npres,
-                              int ntemp, int2d &gpoint_flavor, int2d &band_lims_gpt, real4d &kmajor,                         
-                              real4d &col_mix, real6d &fmajor, int4d &jeta, bool2d &tropo, 
-                              int2d &jtemp, int2d &jpress, real3d &tau) {
+                              int ntemp, int2d const &gpoint_flavor, int2d const &band_lims_gpt, real4d const &kmajor,                         
+                              real4d const &col_mix, real6d const &fmajor, int4d const &jeta, bool2d const &tropo, 
+                              int2d const &jtemp, int2d const &jpress, real3d &tau) {
   // optical depth calculation for major species
   // for (int ilay=1; ilay<=nlay; ilay++) {
   //   for (int icol=1; icol<=ncol; icol++) {

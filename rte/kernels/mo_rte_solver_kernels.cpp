@@ -3,7 +3,7 @@
 
 
 
-void apply_BC_0(int ncol, int nlay, int ngpt, bool top_at_1, real3d &flux_dn) {
+void apply_BC(int ncol, int nlay, int ngpt, bool top_at_1, real3d &flux_dn) {
   //   Upper boundary condition
   if (top_at_1) {
     // do igpt = 1, ngpt
@@ -22,8 +22,7 @@ void apply_BC_0(int ncol, int nlay, int ngpt, bool top_at_1, real3d &flux_dn) {
 
 
 
-void apply_BC_factor(int ncol, int nlay, int ngpt, bool top_at_1, real2d const &inc_flux,
-                     real1d const &factor, real3d &flux_dn) {
+void apply_BC(int ncol, int nlay, int ngpt, bool top_at_1, real2d const &inc_flux, real1d const &factor, real3d &flux_dn) {
   if (top_at_1) {
     // do igpt = 1, ngpt
     //   do icol = 1, ncol
@@ -42,7 +41,7 @@ void apply_BC_factor(int ncol, int nlay, int ngpt, bool top_at_1, real2d const &
 
 
 // Upper boundary condition
-void apply_BC_gpt(int ncol, int nlay, int ngpt, bool top_at_1, real2d const &inc_flux, real3d &flux_dn) {
+void apply_BC(int ncol, int nlay, int ngpt, bool top_at_1, real2d const &inc_flux, real3d &flux_dn) {
   //   Upper boundary condition
   if (top_at_1) {
     //$acc  parallel loop collapse(2)
@@ -307,7 +306,7 @@ void lw_solver_noscat_GaussQuad(int ncol, int nlay, int ngpt, bool top_at_1, int
     flux_top(icol,igpt) = flux_dn(icol,top_level,igpt);
   });
 
-  apply_BC_gpt(ncol, nlay, ngpt, top_at_1, flux_top, radn_dn);
+  apply_BC(ncol, nlay, ngpt, top_at_1, flux_top, radn_dn);
 
   for (int imu=2; imu<=nmus; imu++) {
     // do igpt = 1, ngpt

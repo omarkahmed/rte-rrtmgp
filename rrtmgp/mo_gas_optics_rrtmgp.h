@@ -4,7 +4,6 @@
 #include "mo_optical_props.h"
 #include "mo_source_functions.h"
 #include "mo_rrtmgp_util_string.h"
-#include "FortranIntrinsics.h"
 #include "mo_gas_optics_kernels.h"
 #include "mo_rrtmgp_constants.h"
 #include "mo_rrtmgp_util_reorder.h"
@@ -771,9 +770,9 @@ public:
 
 
   // Compute gas optical depth and Planck source functions, given temperature, pressure, and composition
-  void gas_optics_int(real2d const &play, real2d const &plev, real2d const &tlay, real1d const &tsfc,
-                      GasConcs const &gas_desc, OpticalPropsArry &optical_props, SourceFuncLW &sources,
-                      real2d const &col_dry=real2d(), real2d const &tlev=real2d()) {
+  void gas_optics(real2d const &play, real2d const &plev, real2d const &tlay, real1d const &tsfc,
+                  GasConcs const &gas_desc, OpticalPropsArry &optical_props, SourceFuncLW &sources,
+                  real2d const &col_dry=real2d(), real2d const &tlev=real2d()) {
     int ncol  = size(play,1);
     int nlay  = size(play,2);
     int ngpt  = this->get_ngpt();
@@ -814,8 +813,8 @@ public:
 
 
   // Compute gas optical depth given temperature, pressure, and composition
-  void gas_optics_ext(real2d const &play, real2d const &plev, real2d const &tlay, GasConcs const &gas_desc,   
-                      OpticalPropsArry &optical_props, real2d &toa_src, real2d const &col_dry=real2d()) {
+  void gas_optics(real2d const &play, real2d const &plev, real2d const &tlay, GasConcs const &gas_desc,   
+                  OpticalPropsArry &optical_props, real2d &toa_src, real2d const &col_dry=real2d()) {
     int ncol  = size(play,1);
     int nlay  = size(play,2);
     int ngpt  = this->get_ngpt();
