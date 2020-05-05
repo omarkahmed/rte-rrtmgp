@@ -20,6 +20,12 @@ void load_and_init(GasOpticsRRTMGP &kdist, std::string filename, GasConcs const 
 
   // Read the many arrays
   string1d     gas_names;
+  string1d     gas_minor;
+  string1d     identifier_minor;
+  string1d     minor_gases_lower;
+  string1d     minor_gases_upper;
+  string1d     scaling_gas_lower;
+  string1d     scaling_gas_upper;
   intHost3d    key_species;
   realHost2d   band_lims;
   intHost2d    band2gpt;
@@ -30,16 +36,10 @@ void load_and_init(GasOpticsRRTMGP &kdist, std::string filename, GasConcs const 
   realHost1d   temp_ref;
   realHost3d   vmr_ref;
   realHost4d   kmajor;
-  string1d     gas_minor;
-  string1d     identifier_minor;
-  string1d     minor_gases_lower;
-  string1d     minor_gases_upper;
   intHost2d    minor_limits_gpt_lower;
   intHost2d    minor_limits_gpt_upper;
   boolHost1d   minor_scales_with_density_lower;
   boolHost1d   minor_scales_with_density_upper;
-  string1d     scaling_gas_lower;
-  string1d     scaling_gas_upper;
   boolHost1d   scale_by_complement_lower;
   boolHost1d   scale_by_complement_upper;
   intHost1d    kminor_start_lower;
@@ -49,7 +49,16 @@ void load_and_init(GasOpticsRRTMGP &kdist, std::string filename, GasConcs const 
   realHost3d   rayl_lower;
   realHost3d   rayl_upper;
 
-  io.read( gas_names                       , "gas_names" );
+  // Read in strings
+  charHost2d tmp;
+  tmp = charHost2d();  io.read( tmp , "gas_names"         );  gas_names         = char2d_to_string1d(tmp);
+  tmp = charHost2d();  io.read( tmp , "gas_minor"         );  gas_minor         = char2d_to_string1d(tmp);
+  tmp = charHost2d();  io.read( tmp , "identifier_minor"  );  identifier_minor  = char2d_to_string1d(tmp);
+  tmp = charHost2d();  io.read( tmp , "minor_gases_lower" );  minor_gases_lower = char2d_to_string1d(tmp);
+  tmp = charHost2d();  io.read( tmp , "minor_gases_upper" );  minor_gases_upper = char2d_to_string1d(tmp);
+  tmp = charHost2d();  io.read( tmp , "scaling_gas_lower" );  scaling_gas_lower = char2d_to_string1d(tmp);
+  tmp = charHost2d();  io.read( tmp , "scaling_gas_upper" );  scaling_gas_upper = char2d_to_string1d(tmp);
+
   io.read( key_species                     , "key_species" );
   io.read( band_lims                       , "bnd_limits_wavenumber" );
   io.read( band2gpt                        , "bnd_limits_gpt" );
@@ -60,18 +69,12 @@ void load_and_init(GasOpticsRRTMGP &kdist, std::string filename, GasConcs const 
   io.read( press_ref_trop                  , "press_ref_trop" );
   io.read( kminor_lower                    , "kminor_lower" );
   io.read( kminor_upper                    , "kminor_upper" );
-  io.read( gas_minor                       , "gas_minor" );
-  io.read( identifier_minor                , "identifier_minor" );
-  io.read( minor_gases_lower               , "minor_gases_lower" );
-  io.read( minor_gases_upper               , "minor_gases_upper" );
   io.read( minor_limits_gpt_lower          , "minor_limits_gpt_lower" );
   io.read( minor_limits_gpt_upper          , "minor_limits_gpt_upper" );
   io.read( minor_scales_with_density_lower , "minor_scales_with_density_lower" );
   io.read( minor_scales_with_density_upper , "minor_scales_with_density_upper" );
   io.read( scale_by_complement_lower       , "scale_by_complement_lower" );
   io.read( scale_by_complement_upper       , "scale_by_complement_upper" );
-  io.read( scaling_gas_lower               , "scaling_gas_lower" );
-  io.read( scaling_gas_upper               , "scaling_gas_upper" );
   io.read( kminor_start_lower              , "kminor_start_lower" );
   io.read( kminor_start_upper              , "kminor_start_upper" );
   io.read( vmr_ref                         , "vmr_ref" );

@@ -148,7 +148,7 @@ public:
     int nm = size(minor_gases_atm,1);  // Size of the larger list of minor gases
     int tot_g = 0;
     int red_nm = 0;                    // Reduced number of minor gasses (only the ones we need)
-    boolHost1d gas_is_present("gas_is_present",1,nm);   // Determines whether a gas in the list is needed
+    boolHost1d gas_is_present("gas_is_present",nm);   // Determines whether a gas in the list is needed
     // Determine the gasses needed
     for (int i=1; i <= nm; i++) {
       int idx_mnr = string_loc_in_array(minor_gases_atm(i), identifier_minor);
@@ -286,7 +286,7 @@ public:
       }
     }
     // rewrite single key_species pairs
-    for (int i=1 ; i = size(key_species_list,2) ; i++) {
+    for (int i=1 ; i <= size(key_species_list,2) ; i++) {
       if (key_species_list(1,i) == 0 && key_species_list(2,i) == 0) {
         key_species_list(1,i) = 2;
         key_species_list(2,i) = 2;
@@ -433,6 +433,11 @@ public:
                         minor_limits_gpt_lower_red, minor_scales_with_density_lower_red, scaling_gas_lower_red, 
                         scale_by_complement_lower_red, kminor_start_lower_red);
 
+    this->kminor_lower                    = real3d("kminor_lower                   " , kminor_lower_red                   .get_bounds() );
+    this->minor_limits_gpt_lower          = int2d ("minor_limits_gpt_lower         " , minor_limits_gpt_lower_red         .get_bounds() );
+    this->minor_scales_with_density_lower = bool1d("minor_scales_with_density_lower" , minor_scales_with_density_lower_red.get_bounds() );
+    this->scale_by_complement_lower       = bool1d("scale_by_complement_lower      " , scale_by_complement_lower_red      .get_bounds() );
+    this->kminor_start_lower              = int1d ("kminor_start_lower             " , kminor_start_lower_red             .get_bounds() );
     // Copy Host temps to class device data members
     kminor_lower_red                   .deep_copy_to(this->kminor_lower                   );
     minor_limits_gpt_lower_red         .deep_copy_to(this->minor_limits_gpt_lower         );
@@ -467,6 +472,11 @@ public:
                         scale_by_complement_upper_red, 
                         kminor_start_upper_red);
 
+    this->kminor_upper                    = real3d("kminor_upper                   " , kminor_upper_red                   .get_bounds() );
+    this->minor_limits_gpt_upper          = int2d ("minor_limits_gpt_upper         " , minor_limits_gpt_upper_red         .get_bounds() );
+    this->minor_scales_with_density_upper = bool1d("minor_scales_with_density_upper" , minor_scales_with_density_upper_red.get_bounds() );
+    this->scale_by_complement_upper       = bool1d("scale_by_complement_upper      " , scale_by_complement_upper_red      .get_bounds() );
+    this->kminor_start_upper              = int1d ("kminor_start_upper             " , kminor_start_upper_red             .get_bounds() );
     // Copy Host temps to class device data members
     kminor_upper_red                   .deep_copy_to(this->kminor_upper                   );
     minor_limits_gpt_upper_red         .deep_copy_to(this->minor_limits_gpt_upper         );
@@ -498,6 +508,7 @@ public:
           }
         }
       }
+      this->krayl = real4d("krayl",krayltmp.get_bounds());
       krayltmp.deep_copy_to(this->krayl);
     }
 
@@ -521,6 +532,8 @@ public:
     intHost1d idx_minor_upper_tmp;
     create_idx_minor(this->gas_names, gas_minor, identifier_minor, minor_gases_lower_red, idx_minor_lower_tmp);
     create_idx_minor(this->gas_names, gas_minor, identifier_minor, minor_gases_upper_red, idx_minor_upper_tmp);
+    this->idx_minor_lower = int1d("idx_minor_lower",idx_minor_lower_tmp.get_bounds());
+    this->idx_minor_upper = int1d("idx_minor_upper",idx_minor_upper_tmp.get_bounds());
     idx_minor_lower_tmp.deep_copy_to(this->idx_minor_lower);
     idx_minor_upper_tmp.deep_copy_to(this->idx_minor_upper);
     // Get index of gas (if present) that has special treatment in density scaling
@@ -528,6 +541,8 @@ public:
     intHost1d idx_minor_scaling_upper_tmp;
     create_idx_minor_scaling(this->gas_names, scaling_gas_lower_red, idx_minor_scaling_lower_tmp);
     create_idx_minor_scaling(this->gas_names, scaling_gas_upper_red, idx_minor_scaling_upper_tmp);
+    this->idx_minor_scaling_lower = int1d("idx_minor_scaling_lower",idx_minor_scaling_lower_tmp.get_bounds());
+    this->idx_minor_scaling_upper = int1d("idx_minor_scaling_upper",idx_minor_scaling_upper_tmp.get_bounds());
     idx_minor_scaling_lower_tmp.deep_copy_to(this->idx_minor_scaling_lower);
     idx_minor_scaling_upper_tmp.deep_copy_to(this->idx_minor_scaling_upper);
 

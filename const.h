@@ -96,10 +96,14 @@ typedef FArray<bool,5,yakl::memHost> boolHost5d;
 typedef FArray<bool,6,yakl::memHost> boolHost6d;
 typedef FArray<bool,7,yakl::memHost> boolHost7d;
 
+typedef FArray<char,2,yakl::memHost> charHost2d;
+
 typedef FArray<std::string,1,yakl::memHost> string1d;
 
 
 inline void stoprun( std::string str ) {
+  std::cout << "FATAL ERROR:\n";
+  std::cout << str << "\n" << std::endl;
   throw str;
 }
 

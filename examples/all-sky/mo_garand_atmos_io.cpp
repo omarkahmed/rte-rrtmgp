@@ -64,7 +64,7 @@ void read_atmos(std::string input_file, real2d &p_lay, real2d &t_lay, real2d &p_
   tmp2d = real2d();     // Reset the tmp2d variable
   for (int igas=1 ; igas <= ngas ; igas++) {
     std::string vmr_name = "vmr_"+gas_names(igas);
-    if ( ! io.varExists(vmr_name) ) { throw "ERROR: gas does not exist in input flie"; }
+    if ( ! io.varExists(vmr_name) ) { stoprun("ERROR: gas does not exist in input file"); }
     // Read in 2-D varaible
     io.read(tmp2d,vmr_name);
     // Create 1-D variable with just the first column
