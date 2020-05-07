@@ -143,7 +143,7 @@ int main(int argc , char **argv) {
     }
 
     std::cout << "Writing fluxes\n\n";
-    write_sw_fluxes(input_file, flux_up, flux_dn, flux_dir);
+    write_sw_fluxes(input_file, flux_up, flux_dn, flux_dir, ncol);
 
   } else {  // Longwave
 
@@ -208,13 +208,14 @@ int main(int argc , char **argv) {
       FluxesBroadband fluxes;
       fluxes.flux_up = flux_up;
       fluxes.flux_dn = flux_dn;
-      k_dist.gas_optics(p_lay, p_lev, t_lay, t_sfc, gas_concs, atmos, lw_sources, t_lev);
+      // Calling with an empty col_dry parameter
+      k_dist.gas_optics(p_lay, p_lev, t_lay, t_sfc, gas_concs, atmos, lw_sources, real2d(), t_lev);
       clouds.increment(atmos);
       rte_lw(atmos, top_at_1, lw_sources, emis_sfc, fluxes);
     }
 
     std::cout << "Writing fluxes\n\n";
-    write_lw_fluxes(input_file, flux_up, flux_dn);
+    write_lw_fluxes(input_file, flux_up, flux_dn, ncol);
 
   }  // if (is_sw)
 

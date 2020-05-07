@@ -77,14 +77,23 @@ void read_atmos(std::string input_file, real2d &p_lay, real2d &t_lay, real2d &p_
     gas_concs.set_vmr( gas_names(igas) , tmp1d );
   }
 
-  if ( io.varExists("col_dry") ) { io.read(col_dry,"col_dry"); }
+  if ( io.varExists("col_dry") ) {
+    col_dry = real2d("col_dry",ncol,nlay);
+    tmp2d = real2d();     // Reset the tmp2d variable
+    io.read(tmp2d,"col_dry");
+    // for (int ilay=1 ; ilay <= nlay ; ilay++) {
+    //   for (int icol=1 ; icol <= ncol ; icol++) {
+    parallel_for( Bounds<2>(nlay,ncol) , YAKL_LAMBDA( int ilay, int icol) {
+      col_dry(icol,ilay) = tmp2d(1,ilay);
+    });
+  }
 
   io.close();
 }
 
 
 
-void write_sw_fluxes(std::string fileName, real2d const &flux_up, real2d const &flux_dn, real2d const &flux_dir) {
+void write_sw_fluxes(std::string fileName, real2d const &flux_up, real2d const &flux_dn, real2d const &flux_dir, int ncol) {
   yakl::SimpleNetCDF io;
   io.open(fileName , yakl::NETCDF_MODE_WRITE);
   io.write(flux_up  , "sw_flux_up_result"  , {"col_flx","lev"});
@@ -95,7 +104,7 @@ void write_sw_fluxes(std::string fileName, real2d const &flux_up, real2d const &
 
 
 
-void write_lw_fluxes(std::string fileName, real2d const &flux_up, real2d const &flux_dn) {
+void write_lw_fluxes(std::string fileName, real2d const &flux_up, real2d const &flux_dn, int ncol) {
   yakl::SimpleNetCDF io;
   io.open(fileName , yakl::NETCDF_MODE_WRITE);
   io.write(flux_up , "lw_flux_up_result" , {"col_flx","lev"});

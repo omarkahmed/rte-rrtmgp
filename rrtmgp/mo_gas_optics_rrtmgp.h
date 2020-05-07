@@ -928,14 +928,13 @@ public:
     if (allocated(col_dry)) {
       col_dry_wk = col_dry;
     } else {
-      real2d vmr_slice = vmr.slice<2>({COLON,COLON,idx_h2o});
-      real2d col_dry_arr = this->get_col_dry(vmr_slice,plev); // dry air column amounts computation
+      real2d col_dry_arr = this->get_col_dry(vmr.slice<2>({COLON,COLON,idx_h2o}),plev); // dry air column amounts computation
       col_dry_wk = col_dry_arr;
     }
     // compute column gas amounts [molec/cm^2]
     // do ilay = 1, nlay
     //   do icol = 1, ncol
-    parallel_for( Bounds<2>(nlay,ncol) , YAKL_LAMBDA (int icol, int ilay) {
+    parallel_for( Bounds<2>(nlay,ncol) , YAKL_LAMBDA (int ilay, int icol) {
       col_gas(icol,ilay,0) = col_dry_wk(icol,ilay);
     });
     // do igas = 1, ngas
