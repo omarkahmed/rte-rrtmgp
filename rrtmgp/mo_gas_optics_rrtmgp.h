@@ -61,6 +61,9 @@ public:
   real press_ref_log_delta;
   real temp_ref_delta;
   real press_ref_trop_log;
+
+  int max_gpt_diff_lower;
+  int max_gpt_diff_upper;
   
   // Major absorbers ("key species")
   //   Each unique set of major species is called a flavor.
@@ -445,6 +448,12 @@ public:
     scale_by_complement_lower_red      .deep_copy_to(this->scale_by_complement_lower      );
     kminor_start_lower_red             .deep_copy_to(this->kminor_start_lower             );
 
+    // Find the largest number of g-points per band
+    this->max_gpt_diff_lower = minor_limits_gpt_lower_red(2,1) - minor_limits_gpt_lower_red(1,1);
+    for (int i=2; i<=size(minor_limits_gpt_lower_red,2); i++) {
+      this->max_gpt_diff_lower = max( this->max_gpt_diff_lower , minor_limits_gpt_lower_red(2,i) - minor_limits_gpt_lower_red(1,i) );
+    }
+
     // UPPER MINOR GASSES
     string1d minor_gases_upper_red;
     string1d scaling_gas_upper_red;
@@ -454,23 +463,11 @@ public:
     boolHost1d scale_by_complement_upper_red;
     intHost1d  kminor_start_upper_red;
 
-    reduce_minor_arrays(available_gases, 
-                        gas_names, 
-                        gas_minor,identifier_minor,
-                        kminor_upper, 
-                        minor_gases_upper, 
-                        minor_limits_gpt_upper, 
-                        minor_scales_with_density_upper, 
-                        scaling_gas_upper, 
-                        scale_by_complement_upper, 
-                        kminor_start_upper, 
-                        kminor_upper_red, 
-                        minor_gases_upper_red, 
-                        minor_limits_gpt_upper_red, 
-                        minor_scales_with_density_upper_red, 
-                        scaling_gas_upper_red, 
-                        scale_by_complement_upper_red, 
-                        kminor_start_upper_red);
+    reduce_minor_arrays(available_gases, gas_names, gas_minor, identifier_minor, kminor_upper, minor_gases_upper, 
+                        minor_limits_gpt_upper, minor_scales_with_density_upper, scaling_gas_upper, 
+                        scale_by_complement_upper, kminor_start_upper, kminor_upper_red, minor_gases_upper_red, 
+                        minor_limits_gpt_upper_red, minor_scales_with_density_upper_red, scaling_gas_upper_red, 
+                        scale_by_complement_upper_red, kminor_start_upper_red);
 
     this->kminor_upper                    = real3d("kminor_upper                   " , kminor_upper_red                   .get_bounds() );
     this->minor_limits_gpt_upper          = int2d ("minor_limits_gpt_upper         " , minor_limits_gpt_upper_red         .get_bounds() );
@@ -483,6 +480,12 @@ public:
     minor_scales_with_density_upper_red.deep_copy_to(this->minor_scales_with_density_upper);
     scale_by_complement_upper_red      .deep_copy_to(this->scale_by_complement_upper      );
     kminor_start_upper_red             .deep_copy_to(this->kminor_start_upper             );
+
+    // Find the largest number of g-points per band
+    this->max_gpt_diff_upper = minor_limits_gpt_upper_red(2,1) - minor_limits_gpt_upper_red(1,1);
+    for (int i=2; i<=size(minor_limits_gpt_upper_red,2); i++) {
+      this->max_gpt_diff_upper = max( this->max_gpt_diff_upper , minor_limits_gpt_upper_red(2,i) - minor_limits_gpt_upper_red(1,i) );
+    }
 
     /////////////////////////////////////////////////////////////////////////////////////////////////////////////
     // HANDLE ARRAYS NOT REDUCED BY THE PRESENCE, OR LACK THEREOF, OF A GAS
@@ -823,7 +826,7 @@ public:
     }
 
     // Interpolate source function
-    this->source(ncol, nlay, nband, ngpt, play, plev, tlay, tsfc, jtemp, jpress, jeta, tropo, fmajor, sources, tlev);
+    this->source(top_at_1, ncol, nlay, nband, ngpt, play, plev, tlay, tsfc, jtemp, jpress, jeta, tropo, fmajor, sources, tlev);
   }
 
 
@@ -881,7 +884,6 @@ public:
                                                                          // index(3) : flavor
                                                                          // index(4) : layer
     // Error checking
-    bool use_rayl = allocated(this->krayl);
     // Check for initialization
     if (! this->is_initialized()) { stoprun("ERROR: spectral configuration not loaded"); }
     // Check for presence of key species in ty_gas_concs; return error if any key species are not present
@@ -903,6 +905,8 @@ public:
       if (size(col_dry,1) != ncol || size(col_dry,2) != nlay) { stoprun("gas_optics(): array col_dry has wrong size"); }
       if (anyLT(col_dry,0._wp)) { stoprun("gas_optics(): array col_dry has values outside range"); }
     }
+
+    bool use_rayl = allocated(this->krayl);
 
     int ngas  = this->get_ngas();
     int nflav = this->get_nflav();
@@ -954,7 +958,7 @@ public:
                   this->press_ref_log_delta, this->temp_ref_min, this->temp_ref_delta, this->press_ref_trop_log,
                   this->vmr_ref, play, tlay, col_gas, jtemp, fmajor, fminor, col_mix, tropo, jeta, jpress);
 
-    compute_tau_absorption(ncol, nlay, nband, ngpt, ngas, nflav, neta, npres, ntemp, nminorlower, nminorklower,
+    compute_tau_absorption(this->max_gpt_diff_lower, this->max_gpt_diff_upper, ncol, nlay, nband, ngpt, ngas, nflav, neta, npres, ntemp, nminorlower, nminorklower,
                            nminorupper, nminorkupper, idx_h2o, this->gpoint_flavor, this->get_band_lims_gpoint(),
                            this->kmajor, this->kminor_lower, this->kminor_upper, this->minor_limits_gpt_lower,
                            this->minor_limits_gpt_upper, this->minor_scales_with_density_lower,
@@ -975,7 +979,7 @@ public:
 
 
   // Compute Planck source functions at layer centers and levels
-  void source(int ncol, int nlay, int nbnd, int ngpt, real2d const &play, real2d const &plev, real2d const &tlay,
+  void source(bool top_at_1, int ncol, int nlay, int nbnd, int ngpt, real2d const &play, real2d const &plev, real2d const &tlay,
               real1d const &tsfc, int2d const &jtemp, int2d const &jpress, int4d const &jeta, bool2d const &tropo,
               real6d const &fmajor, SourceFuncLW &sources, real2d const &tlev=real2d()) {
     real3d lay_source_t    ("lay_source_t    ",ngpt,nlay,ncol);
@@ -1011,8 +1015,7 @@ public:
     }
     // Compute internal (Planck) source functions at layers and levels,
     //  which depend on mapping from spectral space that creates k-distribution.
-    auto playHost = play.createHostCopy();
-    int nlayTmp = merge( 1 , nlay , playHost(1,1) > playHost(1,nlay) );
+    int nlayTmp = merge( nlay , 1 , top_at_1 );
     compute_Planck_source(ncol, nlay, nbnd, ngpt, this->get_nflav(), this->get_neta(), this->get_npres(), this->get_ntemp(),
                           this->get_nPlanckTemp(), tlay, tlev_wk, tsfc, nlayTmp, fmajor, jeta, tropo, jtemp, jpress,
                           this->get_gpoint_bands(), this->get_band_lims_gpoint(), this->planck_frac, this->temp_ref_min,

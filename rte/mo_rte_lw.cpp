@@ -2,32 +2,11 @@
 #include "mo_rte_lw.h"
 
 // Interface using only optical properties and source functions as inputs; fluxes as outputs.
-void rte_lw(OpticalProps1scl const &optical_props, bool top_at_1, SourceFuncLW const &sources, real2d const &sfc_emis,
+void rte_lw(int max_gauss_pts, real2d const &gauss_Ds, real2d const &gauss_wts, OpticalProps1scl const &optical_props, bool top_at_1, SourceFuncLW const &sources, real2d const &sfc_emis,
             FluxesBroadband &fluxes, real2d const &inc_flux, int n_gauss_angles) {
   real3d gpt_flux_up;
   real3d gpt_flux_dn;
   real2d sfc_emis_gpt;
-
-  // Weights and angle secants for first order (k=1) Gaussian quadrature.
-  //   Values from Table 2, Clough et al, 1992, doi:10.1029/92JD01419
-  //   after Abramowitz & Stegun 1972, page 921
-  int constexpr max_gauss_pts = 4;
-  realHost2d gauss_Ds_host ("gauss_Ds" ,max_gauss_pts,max_gauss_pts);
-  gauss_Ds_host(1,1) = 1.66_wp      ; gauss_Ds_host(2,1) =         0._wp; gauss_Ds_host(3,1) =         0._wp; gauss_Ds_host(4,1) =         0._wp;
-  gauss_Ds_host(1,2) = 1.18350343_wp; gauss_Ds_host(2,2) = 2.81649655_wp; gauss_Ds_host(3,2) =         0._wp; gauss_Ds_host(4,2) =         0._wp;
-  gauss_Ds_host(1,3) = 1.09719858_wp; gauss_Ds_host(2,3) = 1.69338507_wp; gauss_Ds_host(3,3) = 4.70941630_wp; gauss_Ds_host(4,3) =         0._wp;
-  gauss_Ds_host(1,4) = 1.06056257_wp; gauss_Ds_host(2,4) = 1.38282560_wp; gauss_Ds_host(3,4) = 2.40148179_wp; gauss_Ds_host(4,4) = 7.15513024_wp;
-
-  realHost2d gauss_wts_host("gauss_wts",max_gauss_pts,max_gauss_pts);
-  gauss_wts_host(1,1) = 0.5_wp         ; gauss_wts_host(2,1) = 0._wp          ; gauss_wts_host(3,1) = 0._wp          ; gauss_wts_host(4,1) = 0._wp          ;
-  gauss_wts_host(1,2) = 0.3180413817_wp; gauss_wts_host(2,2) = 0.1819586183_wp; gauss_wts_host(3,2) = 0._wp          ; gauss_wts_host(4,2) = 0._wp          ;
-  gauss_wts_host(1,3) = 0.2009319137_wp; gauss_wts_host(2,3) = 0.2292411064_wp; gauss_wts_host(3,3) = 0.0698269799_wp; gauss_wts_host(4,3) = 0._wp          ;
-  gauss_wts_host(1,4) = 0.1355069134_wp; gauss_wts_host(2,4) = 0.2034645680_wp; gauss_wts_host(3,4) = 0.1298475476_wp; gauss_wts_host(4,4) = 0.0311809710_wp;
-
-  real2d gauss_Ds ("gauss_Ds" ,max_gauss_pts,max_gauss_pts);
-  real2d gauss_wts("gauss_wts",max_gauss_pts,max_gauss_pts);
-  gauss_Ds_host .deep_copy_to(gauss_Ds );
-  gauss_wts_host.deep_copy_to(gauss_wts);
 
   // Error checking
   //   if inc_flux is present it has the right dimensions, is positive definite

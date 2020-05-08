@@ -46,7 +46,7 @@
 
 
 // Interface using only optical properties and source functions as inputs; fluxes as outputs.
-void rte_lw(OpticalProps1scl const &optical_props, bool top_at_1, SourceFuncLW const &sources, real2d const &sfc_emis,
+void rte_lw(int max_gauss_pts, real2d const &gauss_Ds, real2d const &gauss_wts, OpticalProps1scl const &optical_props, bool top_at_1, SourceFuncLW const &sources, real2d const &sfc_emis,
             FluxesBroadband &fluxes, real2d const &inc_flux=real2d(), int n_gauss_angles=-1);
 
 

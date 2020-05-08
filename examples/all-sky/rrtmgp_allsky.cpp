@@ -75,6 +75,7 @@ int main(int argc , char **argv) {
   auto p_lay_host = p_lay.createHostCopy();
   bool top_at_1 = p_lay_host(1, 1) < p_lay_host(1, nlay);
 
+
   // LW calculations neglect scattering; SW calculations use the 2-stream approximation
   if (is_sw) {  // Shortwave
 
@@ -150,6 +151,28 @@ int main(int argc , char **argv) {
   } else {  // Longwave
 
     std::cout << "This is a longwave simulation\n\n";
+
+    // Weights and angle secants for first order (k=1) Gaussian quadrature.
+    //   Values from Table 2, Clough et al, 1992, doi:10.1029/92JD01419
+    //   after Abramowitz & Stegun 1972, page 921
+    int constexpr max_gauss_pts = 4;
+    realHost2d gauss_Ds_host ("gauss_Ds" ,max_gauss_pts,max_gauss_pts);
+    gauss_Ds_host(1,1) = 1.66_wp      ; gauss_Ds_host(2,1) =         0._wp; gauss_Ds_host(3,1) =         0._wp; gauss_Ds_host(4,1) =         0._wp;
+    gauss_Ds_host(1,2) = 1.18350343_wp; gauss_Ds_host(2,2) = 2.81649655_wp; gauss_Ds_host(3,2) =         0._wp; gauss_Ds_host(4,2) =         0._wp;
+    gauss_Ds_host(1,3) = 1.09719858_wp; gauss_Ds_host(2,3) = 1.69338507_wp; gauss_Ds_host(3,3) = 4.70941630_wp; gauss_Ds_host(4,3) =         0._wp;
+    gauss_Ds_host(1,4) = 1.06056257_wp; gauss_Ds_host(2,4) = 1.38282560_wp; gauss_Ds_host(3,4) = 2.40148179_wp; gauss_Ds_host(4,4) = 7.15513024_wp;
+
+    realHost2d gauss_wts_host("gauss_wts",max_gauss_pts,max_gauss_pts);
+    gauss_wts_host(1,1) = 0.5_wp         ; gauss_wts_host(2,1) = 0._wp          ; gauss_wts_host(3,1) = 0._wp          ; gauss_wts_host(4,1) = 0._wp          ;
+    gauss_wts_host(1,2) = 0.3180413817_wp; gauss_wts_host(2,2) = 0.1819586183_wp; gauss_wts_host(3,2) = 0._wp          ; gauss_wts_host(4,2) = 0._wp          ;
+    gauss_wts_host(1,3) = 0.2009319137_wp; gauss_wts_host(2,3) = 0.2292411064_wp; gauss_wts_host(3,3) = 0.0698269799_wp; gauss_wts_host(4,3) = 0._wp          ;
+    gauss_wts_host(1,4) = 0.1355069134_wp; gauss_wts_host(2,4) = 0.2034645680_wp; gauss_wts_host(3,4) = 0.1298475476_wp; gauss_wts_host(4,4) = 0.0311809710_wp;
+
+    real2d gauss_Ds ("gauss_Ds" ,max_gauss_pts,max_gauss_pts);
+    real2d gauss_wts("gauss_wts",max_gauss_pts,max_gauss_pts);
+    gauss_Ds_host .deep_copy_to(gauss_Ds );
+    gauss_wts_host.deep_copy_to(gauss_wts);
+
     OpticalProps1scl atmos;
     OpticalProps1scl clouds;
 
@@ -214,7 +237,7 @@ int main(int argc , char **argv) {
       // Calling with an empty col_dry parameter
       k_dist.gas_optics(top_at_1, p_lay, p_lev, t_lay, t_sfc, gas_concs, atmos, lw_sources, real2d(), t_lev);
       clouds.increment(atmos);
-      rte_lw(atmos, top_at_1, lw_sources, emis_sfc, fluxes);
+      rte_lw(max_gauss_pts, gauss_Ds, gauss_wts, atmos, top_at_1, lw_sources, emis_sfc, fluxes);
 
       fluxes.print_norms();
     }

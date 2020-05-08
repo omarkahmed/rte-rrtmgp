@@ -200,7 +200,7 @@ void sw_solver_2stream(int ncol, int nlay, int ngpt, bool top_at_1, real3d const
 // LW fluxes, no scattering, mu (cosine of integration angle) specified by column
 //   Does radiation calculation at user-supplied angles; converts radiances to flux
 //   using user-supplied weights
-void lw_solver_noscat(int ncol, int nlay, int ngpt, bool top_at_1, real2d const &D, real weight, real3d const &tau,
+void lw_solver_noscat(int ncol, int nlay, int ngpt, bool top_at_1, real2d const &D, real1d const &weights, int weight_ind, real3d const &tau,
                       real3d const &lay_source, real3d const &lev_source_inc, real3d const &lev_source_dec,
                       real2d const &sfc_emis, real2d const &sfc_src, real3d &radn_up, real3d &radn_dn) {
   real3d tau_loc   ("tau_loc   ",ncol,nlay,ngpt);             
@@ -234,7 +234,7 @@ void lw_solver_noscat(int ncol, int nlay, int ngpt, bool top_at_1, real2d const 
   parallel_for( Bounds<2>(ngpt,ncol) , YAKL_LAMBDA (int igpt, int icol) {
     // Transport is for intensity
     //   convert flux at top of domain to intensity assuming azimuthal isotropy
-    radn_dn(icol,top_level,igpt) = radn_dn(icol,top_level,igpt)/(2._wp * pi * weight);
+    radn_dn(icol,top_level,igpt) = radn_dn(icol,top_level,igpt)/(2._wp * pi * weights(weight_ind));
     
     // Surface albedo, surface source function
     sfc_albedo(icol,igpt) = 1._wp - sfc_emis(icol,igpt);
@@ -267,8 +267,8 @@ void lw_solver_noscat(int ncol, int nlay, int ngpt, bool top_at_1, real2d const 
   //   do ilev = 1, nlay+1
   //     do icol = 1, ncol
   parallel_for( Bounds<3>(ngpt,nlay+1,ncol) , YAKL_LAMBDA (int igpt, int ilev, int icol) {
-    radn_dn(icol,ilev,igpt) = 2._wp * pi * weight * radn_dn(icol,ilev,igpt);
-    radn_up(icol,ilev,igpt) = 2._wp * pi * weight * radn_up(icol,ilev,igpt);
+    radn_dn(icol,ilev,igpt) = 2._wp * pi * weights(weight_ind) * radn_dn(icol,ilev,igpt);
+    radn_up(icol,ilev,igpt) = 2._wp * pi * weights(weight_ind) * radn_up(icol,ilev,igpt);
   });
 }
 
@@ -292,10 +292,8 @@ void lw_solver_noscat_GaussQuad(int ncol, int nlay, int ngpt, bool top_at_1, int
     Ds_ncol(icol, igpt) = Ds(1);
   });
 
-  auto weights_host = weights.createHostCopy();
-
   lw_solver_noscat(ncol, nlay, ngpt, 
-                   top_at_1, Ds_ncol, weights_host(1), tau, 
+                   top_at_1, Ds_ncol, weights, 1, tau, 
                    lay_source, lev_source_inc, lev_source_dec, sfc_emis, sfc_src, 
                    flux_up, flux_dn);
   //
@@ -318,7 +316,7 @@ void lw_solver_noscat_GaussQuad(int ncol, int nlay, int ngpt, bool top_at_1, int
     });
 
     lw_solver_noscat(ncol, nlay, ngpt, 
-                     top_at_1, Ds_ncol, weights_host(imu), tau, 
+                     top_at_1, Ds_ncol, weights, imu, tau, 
                      lay_source, lev_source_inc, lev_source_dec, sfc_emis, sfc_src, 
                      radn_up, radn_dn);
 

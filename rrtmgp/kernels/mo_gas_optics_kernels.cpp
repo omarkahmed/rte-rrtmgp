@@ -224,7 +224,7 @@ void compute_tau_rayleigh(int ncol, int nlay, int nbnd, int ngpt, int ngas, int 
 
 
 // compute minor species optical depths
-void gas_optical_depths_minor(int ncol, int nlay, int ngpt, int ngas, int nflav, int ntemp, int neta,
+void gas_optical_depths_minor(int max_gpt_diff, int ncol, int nlay, int ngpt, int ngas, int nflav, int ntemp, int neta,
                               int nminor, int nminork, int idx_h2o, int idx_tropo, int2d const &gpt_flv,
                               real3d const &kminor, int2d const &minor_limits_gpt, bool1d const &minor_scales_with_density,
                               bool1d const &scale_by_complement, int1d const &idx_minor, int1d const &idx_minor_scaling,
@@ -233,13 +233,6 @@ void gas_optical_depths_minor(int ncol, int nlay, int ngpt, int ngas, int nflav,
   real constexpr PaTohPa = 0.01;
 
   int extent = nminor;
-
-  // Find the largest number of g-points per band
-  auto minor_limits_gpt_host = minor_limits_gpt.createHostCopy();
-  int max_gpt_diff = minor_limits_gpt_host(2,1) - minor_limits_gpt_host(1,1);
-  for (int i=2; i<=nminor; i++) {
-    max_gpt_diff = max( max_gpt_diff , minor_limits_gpt_host(2,i) - minor_limits_gpt_host(1,i) );
-  }
 
   // for (int ilay=1; ilay<=nlay; ilay++) {
   //   for (int icol=1; icol<=ncol; icol++) {
@@ -337,7 +330,7 @@ void gas_optical_depths_major(int ncol, int nlay, int nbnd, int ngpt, int nflav,
 
 // Compute minor and major species opitcal depth from pre-computed interpolation coefficients
 //   (jeta,jtemp,jpress)
-void compute_tau_absorption(int ncol, int nlay, int nbnd, int ngpt, int ngas, int nflav, int neta, int npres, int ntemp, int nminorlower,
+void compute_tau_absorption(int max_gpt_diff_lower, int max_gpt_diff_upper, int ncol, int nlay, int nbnd, int ngpt, int ngas, int nflav, int neta, int npres, int ntemp, int nminorlower,
                             int nminorklower, int nminorupper, int nminorkupper, int idx_h2o, int2d const &gpoint_flavor,
                             int2d const &band_lims_gpt, real4d const &kmajor, real3d const &kminor_lower, real3d const &kminor_upper,
                             int2d const &minor_limits_gpt_lower, int2d const &minor_limits_gpt_upper, bool1d const &minor_scales_with_density_lower,    
@@ -440,7 +433,7 @@ void compute_tau_absorption(int ncol, int nlay, int nbnd, int ngpt, int ngas, in
   // Minor Species - lower
   // ---------------------
   int idx_tropo = 1;
-  gas_optical_depths_minor(ncol, nlay, ngpt, ngas, nflav, ntemp, neta, nminorlower, nminorklower,
+  gas_optical_depths_minor(max_gpt_diff_lower, ncol, nlay, ngpt, ngas, nflav, ntemp, neta, nminorlower, nminorklower,
                            idx_h2o, idx_tropo, gpoint_flavor, kminor_lower, minor_limits_gpt_lower,
                            minor_scales_with_density_lower, scale_by_complement_lower, idx_minor_lower,
                            idx_minor_scaling_lower, kminor_start_lower, play,  tlay, col_gas, fminor,
@@ -449,7 +442,7 @@ void compute_tau_absorption(int ncol, int nlay, int nbnd, int ngpt, int ngas, in
   // Minor Species - upper
   // ---------------------
   idx_tropo = 2;
-  gas_optical_depths_minor(ncol, nlay, ngpt, ngas, nflav, ntemp, neta, nminorupper, nminorkupper,
+  gas_optical_depths_minor(max_gpt_diff_upper, ncol, nlay, ngpt, ngas, nflav, ntemp, neta, nminorupper, nminorkupper,
                            idx_h2o, idx_tropo, gpoint_flavor, kminor_upper, minor_limits_gpt_upper,
                            minor_scales_with_density_upper, scale_by_complement_upper, idx_minor_upper,
                            idx_minor_scaling_upper, kminor_start_upper, play, tlay, col_gas, fminor,

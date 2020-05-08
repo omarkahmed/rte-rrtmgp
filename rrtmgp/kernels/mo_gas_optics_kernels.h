@@ -100,12 +100,12 @@ void compute_tau_rayleigh(int ncol, int nlay, int nbnd, int ngpt, int ngas, int 
 
 
 // compute minor species optical depths
-void gas_optical_depths_minor(int ncol, int nlay, int ngpt, int ngas, int nflav, int ntemp, int neta,
-                              int nminor, int nminork, int idx_h2o, int idx_tropo, int2d &gpt_flv,
-                              real3d &kminor, int2d &minor_limits_gpt, bool1d &minor_scales_with_density,
-                              bool1d &scale_by_complement, int1d &idx_minor, int1d &idx_minor_scaling,
-                              int1d &kminor_start, real2d &play, real2d &tlay, real3d &col_gas, real5d &fminor,
-                              int4d &jeta, int2d &layer_limits, int2d &jtemp, real3d &tau);
+void gas_optical_depths_minor(int max_gpt_diff, int ncol, int nlay, int ngpt, int ngas, int nflav, int ntemp, int neta,
+                              int nminor, int nminork, int idx_h2o, int idx_tropo, int2d const &gpt_flv,
+                              real3d const &kminor, int2d const &minor_limits_gpt, bool1d const &minor_scales_with_density,
+                              bool1d const &scale_by_complement, int1d const &idx_minor, int1d const &idx_minor_scaling,
+                              int1d const &kminor_start, real2d const &play, real2d const &tlay, real3d const &col_gas,
+                              real5d const &fminor, int4d const &jeta, int2d const &layer_limits, int2d const &jtemp, real3d &tau);
 
 
 
@@ -119,7 +119,7 @@ void gas_optical_depths_major(int ncol, int nlay, int nbnd, int ngpt, int nflav,
 
 // Compute minor and major species opitcal depth from pre-computed interpolation coefficients
 //   (jeta,jtemp,jpress)
-void compute_tau_absorption(int ncol, int nlay, int nbnd, int ngpt, int ngas, int nflav, int neta, int npres, int ntemp, int nminorlower,
+void compute_tau_absorption(int max_gpt_diff_lower, int max_gpt_diff_upper, int ncol, int nlay, int nbnd, int ngpt, int ngas, int nflav, int neta, int npres, int ntemp, int nminorlower,
                             int nminorklower, int nminorupper, int nminorkupper, int idx_h2o, int2d const &gpoint_flavor,
                             int2d const &band_lims_gpt, real4d const &kmajor, real3d const &kminor_lower, real3d const &kminor_upper,
                             int2d const &minor_limits_gpt_lower, int2d const &minor_limits_gpt_upper, bool1d const &minor_scales_with_density_lower,    
