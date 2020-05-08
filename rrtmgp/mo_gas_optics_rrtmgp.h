@@ -785,8 +785,9 @@ public:
 
 
   // Compute gas optical depth and Planck source functions, given temperature, pressure, and composition
+  template <class T>
   void gas_optics(real2d const &play, real2d const &plev, real2d const &tlay, real1d const &tsfc,
-                  GasConcs const &gas_desc, OpticalPropsArry &optical_props, SourceFuncLW &sources,
+                  GasConcs const &gas_desc, T &optical_props, SourceFuncLW &sources,
                   real2d const &col_dry=real2d(), real2d const &tlev=real2d()) {
     int ncol  = size(play,1);
     int nlay  = size(play,2);
@@ -828,8 +829,9 @@ public:
 
 
   // Compute gas optical depth given temperature, pressure, and composition
+  template <class T>
   void gas_optics(real2d const &play, real2d const &plev, real2d const &tlay, GasConcs const &gas_desc,   
-                  OpticalPropsArry &optical_props, real2d &toa_src, real2d const &col_dry=real2d()) {
+                  T &optical_props, real2d &toa_src, real2d const &col_dry=real2d()) {
     int ncol  = size(play,1);
     int nlay  = size(play,2);
     int ngpt  = this->get_ngpt();
@@ -967,6 +969,7 @@ public:
                             this->get_band_lims_gpoint(), this->krayl, idx_h2o, col_dry_wk, col_gas, 
                             fminor, jeta, tropo, jtemp, tau_rayleigh);
     }
+    combine_and_reorder(tau, tau_rayleigh, allocated(this->krayl), optical_props);
   }
 
 
@@ -1070,14 +1073,7 @@ public:
     int ncol = size(tau,3);
     int nlay = size(tau,2);
     int ngpt = size(tau,1);
-    if (has_rayleigh) {
-      // index reorder (ngpt, nlay, ncol) -> (ncol,nlay,gpt)
-      reorder123x321(ngpt, nlay, ncol, tau, optical_props.tau);
-    } else {
-      // combine optical depth and rayleigh scattering
-      // User is asking for absorption optical depth
-      reorder123x321(ngpt, nlay, ncol, tau, optical_props.tau);
-    }
+    reorder123x321(ngpt, nlay, ncol, tau, optical_props.tau);
   }
 
 
@@ -1089,13 +1085,15 @@ public:
     int nlay = size(tau,2);
     int ngpt = size(tau,1);
     if (has_rayleigh) {
+      // combine optical depth and rayleigh scattering
+      combine_and_reorder_2str(ncol, nlay, ngpt, tau, tau_rayleigh, optical_props.tau, optical_props.ssa, optical_props.g);
+      std::cout << "DEBUG: " << __LINE__ << "\n\n";
+    } else {
       // index reorder (ngpt, nlay, ncol) -> (ncol,nlay,gpt)
       reorder123x321(ngpt, nlay, ncol, tau, optical_props.tau);
       zero_array(optical_props.ssa);
       zero_array(optical_props.g  );
-    } else {
-      // combine optical depth and rayleigh scattering
-      combine_and_reorder_2str(ncol, nlay, ngpt, tau, tau_rayleigh, optical_props.tau, optical_props.ssa, optical_props.g);
+      std::cout << "DEBUG: " << __LINE__ << "\n\n";
     }
   }
 

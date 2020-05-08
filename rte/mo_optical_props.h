@@ -230,6 +230,7 @@ public:
     if (! this->is_initialized()) { stoprun("OpticalProps1scl::alloc_1scl: spectral discretization hasn't been provided"); }
     if (ncol <= 0 || nlay <= 0) { stoprun("OpticalProps1scl::alloc_1scl: must provide > 0 extents for ncol, nlay"); }
     this->tau = real3d("tau",ncol,nlay,this->get_ngpt());
+    memset(tau,0._wp);
   }
 
 
@@ -268,7 +269,7 @@ public:
 
 
   void print_norms() const {
-                                    std::cout << "name         : " << name                      ;
+                                    std::cout << "name         : " << name               << "\n";
     if (allocated(band2gpt     )) { std::cout << "band2gpt     : " << sum(band2gpt     ) << "\n"; }
     if (allocated(gpt2band     )) { std::cout << "gpt2band     : " << sum(gpt2band     ) << "\n"; }
     if (allocated(band_lims_wvn)) { std::cout << "band_lims_wvn: " << sum(band_lims_wvn) << "\n"; }
@@ -326,6 +327,9 @@ public:
     this->tau = real3d("tau",ncol,nlay,this->get_ngpt());
     this->ssa = real3d("ssa",ncol,nlay,this->get_ngpt());
     this->g   = real3d("g  ",ncol,nlay,this->get_ngpt());
+    memset(tau,0._wp);
+    memset(ssa,0._wp);
+    memset(g  ,0._wp);
   }
 
 
@@ -375,7 +379,7 @@ public:
 
 
   void print_norms() const {
-                                    std::cout << "name         : " << name                      ;
+                                    std::cout << "name         : " << name               << "\n";
     if (allocated(band2gpt     )) { std::cout << "band2gpt     : " << sum(band2gpt     ) << "\n"; }
     if (allocated(gpt2band     )) { std::cout << "gpt2band     : " << sum(gpt2band     ) << "\n"; }
     if (allocated(band_lims_wvn)) { std::cout << "band_lims_wvn: " << sum(band_lims_wvn) << "\n"; }
