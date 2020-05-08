@@ -114,8 +114,7 @@ void compute_Planck_source(int ncol, int nlay, int nbnd, int ngpt, int nflav, in
   real3d pfrac          ("pfrac"          ,ngpt,nlay,ncol);
   real3d planck_function("planck_function",nbnd,nlay+1,ncol);
   real1d one            ("one"            ,2);
-  one(1) = 1;
-  one(2) = 1;
+  memset(one,1._wp);
 
   // Calculation of fraction of band's Planck irradiance associated with each g-point
   // for (int icol=1; icol<=ncol; icol++) {
@@ -236,9 +235,10 @@ void gas_optical_depths_minor(int ncol, int nlay, int ngpt, int ngas, int nflav,
   int extent = nminor;
 
   // Find the largest number of g-points per band
-  int max_gpt_diff = minor_limits_gpt(2,1) - minor_limits_gpt(1,1);
+  auto minor_limits_gpt_host = minor_limits_gpt.createHostCopy();
+  int max_gpt_diff = minor_limits_gpt_host(2,1) - minor_limits_gpt_host(1,1);
   for (int i=2; i<=nminor; i++) {
-    max_gpt_diff = max( max_gpt_diff , minor_limits_gpt(2,i) - minor_limits_gpt(1,i) );
+    max_gpt_diff = max( max_gpt_diff , minor_limits_gpt_host(2,i) - minor_limits_gpt_host(1,i) );
   }
 
   // for (int ilay=1; ilay<=nlay; ilay++) {

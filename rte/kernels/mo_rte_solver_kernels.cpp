@@ -292,8 +292,10 @@ void lw_solver_noscat_GaussQuad(int ncol, int nlay, int ngpt, bool top_at_1, int
     Ds_ncol(icol, igpt) = Ds(1);
   });
 
+  auto weights_host = weights.createHostCopy();
+
   lw_solver_noscat(ncol, nlay, ngpt, 
-                   top_at_1, Ds_ncol, weights(1), tau, 
+                   top_at_1, Ds_ncol, weights_host(1), tau, 
                    lay_source, lev_source_inc, lev_source_dec, sfc_emis, sfc_src, 
                    flux_up, flux_dn);
   //
@@ -316,7 +318,7 @@ void lw_solver_noscat_GaussQuad(int ncol, int nlay, int ngpt, bool top_at_1, int
     });
 
     lw_solver_noscat(ncol, nlay, ngpt, 
-                     top_at_1, Ds_ncol, weights(imu), tau, 
+                     top_at_1, Ds_ncol, weights_host(imu), tau, 
                      lay_source, lev_source_inc, lev_source_dec, sfc_emis, sfc_src, 
                      radn_up, radn_dn);
 
