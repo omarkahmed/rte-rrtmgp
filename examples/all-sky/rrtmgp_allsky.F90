@@ -190,6 +190,7 @@ program rte_rrtmgp_clouds
     call load_cld_padecoeff(cloud_optics, cloud_optics_file)
   end if
   call stop_on_err(cloud_optics%set_ice_roughness(2))
+
   ! ----------------------------------------------------------------------------
   !
   ! Problem sizes
@@ -235,6 +236,7 @@ program rte_rrtmgp_clouds
     class default
       call stop_on_err("rte_rrtmgp_clouds: Don't recognize the kind of optical properties ")
   end select
+
   ! ----------------------------------------------------------------------------
   !  Boundary conditions depending on whether the k-distribution being supplied
   !   is LW or SW
@@ -335,12 +337,12 @@ program rte_rrtmgp_clouds
                                          atmos,        &
                                          lw_sources,   &
                                          tlev = t_lev))
+
       call stop_on_err(clouds%increment(atmos))
       call stop_on_err(rte_lw(atmos, top_at_1, &
                               lw_sources,      &
                               emis_sfc,        &
                               fluxes))
-      call fluxes%print_norms()
       !$acc exit data delete(lw_sources%lay_source, lw_sources%lev_source_inc, lw_sources%lev_source_dec, lw_sources%sfc_source, lw_sources)
     else
       !$acc enter data create(toa_flux)
@@ -351,13 +353,13 @@ program rte_rrtmgp_clouds
                                          gas_concs,    &
                                          atmos,        &
                                          toa_flux))
+
       call stop_on_err(clouds%delta_scale())
       call stop_on_err(clouds%increment(atmos))
       call stop_on_err(rte_sw(atmos, top_at_1, &
                               mu0,   toa_flux, &
                               sfc_alb_dir, sfc_alb_dif, &
                               fluxes))
-      call fluxes%print_norms()
       !$acc exit data delete(toa_flux)
     end if
     !print *, "******************************************************************"
@@ -381,6 +383,8 @@ program rte_rrtmgp_clouds
   print *, "                - per column(ms):", (finish_all-start_all) / real(ncol*nloops) / (1.0e-3*clock_rate)
 #endif
 
+  call fluxes%print_norms()
+
   if(is_lw) then
     !$acc exit data copyout(flux_up, flux_dn)
     if(write_fluxes) call write_lw_fluxes(input_file, flux_up, flux_dn)
@@ -391,4 +395,5 @@ program rte_rrtmgp_clouds
     !$acc exit data delete(sfc_alb_dir, sfc_alb_dif, mu0)
   end if
   !$acc enter data create(lwp, iwp, rel, rei)
+
 end program rte_rrtmgp_clouds

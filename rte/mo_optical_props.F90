@@ -111,6 +111,7 @@ module mo_optical_props
     procedure(validate_abstract),     deferred, public  :: validate
     procedure(delta_scale_abstract),  deferred, public  :: delta_scale
     procedure(subset_range_abstract), deferred, public  :: get_subset
+    procedure(print_norms_abstract),  deferred, public  :: print_norms
   end type
   !
   ! Interfaces for the methods to be implemented
@@ -148,6 +149,11 @@ module mo_optical_props
       class(ty_optical_props_arry), intent(inout) :: subset
       character(128)                              :: err_message
     end function subset_range_abstract
+    subroutine print_norms_abstract(this)
+      import ty_optical_props_arry
+      implicit none
+      class(ty_optical_props_arry),  intent(in) :: this
+    end subroutine print_norms_abstract
   end interface
   !----------------------------------------------------------------------------------------
   !
@@ -201,6 +207,7 @@ module mo_optical_props
     procedure, private :: init_and_alloc_nstr
     procedure, private :: copy_and_alloc_nstr
     generic,   public  :: alloc_nstr => alloc_only_nstr, init_and_alloc_nstr, copy_and_alloc_nstr
+    procedure, public  :: print_norms => print_norms_nstr
   end type
   ! -------------------------------------------------------------------------------------------------
 contains
@@ -335,6 +342,7 @@ contains
     else
       if(allocated(this%tau)) deallocate(this%tau)
       allocate(this%tau(ncol,nlay,this%get_ngpt()))
+      this%tau = 0
     end if
   end function alloc_only_1scl
 
@@ -354,10 +362,13 @@ contains
     else
       if(allocated(this%tau)) deallocate(this%tau)
       allocate(this%tau(ncol,nlay,this%get_ngpt()))
+      this%tau = 0;
     end if
     if(allocated(this%ssa)) deallocate(this%ssa)
     if(allocated(this%g  )) deallocate(this%g  )
     allocate(this%ssa(ncol,nlay,this%get_ngpt()), this%g(ncol,nlay,this%get_ngpt()))
+    this%ssa = 0;
+    this%g   = 0;
   end function alloc_only_2str
 
   ! --- n stream ------------------------------------------------------------------------
@@ -1194,6 +1205,12 @@ contains
     if (allocated(this%ssa          )) write(*,*) "ssa          : " , sum(this%ssa          ) 
     if (allocated(this%g            )) write(*,*) "g            : " , sum(this%g            )   
   end subroutine print_norms_2str
+
+
+  subroutine print_norms_nstr(this)
+    implicit none
+    class(ty_optical_props_nstr), intent(in   ) :: this
+  end subroutine print_norms_nstr
 
 
 
