@@ -520,7 +520,7 @@ public:
     auto &press_ref_loc     = this->press_ref;
     auto &press_ref_log_loc = this->press_ref_log;
     // Running a kernel because it's more convenient in this case
-    parallel_for_cpu_serial( Bounds<1>( size(this->press_ref,1) ) , YAKL_LAMBDA (int i) {
+    parallel_for( Bounds<1>( size(this->press_ref,1) ) , YAKL_LAMBDA (int i) {
       press_ref_log_loc(i) = log(press_ref_loc(i));
     });
 
@@ -577,12 +577,12 @@ public:
     this->is_key = bool1d("is_key",this->get_ngas());
     auto &is_key_loc = this->is_key;
     auto &flavor_loc = this->flavor;
-    parallel_for_cpu_serial( Bounds<1>( this->get_ngas() ) , YAKL_LAMBDA (int i) {
+    parallel_for( Bounds<1>( this->get_ngas() ) , YAKL_LAMBDA (int i) {
       is_key_loc(i) = false;
     });
     // do j = 1, size(this%flavor, 2)
     //   do i = 1, size(this%flavor, 1) ! extents should be 2
-    parallel_for_cpu_serial( Bounds<2>( size(this->flavor,2) , size(this->flavor,1) ) , YAKL_LAMBDA (int j, int i) {
+    parallel_for( Bounds<2>( size(this->flavor,2) , size(this->flavor,1) ) , YAKL_LAMBDA (int j, int i) {
       if (flavor_loc(i,j) != 0) { is_key_loc(flavor_loc(i,j)) = true; }
     });
   }
@@ -786,7 +786,7 @@ public:
 
   // Compute gas optical depth and Planck source functions, given temperature, pressure, and composition
   template <class T>
-  void gas_optics(real2d const &play, real2d const &plev, real2d const &tlay, real1d const &tsfc,
+  void gas_optics(bool top_at_1, real2d const &play, real2d const &plev, real2d const &tlay, real1d const &tsfc,
                   GasConcs const &gas_desc, T &optical_props, SourceFuncLW &sources,
                   real2d const &col_dry=real2d(), real2d const &tlev=real2d()) {
     int ncol  = size(play,1);
@@ -800,7 +800,7 @@ public:
     real6d fmajor("fmajor",2,2,2,this->get_nflav(),size(play,1),size(play,2));
     int4d  jeta  ("jeta"  ,2    ,this->get_nflav(),size(play,1),size(play,2));
     // Gas optics
-    compute_gas_taus(ncol, nlay, ngpt, nband, play, plev, tlay, gas_desc, optical_props, jtemp, jpress,
+    compute_gas_taus(top_at_1, ncol, nlay, ngpt, nband, play, plev, tlay, gas_desc, optical_props, jtemp, jpress,
                      jeta, tropo, fmajor, col_dry);
 
     // External source -- check arrays sizes and values
@@ -830,7 +830,7 @@ public:
 
   // Compute gas optical depth given temperature, pressure, and composition
   template <class T>
-  void gas_optics(real2d const &play, real2d const &plev, real2d const &tlay, GasConcs const &gas_desc,   
+  void gas_optics(bool top_at_1, real2d const &play, real2d const &plev, real2d const &tlay, GasConcs const &gas_desc,   
                   T &optical_props, real2d &toa_src, real2d const &col_dry=real2d()) {
     int ncol  = size(play,1);
     int nlay  = size(play,2);
@@ -846,14 +846,14 @@ public:
     real6d fmajor("fmajor",2,2,2,this->get_nflav(),size(play,1),size(play,2));
     int4d  jeta  ("jeta  ",2    ,this->get_nflav(),size(play,1),size(play,2));
     // Gas optics
-    compute_gas_taus(ncol, nlay, ngpt, nband, play, plev, tlay, gas_desc, optical_props, jtemp, jpress, jeta,
+    compute_gas_taus(top_at_1, ncol, nlay, ngpt, nband, play, plev, tlay, gas_desc, optical_props, jtemp, jpress, jeta,
                      tropo, fmajor, col_dry);
 
     // External source function is constant
     if (size(toa_src,1) != ncol || size(toa_src,2) != ngpt) { stoprun("gas_optics(): array toa_src has wrong size"); }
 
     auto &solar_src_loc = this->solar_src;
-    parallel_for_cpu_serial( Bounds<2>(ngpt,ncol) , YAKL_LAMBDA (int igpt, int icol) {
+    parallel_for( Bounds<2>(ngpt,ncol) , YAKL_LAMBDA (int igpt, int icol) {
       toa_src(icol,igpt) = solar_src_loc(igpt);
     });
   }
@@ -862,7 +862,7 @@ public:
 
   // Returns optical properties and interpolation coefficients
   template <class T>
-  void compute_gas_taus(int ncol, int nlay, int ngpt, int nband, real2d const &play, real2d const &plev, real2d const &tlay,
+  void compute_gas_taus(bool top_at_1, int ncol, int nlay, int ngpt, int nband, real2d const &play, real2d const &plev, real2d const &tlay,
                         GasConcs const &gas_desc, T &optical_props, int2d &jtemp, int2d &jpress, int4d &jeta,
                         bool2d &tropo, real6d &fmajor, real2d const &col_dry=real2d() ) {
     // Number of molecules per cm^2
@@ -962,7 +962,7 @@ public:
                            this->scale_by_complement_upper, this->idx_minor_lower, this->idx_minor_upper,                
                            this->idx_minor_scaling_lower, this->idx_minor_scaling_upper, this->kminor_start_lower,             
                            this->kminor_start_upper, tropo, col_mix, fmajor, fminor, play, tlay, col_gas,                    
-                           jeta, jtemp, jpress, tau);
+                           jeta, jtemp, jpress, tau, top_at_1);
 
     if (allocated(this->krayl)) {
       compute_tau_rayleigh( ncol, nlay, nband, ngpt, ngas, nflav, neta, npres, ntemp, this->gpoint_flavor,
@@ -1047,6 +1047,7 @@ public:
       });
     } else {
       // do icol = 1, ncol
+      auto &grav = ::grav;
       parallel_for( Bounds<1>(ncol) , YAKL_LAMBDA (int icol) {
         g0(icol) = grav;
       });
@@ -1055,6 +1056,7 @@ public:
     real2d col_dry("col_dry",size(plev,1),size(plev,2)-1);
     // do ilev = 1, nlev-1
     //   do icol = 1, ncol
+    auto &m_dry = ::m_dry;
     parallel_for( Bounds<2>(nlev-1,ncol) , YAKL_LAMBDA (int ilev , int icol) {
       real delta_plev = abs(plev(icol,ilev) - plev(icol,ilev+1));
       // Get average mass of moist air per mole of moist air

@@ -34,13 +34,13 @@ public:
       if (anyLT(band_lims_gpt,1) ) { stoprun("optical_props::init(): band_lims_gpt has values < 1"); }
       // for (int j=1; j <= size(band_lims_gpt,2); j++) {
       //   for (int i=1; i <= size(band_lims_gpt,1); i++) {
-      parallel_for_cpu_serial( Bounds<2>(size(band_lims_gpt,2),size(band_lims_gpt,1)) , YAKL_LAMBDA (int j, int i) {
+      parallel_for( Bounds<2>(size(band_lims_gpt,2),size(band_lims_gpt,1)) , YAKL_LAMBDA (int j, int i) {
         band_lims_gpt_lcl(i,j) = band_lims_gpt(i,j);
       });
     } else {
       // Assume that values are defined by band, one g-point per band
       // for (int iband = 1; iband <= size(band_lims_wvn, 2); iband++) {
-      parallel_for_cpu_serial( Bounds<1>(size(band_lims_wvn, 2)) , YAKL_LAMBDA (int iband) {
+      parallel_for( Bounds<1>(size(band_lims_wvn, 2)) , YAKL_LAMBDA (int iband) {
         band_lims_gpt_lcl(2,iband) = iband;
         band_lims_gpt_lcl(1,iband) = iband;
       });
@@ -54,10 +54,11 @@ public:
     //   Efficient only when g-point indexes start at 1 and are contiguous.
     this->gpt2band = int1d("gpt2band",maxval(band_lims_gpt_lcl));
     // TODO: I didn't want to bother with race conditions at the moment, so it's an entirely serialized kernel for now
-    parallel_for_cpu_serial( Bounds<1>(1) , YAKL_LAMBDA (int dummy) {
+    auto &this_gpt2band = this->gpt2band;
+    parallel_for( Bounds<1>(1) , YAKL_LAMBDA (int dummy) {
       for (int iband=1; iband <= size(band_lims_gpt_lcl,2); iband++) {
         for (int i=band_lims_gpt_lcl(1,iband); i <= band_lims_gpt_lcl(2,iband); i++) {
-          this->gpt2band(i) = iband;
+          this_gpt2band(i) = iband;
         }
       }
     });
@@ -138,9 +139,10 @@ public:
     real2d ret("band_lim_wavelength",size(band_lims_wvn,1),size(band_lims_wvn,2));
     // for (int j = 1; j <= size(band_lims_wvn,2); j++) {
     //   for (int i = 1; i <= size(band_lims_wvn,1); i++) {
-    parallel_for_cpu_serial( Bounds<2>( size(band_lims_wvn,2) , size(band_lims_wvn,1) ) , YAKL_LAMBDA (int j, int i) {
+    auto &this_band_lims_wvn = this->band_lims_wvn;
+    parallel_for( Bounds<2>( size(band_lims_wvn,2) , size(band_lims_wvn,1) ) , YAKL_LAMBDA (int j, int i) {
       if (this->is_initialized()) {
-        ret(i,j) = 1._wp / this->band_lims_wvn(i,j);
+        ret(i,j) = 1._wp / this_band_lims_wvn(i,j);
       } else {
         ret(i,j) = 0._wp;
       }
@@ -152,14 +154,16 @@ public:
   // Are the bands of two objects the same? (same number, same wavelength limits)
   bool bands_are_equal(OpticalProps const &rhs) const {
     if ( this->get_nband() != rhs.get_nband() || this->get_nband() == 0) { return false; }
+    yakl::ScalarLiveOut<bool> ret(true);
     // for (int j=1 ; j <= size(this->band_lims_wvn,2); j++) {
     //   for (int i=1 ; i <= size(this->band_lims_wvn,1); i++) {
-    parallel_for_cpu_serial( Bounds<2>( size(this->band_lims_wvn,2) , size(this->band_lims_wvn,1) ) , YAKL_LAMBDA (int j, int i) {
-      if ( abs( this->band_lims_wvn(i,j) - rhs.band_lims_wvn(i,j) ) > 5*epsilon(this->band_lims_wvn) ) {
-        return false;
+    auto &this_band_lims_wvn = this->band_lims_wvn;
+    parallel_for( Bounds<2>( size(this->band_lims_wvn,2) , size(this->band_lims_wvn,1) ) , YAKL_LAMBDA (int j, int i) {
+      if ( abs( this_band_lims_wvn(i,j) - rhs.band_lims_wvn(i,j) ) > 5*epsilon(this_band_lims_wvn) ) {
+        ret = false;
       }
     });
-    return true;
+    return ret.hostRead();
   }
 
 
@@ -167,11 +171,13 @@ public:
   //   (same bands, same number of g-points, same mapping between bands and g-points)
   bool gpoints_are_equal(OpticalProps const &rhs) const {
     if ( ! this->bands_are_equal(rhs) || this->get_ngpt() != rhs.get_ngpt() ) { return false; }
+    yakl::ScalarLiveOut<bool> ret(true);
     // for (int i=1; i <= size(this->gpt2bnd,1); i++) {
-    parallel_for_cpu_serial( Bounds<1>(size(this->gpt2band,1)) , YAKL_LAMBDA (int i) {
-      if ( this->gpt2band(i) != rhs.gpt2band(i) ) { return false; }
+    auto &this_gpt2band = this->gpt2band;
+    parallel_for( Bounds<1>(size(this->gpt2band,1)) , YAKL_LAMBDA (int i) {
+      if ( this_gpt2band(i) != rhs.gpt2band(i) ) { ret = false; }
     });
-    return true;
+    return ret.hostRead();
   }
 
 
@@ -180,9 +186,10 @@ public:
     real1d ret("arr_out",size(this->gpt2band,1));
     // do iband=1,this->get_nband()
     // TODO: I don't know if this needs to be serialize or not at first glance. Need to look at it more.
-    parallel_for_cpu_serial( Bounds<1>(1) , YAKL_LAMBDA (int dummy) {
-      for (int iband = 1 ; iband <= this->get_nband() ; iband++) {
-        for (int i=this->band2gpt(1,iband) ; i <= this->band2gpt(2,iband) ; i++) {
+    auto &this_band2gpt = this->gpt2band;
+    parallel_for( Bounds<1>(1) , YAKL_LAMBDA (int dummy) {
+      for (int iband = 1 ; iband <= get_nband() ; iband++) {
+        for (int i=this_band2gpt(1,iband) ; i <= this_band2gpt(2,iband) ; i++) {
           ret(i) = arr_in(iband);
         }
       }

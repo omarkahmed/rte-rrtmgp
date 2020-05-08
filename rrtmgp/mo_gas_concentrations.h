@@ -91,11 +91,11 @@ public:
       stoprun("GasConcs::set_vmr(): trying to set a gas whose name was not provided at initialization");
     }
     if (w < 0._wp || w > 1._wp) { stoprun("GasConcs::set_vmr(): concentrations should be >= 0, <= 1"); }
-    auto &concs = this->concs;
+    auto &this_concs = this->concs;
     // for (int ilay=1; ilay<=this->nlay; ilay++) {
     //   for (int icol=1; icol<=this->ncol; icol++) {
     parallel_for( Bounds<2>(nlay,ncol) , YAKL_LAMBDA (int ilay, int icol) {
-      concs(icol,ilay,igas) = w;
+      this_concs(icol,ilay,igas) = w;
     });
   }
 
@@ -115,11 +115,11 @@ public:
       if (w(i) < 0._wp || w(i) > 1._wp) { badVal = true; }
     });
     if (badVal.hostRead()) { stoprun("GasConcs::set_vmr(): concentrations should be >= 0, <= 1"); }
-    auto &concs = this->concs;
+    auto &this_concs = this->concs;
     // for (int ilay=1; ilay<=this->nlay; ilay++) {
     //   for (int icol=1; icol<=this->ncol; icol++) {
     parallel_for( Bounds<2>(nlay,ncol) , YAKL_LAMBDA (int ilay, int icol) {
-      concs(icol,ilay,igas) = w(ilay);
+      this_concs(icol,ilay,igas) = w(ilay);
     });
   }
   
@@ -141,11 +141,11 @@ public:
       if (w(i,j) < 0._wp || w(i,j) > 1._wp) { badVal = true;}
     });
     if (badVal.hostRead()) { stoprun("GasConcs::set_vmr(): concentrations should be >= 0, <= 1"); }
-    auto &concs = this->concs;
+    auto &this_concs = this->concs;
     // for (int ilay=1; ilay<=this->nlay; ilay++) {
     //   for (int icol=1; icol<=this->ncol; icol++) {
     parallel_for( Bounds<2>(nlay,ncol) , YAKL_LAMBDA (int ilay, int icol) {
-      concs(icol,ilay,igas) = w(icol,ilay);
+      this_concs(icol,ilay,igas) = w(icol,ilay);
     });
   }
 
@@ -159,8 +159,9 @@ public:
     if (igas == GAS_NOT_IN_LIST) { stoprun("GasConcs::get_vmr; gas not found" ); }
     // for (int ilay=1; ilay<=size(array,2); ilay++) {
     //   for (int icol=1; icol<=size(array,1); icol++) {
+    auto &this_concs = this->concs;
     parallel_for( Bounds<2>(size(array,2),size(array,1)) , YAKL_LAMBDA (int ilay, int icol) {
-      array(icol,ilay) = this->concs(icol,ilay,igas);
+      array(icol,ilay) = this_concs(icol,ilay,igas);
     });
   }
 

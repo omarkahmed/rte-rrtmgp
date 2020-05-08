@@ -14,7 +14,7 @@ YAKL_INLINE real constexpr operator"" _wp( long double x ) {
 }
 
 
-using yakl::fortran::parallel_for_cpu_serial;
+using yakl::fortran::parallel_for;
 using yakl::fortran::Bounds;
 using yakl::max;
 using yakl::min;

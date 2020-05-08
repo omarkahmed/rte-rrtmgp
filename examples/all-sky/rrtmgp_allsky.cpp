@@ -136,7 +136,7 @@ int main(int argc , char **argv) {
       fluxes.flux_dn     = flux_dn ;
       fluxes.flux_dn_dir = flux_dir;
 
-      k_dist.gas_optics(p_lay, p_lev, t_lay, gas_concs, atmos, toa_flux);
+      k_dist.gas_optics(top_at_1, p_lay, p_lev, t_lay, gas_concs, atmos, toa_flux);
       clouds.delta_scale();
       clouds.increment(atmos);
       rte_sw(atmos, top_at_1, mu0, toa_flux, sfc_alb_dir, sfc_alb_dif, fluxes);
@@ -212,7 +212,7 @@ int main(int argc , char **argv) {
       fluxes.flux_dn = flux_dn;
 
       // Calling with an empty col_dry parameter
-      k_dist.gas_optics(p_lay, p_lev, t_lay, t_sfc, gas_concs, atmos, lw_sources, real2d(), t_lev);
+      k_dist.gas_optics(top_at_1, p_lay, p_lev, t_lay, t_sfc, gas_concs, atmos, lw_sources, real2d(), t_lev);
       clouds.increment(atmos);
       rte_lw(atmos, top_at_1, lw_sources, emis_sfc, fluxes);
 

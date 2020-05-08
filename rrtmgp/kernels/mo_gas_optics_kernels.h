@@ -128,7 +128,7 @@ void compute_tau_absorption(int ncol, int nlay, int nbnd, int ngpt, int ngas, in
                             int1d const &idx_minor_scaling_lower, int1d const &idx_minor_scaling_upper, int1d const &kminor_start_lower,                 
                             int1d const &kminor_start_upper, bool2d const &tropo, real4d const &col_mix, real6d const &fmajor,
                             real5d const &fminor, real2d const &play, real2d const &tlay, real3d const &col_gas, int4d const &jeta,
-                            int2d const &jtemp, int2d const &jpress, real3d &tau);
+                            int2d const &jtemp, int2d const &jpress, real3d &tau, bool top_at_1);
 
 
 
