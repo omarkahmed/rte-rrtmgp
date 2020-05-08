@@ -49,6 +49,7 @@ module mo_fluxes
   contains
     procedure, public :: reduce      => reduce_broadband
     procedure, public :: are_desired => are_desired_broadband
+    procedure, public :: print_norms
   end type ty_fluxes_broadband
   ! -----------------------------------------------------------------------------------------------
 
@@ -195,4 +196,16 @@ contains
                                   associated(this%flux_net)] )
   end function are_desired_broadband
   ! --------------------------------------------------------------------------------------
+
+
+  subroutine print_norms(this)
+    implicit none
+    class(ty_fluxes_broadband), intent(in   ) :: this
+    if (associated(this%flux_up    )) write(*,*) "flux_up    : " , sum(this%flux_up    ) 
+    if (associated(this%flux_dn    )) write(*,*) "flux_dn    : " , sum(this%flux_dn    ) 
+    if (associated(this%flux_net   )) write(*,*) "flux_net   : " , sum(this%flux_net   ) 
+    if (associated(this%flux_dn_dir)) write(*,*) "flux_dn_dir: " , sum(this%flux_dn_dir) 
+  end subroutine print_norms
+
+
 end module mo_fluxes

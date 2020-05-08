@@ -72,6 +72,7 @@ module mo_gas_concentrations
       generic,   public :: get_subset => get_subset_range
       procedure, public :: get_num_gases
       procedure, public :: get_gas_names
+      procedure, public :: print_norms
   end type ty_gas_concs
 contains
   ! -------------------------------------------------------------------------------------
@@ -487,4 +488,22 @@ contains
     !$acc exit data delete(this)
   end subroutine del
   ! -------------------------------------------------------------------------------------
+  
+  subroutine print_norms(this)
+    implicit none
+    class(ty_gas_concs), intent(in) :: this
+    integer  :: i
+    real(wp) :: sm
+                                  write(*,*) "ncol      : ", this%ncol
+                                  write(*,*) "nlay      : ", this%nlay
+                                  write(*,*) "ngas      : ", this%get_num_gases()
+    if (allocated(this%gas_name)) write(*,*) "gas_name  : ", this%gas_name
+    sm = 0
+    do i=1,this%get_num_gases()
+      sm = sm + sum(this%concs(i)%conc)
+    enddo
+    if (allocated(this%concs))    write(*,*) "sum(concs): ", sm
+  end subroutine
+
+
 end module mo_gas_concentrations

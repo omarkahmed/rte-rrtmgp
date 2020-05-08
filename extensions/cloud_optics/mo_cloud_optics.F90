@@ -78,6 +78,7 @@ module mo_cloud_optics
     ! Internal procedures
     procedure, private :: load_lut
     procedure, private :: load_pade
+    procedure, public  :: print_norms
   end type ty_cloud_optics
 
 contains
@@ -763,4 +764,44 @@ contains
 
     pade_eval_1 = numer/denom
   end function pade_eval_1
+
+
+  subroutine print_norms(this)
+    implicit none
+    class(ty_cloud_optics), intent(in   ) :: this
+                                            write(*,*) "name                   : " , this%name    
+                                            write(*,*) "icergh                 : " , this%icergh                 
+                                            write(*,*) "radliq_lwr             : " , this%radliq_lwr             
+                                            write(*,*) "radliq_upr             : " , this%radliq_upr             
+                                            write(*,*) "radice_lwr             : " , this%radice_lwr             
+                                            write(*,*) "radice_upr             : " , this%radice_upr             
+                                            write(*,*) "liq_nsteps             : " , this%liq_nsteps             
+                                            write(*,*) "ice_nsteps             : " , this%ice_nsteps             
+                                            write(*,*) "liq_step_size          : " , this%liq_step_size          
+                                            write(*,*) "ice_step_size          : " , this%ice_step_size          
+    if (allocated(this%lut_extliq        )) write(*,*) "sum(lut_extliq        ): " , sum(this%lut_extliq        )
+    if (allocated(this%lut_ssaliq        )) write(*,*) "sum(lut_ssaliq        ): " , sum(this%lut_ssaliq        )
+    if (allocated(this%lut_asyliq        )) write(*,*) "sum(lut_asyliq        ): " , sum(this%lut_asyliq        )
+    if (allocated(this%lut_extice        )) write(*,*) "sum(lut_extice        ): " , sum(this%lut_extice        )
+    if (allocated(this%lut_ssaice        )) write(*,*) "sum(lut_ssaice        ): " , sum(this%lut_ssaice        )
+    if (allocated(this%lut_asyice        )) write(*,*) "sum(lut_asyice        ): " , sum(this%lut_asyice        )
+    if (allocated(this%pade_extliq       )) write(*,*) "sum(pade_extliq       ): " , sum(this%pade_extliq       )
+    if (allocated(this%pade_ssaliq       )) write(*,*) "sum(pade_ssaliq       ): " , sum(this%pade_ssaliq       )
+    if (allocated(this%pade_asyliq       )) write(*,*) "sum(pade_asyliq       ): " , sum(this%pade_asyliq       )
+    if (allocated(this%pade_extice       )) write(*,*) "sum(pade_extice       ): " , sum(this%pade_extice       )
+    if (allocated(this%pade_ssaice       )) write(*,*) "sum(pade_ssaice       ): " , sum(this%pade_ssaice       )
+    if (allocated(this%pade_asyice       )) write(*,*) "sum(pade_asyice       ): " , sum(this%pade_asyice       )
+    if (allocated(this%pade_sizreg_extliq)) write(*,*) "sum(pade_sizreg_extliq): " , sum(this%pade_sizreg_extliq)
+    if (allocated(this%pade_sizreg_ssaliq)) write(*,*) "sum(pade_sizreg_ssaliq): " , sum(this%pade_sizreg_ssaliq)
+    if (allocated(this%pade_sizreg_asyliq)) write(*,*) "sum(pade_sizreg_asyliq): " , sum(this%pade_sizreg_asyliq)
+    if (allocated(this%pade_sizreg_extice)) write(*,*) "sum(pade_sizreg_extice): " , sum(this%pade_sizreg_extice)
+    if (allocated(this%pade_sizreg_ssaice)) write(*,*) "sum(pade_sizreg_ssaice): " , sum(this%pade_sizreg_ssaice)
+    if (allocated(this%pade_sizreg_asyice)) write(*,*) "sum(pade_sizreg_asyice): " , sum(this%pade_sizreg_asyice)
+    if (allocated(this%band2gpt          )) write(*,*) "band2gpt               : " , sum(this%band2gpt          )
+    if (allocated(this%gpt2band          )) write(*,*) "gpt2band               : " , sum(this%gpt2band          )
+    if (allocated(this%band_lims_wvn     )) write(*,*) "band_lims_wvn          : " , sum(this%band_lims_wvn     )
+  end subroutine
+
+
+
 end module mo_cloud_optics

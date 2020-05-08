@@ -168,6 +168,7 @@ module mo_optical_props
     procedure, private :: init_and_alloc_1scl
     procedure, private :: copy_and_alloc_1scl
     generic,   public  :: alloc_1scl => alloc_only_1scl, init_and_alloc_1scl, copy_and_alloc_1scl
+    procedure, public  :: print_norms => print_norms_1scl
   end type
 
   ! --- 2 stream ------------------------------------------------------------------------
@@ -183,6 +184,7 @@ module mo_optical_props
     procedure, private :: init_and_alloc_2str
     procedure, private :: copy_and_alloc_2str
     generic,   public  :: alloc_2str => alloc_only_2str, init_and_alloc_2str, copy_and_alloc_2str
+    procedure, public  :: print_norms => print_norms_2str
   end type
 
   ! --- n stream ------------------------------------------------------------------------
@@ -1168,5 +1170,31 @@ contains
       get_name = trim(this%name)
   end function get_name
   ! ------------------------------------------------------------------------------------------
+
+
+  subroutine print_norms_1scl(this)
+    implicit none
+    class(ty_optical_props_1scl), intent(in   ) :: this
+                                       write(*,*) "name         : " , this%name               
+    if (allocated(this%band2gpt     )) write(*,*) "band2gpt     : " , sum(this%band2gpt     ) 
+    if (allocated(this%gpt2band     )) write(*,*) "gpt2band     : " , sum(this%gpt2band     ) 
+    if (allocated(this%band_lims_wvn)) write(*,*) "band_lims_wvn: " , sum(this%band_lims_wvn) 
+    if (allocated(this%tau          )) write(*,*) "tau          : " , sum(this%tau          ) 
+  end subroutine print_norms_1scl
+
+
+  subroutine print_norms_2str(this)
+    implicit none
+    class(ty_optical_props_2str), intent(in   ) :: this
+                                       write(*,*) "name         : " , this%name               
+    if (allocated(this%band2gpt     )) write(*,*) "band2gpt     : " , sum(this%band2gpt     ) 
+    if (allocated(this%gpt2band     )) write(*,*) "gpt2band     : " , sum(this%gpt2band     ) 
+    if (allocated(this%band_lims_wvn)) write(*,*) "band_lims_wvn: " , sum(this%band_lims_wvn) 
+    if (allocated(this%tau          )) write(*,*) "tau          : " , sum(this%tau          ) 
+    if (allocated(this%ssa          )) write(*,*) "ssa          : " , sum(this%ssa          ) 
+    if (allocated(this%g            )) write(*,*) "g            : " , sum(this%g            )   
+  end subroutine print_norms_2str
+
+
 
 end module mo_optical_props

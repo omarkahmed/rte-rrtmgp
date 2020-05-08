@@ -36,12 +36,10 @@ module mo_gas_optics_rrtmgp
   use mo_gas_optics,         only: ty_gas_optics
   use mo_rrtmgp_util_reorder
   implicit none
-  private
   real(wp), parameter :: pi = acos(-1._wp)
 
   ! -------------------------------------------------------------------------------------------------
   type, extends(ty_gas_optics), public :: ty_gas_optics_rrtmgp
-    private
     !
     ! RRTMGP computes absorption in each band arising from
     !   two major species in each band, which are combined to make
@@ -166,6 +164,7 @@ module mo_gas_optics_rrtmgp
     procedure, private :: get_npres
     procedure, private :: get_ntemp
     procedure, private :: get_nPlanckTemp
+    procedure, public  :: print_norms
   end type
   ! -------------------------------------------------------------------------------------------------
   !
@@ -1695,4 +1694,51 @@ contains
 
     get_nPlanckTemp = size(this%totplnk,dim=1) ! dimensions are Planck-temperature, band
   end function get_nPlanckTemp
+
+  
+  subroutine print_norms(this)
+    implicit none
+    class(ty_gas_optics_rrtmgp), intent(in) :: this
+                                                          write(*,*) "name                                  : " , this%name                                   
+                                                          write(*,*) "totplnk_delta                         : " , this%totplnk_delta                          
+                                                          write(*,*) "press_ref_min                         : " , this%press_ref_min                          
+                                                          write(*,*) "press_ref_max                         : " , this%press_ref_max                          
+                                                          write(*,*) "temp_ref_min                          : " , this%temp_ref_min                           
+                                                          write(*,*) "temp_ref_max                          : " , this%temp_ref_max                           
+                                                          write(*,*) "press_ref_log_delta                   : " , this%press_ref_log_delta                    
+                                                          write(*,*) "temp_ref_delta                        : " , this%temp_ref_delta                         
+                                                          write(*,*) "press_ref_trop_log                    : " , this%press_ref_trop_log                     
+    if (allocated(this%gas_names                      ))  write(*,*) "gas_names                             : " , this%gas_names                              
+    if (allocated(this%band2gpt                       ))  write(*,*) "sum(band2gpt     )                    : " , sum(this%band2gpt     )                     
+    if (allocated(this%gpt2band                       ))  write(*,*) "sum(gpt2band     )                    : " , sum(this%gpt2band     )                     
+    if (allocated(this%band_lims_wvn                  ))  write(*,*) "sum(band_lims_wvn)                    : " , sum(this%band_lims_wvn)                     
+    if (allocated(this%press_ref                      ))  write(*,*) "sum(press_ref    )                    : " , sum(this%press_ref    )                     
+    if (allocated(this%press_ref_log                  ))  write(*,*) "sum(press_ref_log)                    : " , sum(this%press_ref_log)                     
+    if (allocated(this%temp_ref                       ))  write(*,*) "sum(temp_ref     )                    : " , sum(this%temp_ref     )                     
+    if (allocated(this%vmr_ref                        ))  write(*,*) "sum(vmr_ref                )          : " , sum(this%vmr_ref                )           
+    if (allocated(this%flavor                         ))  write(*,*) "sum(flavor                 )          : " , sum(this%flavor                 )           
+    if (allocated(this%gpoint_flavor                  ))  write(*,*) "sum(gpoint_flavor          )          : " , sum(this%gpoint_flavor          )           
+    if (allocated(this%kmajor                         ))  write(*,*) "sum(kmajor                 )          : " , sum(this%kmajor                 )           
+    if (allocated(this%minor_limits_gpt_lower         ))  write(*,*) "sum(minor_limits_gpt_lower )          : " , sum(this%minor_limits_gpt_lower )           
+    if (allocated(this%minor_limits_gpt_upper         ))  write(*,*) "sum(minor_limits_gpt_upper )          : " , sum(this%minor_limits_gpt_upper )           
+    if (allocated(this%idx_minor_lower                ))  write(*,*) "sum(idx_minor_lower        )          : " , sum(this%idx_minor_lower        )           
+    if (allocated(this%idx_minor_upper                ))  write(*,*) "sum(idx_minor_upper        )          : " , sum(this%idx_minor_upper        )           
+    if (allocated(this%idx_minor_scaling_lower        ))  write(*,*) "sum(idx_minor_scaling_lower)          : " , sum(this%idx_minor_scaling_lower)           
+    if (allocated(this%idx_minor_scaling_upper        ))  write(*,*) "sum(idx_minor_scaling_upper)          : " , sum(this%idx_minor_scaling_upper)           
+    if (allocated(this%kminor_start_lower             ))  write(*,*) "sum(kminor_start_lower     )          : " , sum(this%kminor_start_lower     )           
+    if (allocated(this%kminor_start_upper             ))  write(*,*) "sum(kminor_start_upper     )          : " , sum(this%kminor_start_upper     )           
+    if (allocated(this%kminor_lower                   ))  write(*,*) "sum(kminor_lower           )          : " , sum(this%kminor_lower           )           
+    if (allocated(this%kminor_upper                   ))  write(*,*) "sum(kminor_upper           )          : " , sum(this%kminor_upper           )           
+    if (allocated(this%krayl                          ))  write(*,*) "sum(krayl                  )          : " , sum(this%krayl                  )           
+    if (allocated(this%planck_frac                    ))  write(*,*) "sum(planck_frac            )          : " , sum(this%planck_frac            )           
+    if (allocated(this%totplnk                        ))  write(*,*) "sum(totplnk                )          : " , sum(this%totplnk                )           
+    if (allocated(this%solar_src                      ))  write(*,*) "sum(solar_src              )          : " , sum(this%solar_src              )           
+    if (allocated(this%minor_scales_with_density_lower))  write(*,*) "count(minor_scales_with_density_lower): " , count(this%minor_scales_with_density_lower) 
+    if (allocated(this%minor_scales_with_density_upper))  write(*,*) "count(minor_scales_with_density_upper): " , count(this%minor_scales_with_density_upper) 
+    if (allocated(this%scale_by_complement_lower      ))  write(*,*) "count(scale_by_complement_lower      ): " , count(this%scale_by_complement_lower      ) 
+    if (allocated(this%scale_by_complement_upper      ))  write(*,*) "count(scale_by_complement_upper      ): " , count(this%scale_by_complement_upper      ) 
+    if (allocated(this%is_key                         ))  write(*,*) "count(is_key                         ): " , count(this%is_key                         ) 
+  end subroutine
+
+
 end module mo_gas_optics_rrtmgp

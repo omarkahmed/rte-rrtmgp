@@ -41,6 +41,7 @@ module mo_source_functions
     procedure, public :: get_subset => get_subset_range_lw
     procedure, public :: get_ncol => get_ncol_lw
     procedure, public :: get_nlay => get_nlay_lw
+    procedure, public :: print_norms => print_norms_lw
     ! validate?
   end type ty_source_func_lw
   ! -------------------------------------------------------------------------------------------------
@@ -57,6 +58,7 @@ module mo_source_functions
     procedure, public :: finalize => finalize_sw
     procedure, public :: get_subset => get_subset_range_sw
     procedure, public :: get_ncol => get_ncol_sw
+    procedure, public :: print_norms => print_norms_sw
     ! validate?
   end type ty_source_func_sw
   ! -------------------------------------------------------------------------------------------------
@@ -277,4 +279,32 @@ contains
 
     subset%toa_source(1:n,  :) = full%toa_source(start:start+n-1,  :)
   end function get_subset_range_sw
+
+
+  subroutine print_norms_lw(this)
+    implicit none
+    class(ty_source_func_lw), intent(in   ) :: this
+                                        write(*,*) "name          : " , this%name    
+    if (allocated(this%lay_source    )) write(*,*) "lay_source    : " , sum(this%lay_source    )
+    if (allocated(this%lev_source_inc)) write(*,*) "lev_source_inc: " , sum(this%lev_source_inc)
+    if (allocated(this%lev_source_dec)) write(*,*) "lev_source_dec: " , sum(this%lev_source_dec)
+    if (allocated(this%sfc_source    )) write(*,*) "sfc_source    : " , sum(this%sfc_source    )
+    if (allocated(this%band2gpt      )) write(*,*) "band2gpt      : " , sum(this%band2gpt      )
+    if (allocated(this%gpt2band      )) write(*,*) "gpt2band      : " , sum(this%gpt2band      )
+    if (allocated(this%band_lims_wvn )) write(*,*) "band_lims_wvn : " , sum(this%band_lims_wvn )
+  end subroutine print_norms_lw
+
+
+  subroutine print_norms_sw(this)
+    implicit none
+    class(ty_source_func_sw), intent(in   ) :: this
+                                        write(*,*) "name          : " , this%name    
+    if (allocated(this%toa_source    )) write(*,*) "toa_source    : " , sum(this%toa_source    )
+    if (allocated(this%band2gpt      )) write(*,*) "band2gpt      : " , sum(this%band2gpt      )
+    if (allocated(this%gpt2band      )) write(*,*) "gpt2band      : " , sum(this%gpt2band      )
+    if (allocated(this%band_lims_wvn )) write(*,*) "band_lims_wvn : " , sum(this%band_lims_wvn )
+  end subroutine print_norms_sw
+
+
+
 end module mo_source_functions

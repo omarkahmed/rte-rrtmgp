@@ -158,6 +158,7 @@ program rte_rrtmgp_clouds
   do igas = 1, ngas
     call vmr_2d_to_1d(gas_concs, gas_concs_garand, gas_names(igas), size(p_lay, 1), nlay)
   end do
+
   !  If we trusted in Fortran allocate-on-assign we could skip the temp_array here
   allocate(temp_array(ncol, nlay))
   temp_array = spread(p_lay(1,:), dim = 1, ncopies=ncol)
@@ -176,6 +177,7 @@ program rte_rrtmgp_clouds
   ! ----------------------------------------------------------------------------
   ! load data into classes
   call load_and_init(k_dist, k_dist_file, gas_concs)
+
   is_sw = k_dist%source_is_external()
   is_lw = .not. is_sw
   !
@@ -338,6 +340,7 @@ program rte_rrtmgp_clouds
                               lw_sources,      &
                               emis_sfc,        &
                               fluxes))
+      call fluxes%print_norms()
       !$acc exit data delete(lw_sources%lay_source, lw_sources%lev_source_inc, lw_sources%lev_source_dec, lw_sources%sfc_source, lw_sources)
     else
       !$acc enter data create(toa_flux)
@@ -354,6 +357,7 @@ program rte_rrtmgp_clouds
                               mu0,   toa_flux, &
                               sfc_alb_dir, sfc_alb_dif, &
                               fluxes))
+      call fluxes%print_norms()
       !$acc exit data delete(toa_flux)
     end if
     !print *, "******************************************************************"
