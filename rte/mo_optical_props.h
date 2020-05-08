@@ -266,6 +266,15 @@ public:
   // Implemented later because OpticalProps2str hasn't been created yet
   inline void increment(OpticalProps2str &that);
 
+
+  void print_norms() const {
+                                    std::cout << "name         : " << name                      ;
+    if (allocated(band2gpt     )) { std::cout << "band2gpt     : " << sum(band2gpt     ) << "\n"; }
+    if (allocated(gpt2band     )) { std::cout << "gpt2band     : " << sum(gpt2band     ) << "\n"; }
+    if (allocated(band_lims_wvn)) { std::cout << "band_lims_wvn: " << sum(band_lims_wvn) << "\n"; }
+    if (allocated(tau          )) { std::cout << "tau          : " << sum(tau          ) << "\n"; }
+  }
+
 };
 
 
@@ -363,6 +372,18 @@ public:
       inc_2stream_by_2stream_bybnd(ncol, nlay, ngpt, that.tau, that.ssa, that.g, this->tau, this->ssa, this->g, that.get_nband(), that.get_band_lims_gpoint());
     }
   }
+
+
+  void print_norms() const {
+                                    std::cout << "name         : " << name                      ;
+    if (allocated(band2gpt     )) { std::cout << "band2gpt     : " << sum(band2gpt     ) << "\n"; }
+    if (allocated(gpt2band     )) { std::cout << "gpt2band     : " << sum(gpt2band     ) << "\n"; }
+    if (allocated(band_lims_wvn)) { std::cout << "band_lims_wvn: " << sum(band_lims_wvn) << "\n"; }
+    if (allocated(tau          )) { std::cout << "tau          : " << sum(tau          ) << "\n"; }
+    if (allocated(ssa          )) { std::cout << "ssa          : " << sum(ssa          ) << "\n"; }
+    if (allocated(g            )) { std::cout << "g            : " << sum(g            ) << "\n"; }  
+  }
+
 };
 
 

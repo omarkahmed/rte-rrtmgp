@@ -96,9 +96,9 @@ void read_atmos(std::string input_file, real2d &p_lay, real2d &t_lay, real2d &p_
 void write_sw_fluxes(std::string fileName, real2d const &flux_up, real2d const &flux_dn, real2d const &flux_dir, int ncol) {
   yakl::SimpleNetCDF io;
   io.open(fileName , yakl::NETCDF_MODE_WRITE);
-  io.write(flux_up  , "sw_flux_up_result"  , {"col_flx","lev"});
-  io.write(flux_dn  , "sw_flux_dn_result"  , {"col_flx","lev"});
-  io.write(flux_dir , "sw_flux_dir_result" , {"col_flx","lev"});
+  io.write(flux_up  , "sw_flux_up_result"  , {"col_new","lev"});
+  io.write(flux_dn  , "sw_flux_dn_result"  , {"col_new","lev"});
+  io.write(flux_dir , "sw_flux_dir_result" , {"col_new","lev"});
   io.close();
 }
 
@@ -107,8 +107,8 @@ void write_sw_fluxes(std::string fileName, real2d const &flux_up, real2d const &
 void write_lw_fluxes(std::string fileName, real2d const &flux_up, real2d const &flux_dn, int ncol) {
   yakl::SimpleNetCDF io;
   io.open(fileName , yakl::NETCDF_MODE_WRITE);
-  io.write(flux_up , "lw_flux_up_result" , {"col_flx","lev"});
-  io.write(flux_dn , "lw_flux_dn_result" , {"col_flx","lev"});
+  io.write(flux_up , "lw_flux_up_result" , {"col_new","lev"});
+  io.write(flux_dn , "lw_flux_dn_result" , {"col_new","lev"});
   io.close();
 }
 

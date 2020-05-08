@@ -69,6 +69,18 @@ public:
     if (this->is_allocated()) { return size(this->lay_source,2); } else { return 0; }
   }
 
+
+  void print_norms() const {
+                                     std::cout << "name          : " << name                << "\n";
+    if (allocated(lay_source    )) { std::cout << "lay_source    : " << sum(lay_source    ) << "\n"; }
+    if (allocated(lev_source_inc)) { std::cout << "lev_source_inc: " << sum(lev_source_inc) << "\n"; }
+    if (allocated(lev_source_dec)) { std::cout << "lev_source_dec: " << sum(lev_source_dec) << "\n"; }
+    if (allocated(sfc_source    )) { std::cout << "sfc_source    : " << sum(sfc_source    ) << "\n"; }
+    if (allocated(band2gpt      )) { std::cout << "band2gpt      : " << sum(band2gpt      ) << "\n"; }
+    if (allocated(gpt2band      )) { std::cout << "gpt2band      : " << sum(gpt2band      ) << "\n"; }
+    if (allocated(band_lims_wvn )) { std::cout << "band_lims_wvn : " << sum(band_lims_wvn ) << "\n"; }
+  }
+
 };
 
 
@@ -106,5 +118,15 @@ public:
   int get_ncol() const {
     if (this->is_allocated()) { return size(this->toa_source,1); } else { return 0; }
   }
+
+
+  void print_norms() const {
+                                     std::cout << "name          : " << name                << "\n";
+    if (allocated(toa_source    )) { std::cout << "toa_source    : " << sum(toa_source    ) << "\n"; }
+    if (allocated(band2gpt      )) { std::cout << "band2gpt      : " << sum(band2gpt      ) << "\n"; }
+    if (allocated(gpt2band      )) { std::cout << "gpt2band      : " << sum(gpt2band      ) << "\n"; }
+    if (allocated(band_lims_wvn )) { std::cout << "band_lims_wvn : " << sum(band_lims_wvn ) << "\n"; }
+  }
+
 };
 

@@ -183,6 +183,15 @@ public:
   }
 
 
+  void print_norms() const {
+                               std::cout << "ncol      : " << ncol       << "\n";
+                               std::cout << "nlay      : " << nlay       << "\n";
+                               std::cout << "ngas      : " << ngas       << "\n";
+    if (allocated(gas_name)) { std::cout << "gas_name  : " << gas_name   << "\n"; }
+    if (allocated(concs   )) { std::cout << "sum(concs): " << sum(concs) << "\n"; }
+  }
+
+
 };
 
 

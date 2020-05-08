@@ -22,6 +22,9 @@ using yakl::abs;
 using yakl::fortran::mod;
 using yakl::fortran::merge;
 using yakl::fortran::size;
+using yakl::fortran::sum;
+using yakl::fortran::count;
+using yakl::fortran::allocated;
 
 
 typedef FArray<real,1,yakl::memDevice> umgReal1d;

@@ -80,6 +80,15 @@ public:
   bool are_desired() const {
     return allocated(this->flux_up) || allocated(this->flux_dn) || allocated(this->flux_dn_dir) || allocated(this->flux_net);
   }
+
+
+  void print_norms() const {
+    if (allocated(flux_up    )) { std::cout << "flux_up    : " << sum(flux_up    ) << "\n"; }
+    if (allocated(flux_dn    )) { std::cout << "flux_dn    : " << sum(flux_dn    ) << "\n"; }
+    if (allocated(flux_net   )) { std::cout << "flux_net   : " << sum(flux_net   ) << "\n"; }
+    if (allocated(flux_dn_dir)) { std::cout << "flux_dn_dir: " << sum(flux_dn_dir) << "\n"; }
+  }
+
 };
 
 

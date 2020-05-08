@@ -140,6 +140,8 @@ int main(int argc , char **argv) {
       clouds.delta_scale();
       clouds.increment(atmos);
       rte_sw(atmos, top_at_1, mu0, toa_flux, sfc_alb_dir, sfc_alb_dif, fluxes);
+
+      fluxes.print_norms();
     }
 
     std::cout << "Writing fluxes\n\n";
@@ -208,10 +210,13 @@ int main(int argc , char **argv) {
       FluxesBroadband fluxes;
       fluxes.flux_up = flux_up;
       fluxes.flux_dn = flux_dn;
+
       // Calling with an empty col_dry parameter
       k_dist.gas_optics(p_lay, p_lev, t_lay, t_sfc, gas_concs, atmos, lw_sources, real2d(), t_lev);
       clouds.increment(atmos);
       rte_lw(atmos, top_at_1, lw_sources, emis_sfc, fluxes);
+
+      fluxes.print_norms();
     }
 
     std::cout << "Writing fluxes\n\n";
