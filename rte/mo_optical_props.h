@@ -17,6 +17,7 @@ class OpticalProps {
 public:
   int2d  band2gpt;       // (begin g-point, end g-point) = band2gpt(2,band)
   int1d  gpt2band;       // band = gpt2band(g-point)
+  int    ngpt;
   real2d band_lims_wvn;  // (upper and lower wavenumber by band) = band_lims_wvn(2,band)
   std::string name;
 
@@ -26,12 +27,16 @@ public:
   void init( real2d const &band_lims_wvn , int2d const &band_lims_gpt=int2d() , std::string name="" ) {
     int2d band_lims_gpt_lcl("band_lims_gpt_lcl",2,size(band_lims_wvn,2));
     if (size(band_lims_wvn,1) != 2) { stoprun("optical_props::init(): band_lims_wvn 1st dim should be 2"); }
-    if (anyLT(band_lims_wvn,0._wp)) { stoprun("optical_props::init(): band_lims_wvn has values <  0."); }
+    #ifdef RRTMGP_EXPENSIVE_CHECKS
+      if (anyLT(band_lims_wvn,0._wp)) { stoprun("optical_props::init(): band_lims_wvn has values <  0."); }
+    #endif
     if (allocated(band_lims_gpt)) {
       if (size(band_lims_gpt,2) != size(band_lims_wvn,2)) {
         stoprun("optical_props::init(): band_lims_gpt size inconsistent with band_lims_wvn");
       }
-      if (anyLT(band_lims_gpt,1) ) { stoprun("optical_props::init(): band_lims_gpt has values < 1"); }
+      #ifdef RRTMGP_EXPENSIVE_CHECKS
+        if (anyLT(band_lims_gpt,1) ) { stoprun("optical_props::init(): band_lims_gpt has values < 1"); }
+      #endif
       // for (int j=1; j <= size(band_lims_gpt,2); j++) {
       //   for (int i=1; i <= size(band_lims_gpt,1); i++) {
       parallel_for( Bounds<2>(size(band_lims_gpt,2),size(band_lims_gpt,1)) , YAKL_LAMBDA (int j, int i) {
@@ -49,6 +54,7 @@ public:
     this->band2gpt      = band_lims_gpt_lcl;
     this->band_lims_wvn = band_lims_wvn;
     this->name          = name;
+    this->ngpt          = maxval(this->band2gpt);
 
     // Make a map between g-points and bands
     //   Efficient only when g-point indexes start at 1 and are contiguous.
@@ -95,7 +101,7 @@ public:
 
   // Number of g-points
   YAKL_INLINE int get_ngpt() const {
-    if (this->is_initialized()) { return maxval(this->band2gpt); }
+    if (this->is_initialized()) { return this->ngpt; }
     return 0;
   }
 
@@ -226,7 +232,9 @@ class OpticalProps1scl : public OpticalPropsArry {
 public:
   void validate() const {
     if (! allocated(this->tau)) { stoprun("validate: tau not allocated/initialized"); }
-    if (anyLT(this->tau,0._wp)) { stoprun("validate: tau values out of range"); }
+    #ifdef RRTMGP_EXPENSIVE_CHECKS
+      if (anyLT(this->tau,0._wp)) { stoprun("validate: tau values out of range"); }
+    #endif
   }
 
 
@@ -305,9 +313,11 @@ public:
          d1 != size(this->g  ,1) || d2 != size(this->g  ,2) || d3 != size(this->g  ,3) ) {
       stoprun("validate: arrays not sized consistently");
     }
-    if (anyLT(this->tau,0._wp)                          ) { stoprun("validate: tau values out of range"); }
-    if (anyLT(this->ssa,0._wp) || anyGT(this->ssa,1._wp)) { stoprun("validate: ssa values out of range"); }
-    if (anyLT(this->g  ,0._wp) || anyGT(this->g  ,1._wp)) { stoprun("validate: g   values out of range"); }
+    #ifdef RRTMGP_EXPENSIVE_CHECKS
+      if (anyLT(this->tau,0._wp)                          ) { stoprun("validate: tau values out of range"); }
+      if (anyLT(this->ssa,0._wp) || anyGT(this->ssa,1._wp)) { stoprun("validate: ssa values out of range"); }
+      if (anyLT(this->g  ,0._wp) || anyGT(this->g  ,1._wp)) { stoprun("validate: g   values out of range"); }
+    #endif
   }
 
 
@@ -320,7 +330,9 @@ public:
       if (size(forward,1) != ncol || size(forward,2) != nlay || size(forward,3) != ngpt) {
         stoprun("delta_scale: dimension of 'forward' don't match optical properties arrays");
       }
-      if (anyLT(forward,0._wp) || anyGT(forward,1._wp)) { stoprun("delta_scale: values of 'forward' out of bounds [0,1]"); }
+      #ifdef RRTMGP_EXPENSIVE_CHECKS
+        if (anyLT(forward,0._wp) || anyGT(forward,1._wp)) { stoprun("delta_scale: values of 'forward' out of bounds [0,1]"); }
+      #endif
       delta_scale_2str_kernel(ncol, nlay, ngpt, this->tau, this->ssa, this->g, forward);
     } else {
       delta_scale_2str_kernel(ncol, nlay, ngpt, this->tau, this->ssa, this->g);

@@ -279,16 +279,18 @@ public:
       icemsk(icol,ilay) = ciwp(icol,ilay) > 0._wp;
     });
 
-    // Particle size, liquid/ice water paths
-    if ( anyLT(reliq, liqmsk, this->radliq_lwr) || anyGT(reliq, liqmsk, this->radliq_upr) ) {
-      stoprun("cloud optics: liquid effective radius is out of bounds");
-    }
-    if ( anyLT(reice, icemsk, this->radice_lwr) || anyGT(reice, icemsk, this->radice_upr) ) {
-      stoprun("cloud optics: ice effective radius is out of bounds");
-    }
-    if ( anyLT(clwp, liqmsk, 0._wp) || anyLT(ciwp, icemsk, 0._wp) ) {
-      stoprun("cloud optics: negative clwp or ciwp where clouds are supposed to be");
-    }
+    #ifdef RRTMGP_EXPENSIVE_CHECKS
+      // Particle size, liquid/ice water paths
+      if ( anyLT(reliq, liqmsk, this->radliq_lwr) || anyGT(reliq, liqmsk, this->radliq_upr) ) {
+        stoprun("cloud optics: liquid effective radius is out of bounds");
+      }
+      if ( anyLT(reice, icemsk, this->radice_lwr) || anyGT(reice, icemsk, this->radice_upr) ) {
+        stoprun("cloud optics: ice effective radius is out of bounds");
+      }
+      if ( anyLT(clwp, liqmsk, 0._wp) || anyLT(ciwp, icemsk, 0._wp) ) {
+        stoprun("cloud optics: negative clwp or ciwp where clouds are supposed to be");
+      }
+    #endif
 
     // The tables and Pade coefficients determing extinction coeffient, single-scattering albedo,
     //   and asymmetry parameter g as a function of effective raduis

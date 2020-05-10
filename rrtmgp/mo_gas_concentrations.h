@@ -109,12 +109,14 @@ public:
       stoprun("GasConcs::set_vmr(): trying to set a gas whose name not provided at initialization");
     }
     // Check for bad values in w
-    yakl::ScalarLiveOut<bool> badVal(false); // Scalar that must exist in device memory (equiv: bool badVal = false;)
-    // for (int i=1; i<=size(w,1); i++) {
-    parallel_for( Bounds<1>(size(w,1)) , YAKL_LAMBDA (int i) {
-      if (w(i) < 0._wp || w(i) > 1._wp) { badVal = true; }
-    });
-    if (badVal.hostRead()) { stoprun("GasConcs::set_vmr(): concentrations should be >= 0, <= 1"); }
+    #ifdef RRTMGP_EXPENSIVE_CHECKS
+      yakl::ScalarLiveOut<bool> badVal(false); // Scalar that must exist in device memory (equiv: bool badVal = false;)
+      // for (int i=1; i<=size(w,1); i++) {
+      parallel_for( Bounds<1>(size(w,1)) , YAKL_LAMBDA (int i) {
+        if (w(i) < 0._wp || w(i) > 1._wp) { badVal = true; }
+      });
+      if (badVal.hostRead()) { stoprun("GasConcs::set_vmr(): concentrations should be >= 0, <= 1"); }
+    #endif
     auto &this_concs = this->concs;
     // for (int ilay=1; ilay<=this->nlay; ilay++) {
     //   for (int icol=1; icol<=this->ncol; icol++) {
@@ -134,13 +136,15 @@ public:
       stoprun("GasConcs::set_vmr(): trying to set a gas whose name not provided at initialization" );
     }
     // Check for bad values in w
-    yakl::ScalarLiveOut<bool> badVal(false); // Scalar that must exist in device memory (equiv: bool badVal = false;)
-    // for (int j=1; j<=size(w,2); j++) {
-    //   for (int i=1; i<=size(w,1); i++) {
-    parallel_for( Bounds<2>(size(w,2),size(w,1)) , YAKL_LAMBDA (int j, int i) {
-      if (w(i,j) < 0._wp || w(i,j) > 1._wp) { badVal = true;}
-    });
-    if (badVal.hostRead()) { stoprun("GasConcs::set_vmr(): concentrations should be >= 0, <= 1"); }
+    #ifdef RRTMGP_EXPENSIVE_CHECKS
+      yakl::ScalarLiveOut<bool> badVal(false); // Scalar that must exist in device memory (equiv: bool badVal = false;)
+      // for (int j=1; j<=size(w,2); j++) {
+      //   for (int i=1; i<=size(w,1); i++) {
+      parallel_for( Bounds<2>(size(w,2),size(w,1)) , YAKL_LAMBDA (int j, int i) {
+        if (w(i,j) < 0._wp || w(i,j) > 1._wp) { badVal = true;}
+      });
+      if (badVal.hostRead()) { stoprun("GasConcs::set_vmr(): concentrations should be >= 0, <= 1"); }
+    #endif
     auto &this_concs = this->concs;
     // for (int ilay=1; ilay<=this->nlay; ilay++) {
     //   for (int icol=1; icol<=this->ncol; icol++) {

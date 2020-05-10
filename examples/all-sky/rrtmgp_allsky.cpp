@@ -11,8 +11,8 @@
 #include "mo_rte_lw.h"
 #include "mo_rte_sw.h"
 
+
 int main(int argc , char **argv) {
-  yakl::init();
 
   bool constexpr use_luts = true;
 
@@ -30,6 +30,8 @@ int main(int argc , char **argv) {
     std::cout << "./rrtmgp_allsky  input_file  absorption_coefficients_file  cloud_optics_file  ncol  [nloops]\n\n";
     exit(0);
   }
+
+  yakl::init();
 
   std::cout << "Parameters: \n";
   std::cout << "    Input file:        " << input_file        << "\n";

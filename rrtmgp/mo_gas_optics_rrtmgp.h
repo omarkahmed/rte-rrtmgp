@@ -809,15 +809,19 @@ public:
     // External source -- check arrays sizes and values
     // input data sizes and values
     if (size(tsfc,1) != ncol) { stoprun("gas_optics(): array tsfc has wrong size"); }
-    if (anyLT(tsfc,this->temp_ref_min) || anyGT(tsfc,this->temp_ref_max)) {
-      stoprun("gas_optics(): array tsfc has values outside range");
-    }
+    #ifdef RRTMGP_EXPENSIVE_CHECKS
+      if (anyLT(tsfc,this->temp_ref_min) || anyGT(tsfc,this->temp_ref_max)) {
+        stoprun("gas_optics(): array tsfc has values outside range");
+      }
+    #endif
 
     if (allocated(tlev)) {
       if (size(tlev,1) != ncol || size(tlev,2) != nlay+1) { stoprun("gas_optics(): array tlev has wrong size"); }
-      if (anyLT(tlev,this->temp_ref_min) || anyGT(tlev,this->temp_ref_max)) {
-        stoprun("gas_optics(): array tlev has values outside range");
-      }
+      #ifdef RRTMGP_EXPENSIVE_CHECKS
+        if (anyLT(tlev,this->temp_ref_min) || anyGT(tlev,this->temp_ref_max)) {
+          stoprun("gas_optics(): array tlev has values outside range");
+        }
+      #endif
     }
 
     // output extents
@@ -892,18 +896,22 @@ public:
     if (size(play,1) != ncol || size(play,2) != nlay  ) { stoprun("gas_optics(): array play has wrong size"); }
     if (size(tlay,1) != ncol || size(tlay,2) != nlay  ) { stoprun("gas_optics(): array tlay has wrong size"); }
     if (size(plev,1) != ncol || size(plev,2) != nlay+1) { stoprun("gas_optics(): array plev has wrong size"); }
-    if ( anyLT(play,this->press_ref_min) || anyGT(play,this->press_ref_max) ) {
-      stoprun("gas_optics(): array play has values outside range");
-    }
-    if ( anyLT(plev,this->press_ref_min) || anyGT(plev,this->press_ref_max) ) {
-      stoprun("gas_optics(): array plev has values outside range");
-    }
-    if ( anyLT(tlay,this->temp_ref_min) || anyGT(tlay,this->temp_ref_max) ) {
-      stoprun("gas_optics(): array play has values outside range");
-    }
+    #ifdef RRTMGP_EXPENSIVE_CHECKS
+      if ( anyLT(play,this->press_ref_min) || anyGT(play,this->press_ref_max) ) {
+        stoprun("gas_optics(): array play has values outside range");
+      }
+      if ( anyLT(plev,this->press_ref_min) || anyGT(plev,this->press_ref_max) ) {
+        stoprun("gas_optics(): array plev has values outside range");
+      }
+      if ( anyLT(tlay,this->temp_ref_min) || anyGT(tlay,this->temp_ref_max) ) {
+        stoprun("gas_optics(): array play has values outside range");
+      }
+    #endif
     if (allocated(col_dry)) {
       if (size(col_dry,1) != ncol || size(col_dry,2) != nlay) { stoprun("gas_optics(): array col_dry has wrong size"); }
-      if (anyLT(col_dry,0._wp)) { stoprun("gas_optics(): array col_dry has values outside range"); }
+      #ifdef RRTMGP_EXPENSIVE_CHECKS
+        if (anyLT(col_dry,0._wp)) { stoprun("gas_optics(): array col_dry has values outside range"); }
+      #endif
     }
 
     bool use_rayl = allocated(this->krayl);
