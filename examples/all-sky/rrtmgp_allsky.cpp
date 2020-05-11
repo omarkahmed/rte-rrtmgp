@@ -144,7 +144,7 @@ int main(int argc , char **argv) {
       clouds.increment(atmos);
       rte_sw(atmos, top_at_1, mu0, toa_flux, sfc_alb_dir, sfc_alb_dif, fluxes);
 
-      fluxes.print_norms();
+      // fluxes.print_norms();
     }
 
     std::cout << "Writing fluxes\n\n";
@@ -241,7 +241,7 @@ int main(int argc , char **argv) {
       clouds.increment(atmos);
       rte_lw(max_gauss_pts, gauss_Ds, gauss_wts, atmos, top_at_1, lw_sources, emis_sfc, fluxes);
 
-      fluxes.print_norms();
+      // fluxes.print_norms();
     }
 
     std::cout << "Writing fluxes\n\n";

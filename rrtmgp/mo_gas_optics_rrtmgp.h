@@ -1100,13 +1100,11 @@ public:
     if (has_rayleigh) {
       // combine optical depth and rayleigh scattering
       combine_and_reorder_2str(ncol, nlay, ngpt, tau, tau_rayleigh, optical_props.tau, optical_props.ssa, optical_props.g);
-      std::cout << "DEBUG: " << __LINE__ << "\n\n";
     } else {
       // index reorder (ngpt, nlay, ncol) -> (ncol,nlay,gpt)
       reorder123x321(ngpt, nlay, ncol, tau, optical_props.tau);
       zero_array(optical_props.ssa);
       zero_array(optical_props.g  );
-      std::cout << "DEBUG: " << __LINE__ << "\n\n";
     }
   }
 
