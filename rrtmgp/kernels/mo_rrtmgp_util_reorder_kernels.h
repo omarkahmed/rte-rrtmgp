@@ -5,7 +5,7 @@
 
 
 inline void reorder_123x321_kernel(int d1, int d2, int d3, real3d const &array_in, real3d &array_out) {
-  int constexpr TILE_SIZE = 32;
+  int constexpr TILE_SIZE = 2;
   int ntiles1 = d1 / TILE_SIZE + 1;
   int ntiles3 = d3 / TILE_SIZE + 1;
 
