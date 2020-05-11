@@ -14,7 +14,8 @@
 
 int main(int argc , char **argv) {
 
-  yakl::init(400000000);
+  // yakl::init();
+  yakl::init(200000000);
 
   {
 
@@ -132,6 +133,8 @@ int main(int argc , char **argv) {
       });
 
       std::cout << "Running the main loop\n\n";
+      yakl::fence();
+      auto t1 = std::clock();
       for (int iloop = 1 ; iloop <= nloops ; iloop++) {
         cloud_optics.cloud_optics(lwp, iwp, rel, rei, clouds);
 
@@ -146,8 +149,10 @@ int main(int argc , char **argv) {
         clouds.increment(atmos);
         rte_sw(atmos, top_at_1, mu0, toa_flux, sfc_alb_dir, sfc_alb_dif, fluxes);
 
-        // fluxes.print_norms();
+        fluxes.print_norms();
       }
+      yakl::fence();
+      std::cout << "Elapsed Time: " << (double) (std::clock() - t1) / (double) (CLOCKS_PER_SEC) << "\n\n";
 
       std::cout << "Writing fluxes\n\n";
       write_sw_fluxes(input_file, flux_up, flux_dn, flux_dir, ncol);
@@ -230,6 +235,8 @@ int main(int argc , char **argv) {
       // Multiple iterations for big problem sizes, and to help identify data movement
       //   For CPUs we can introduce OpenMP threading over loop iterations
       std::cout << "Running the main loop\n\n";
+      yakl::fence();
+      auto t1 = std::clock();
       for (int iloop = 1 ; iloop <= nloops ; iloop++) {
         cloud_optics.cloud_optics(lwp, iwp, rel, rei, clouds);
 
@@ -243,8 +250,10 @@ int main(int argc , char **argv) {
         clouds.increment(atmos);
         rte_lw(max_gauss_pts, gauss_Ds, gauss_wts, atmos, top_at_1, lw_sources, emis_sfc, fluxes);
 
-        // fluxes.print_norms();
+        fluxes.print_norms();
       }
+      yakl::fence();
+      std::cout << "Elapsed Time: " << (double) (std::clock() - t1) / (double) (CLOCKS_PER_SEC) << "\n\n";
 
       std::cout << "Writing fluxes\n\n";
       write_lw_fluxes(input_file, flux_up, flux_dn, ncol);
