@@ -133,8 +133,10 @@ contains
     !
     if(.not. extents_are(sfc_emis, nband, ncol)) &
       error_msg = "rte_lw: sfc_emis inconsistently sized"
+#ifdef RRTMGP_EXPENSIVE_CHECKS
     if(any_vals_outside(sfc_emis, 0._wp, 1._wp)) &
       error_msg = "rte_lw: sfc_emis has values < 0 or > 1"
+#endif
     if(len_trim(error_msg) > 0) return
 
     !
@@ -143,8 +145,10 @@ contains
     if(present(inc_flux)) then
       if(.not. extents_are(inc_flux, ncol, ngpt)) &
         error_msg = "rte_lw: inc_flux inconsistently sized"
+#ifdef RRTMGP_EXPENSIVE_CHECKS
       if(any_vals_less_than(inc_flux, 0._wp)) &
         error_msg = "rte_lw: inc_flux has values < 0"
+#endif
     end if
     if(len_trim(error_msg) > 0) return
 

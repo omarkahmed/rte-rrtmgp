@@ -259,15 +259,19 @@ contains
     !$acc enter data copyin(tsfc,tlev)
     if(.not. extents_are(tsfc, ncol)) &
       error_msg = "gas_optics(): array tsfc has wrong size"
+#ifdef RRTMGP_EXPENSIVE_CHECKS
     if(any_vals_outside(tsfc, this%temp_ref_min,  this%temp_ref_max)) &
       error_msg = "gas_optics(): array tsfc has values outside range"
+#endif
     if(error_msg  /= '') return
 
     if(present(tlev)) then
       if(.not. extents_are(tlev, ncol, nlay+1)) &
         error_msg = "gas_optics(): array tlev has wrong size"
+#ifdef RRTMGP_EXPENSIVE_CHECKS
       if(any_vals_outside(tlev, this%temp_ref_min, this%temp_ref_max)) &
         error_msg = "gas_optics(): array tlev has values outside range"
+#endif
       if(error_msg  /= '') return
     end if
 
@@ -443,19 +447,23 @@ contains
       error_msg = "gas_optics(): array plev has wrong size"
     if(error_msg  /= '') return
 
+#ifdef RRTMGP_EXPENSIVE_CHECKS
     if(any_vals_outside(play, this%press_ref_min,this%press_ref_max)) &
       error_msg = "gas_optics(): array play has values outside range"
     if(any_vals_outside(plev, this%press_ref_min,this%press_ref_max)) &
       error_msg = "gas_optics(): array plev has values outside range"
     if(any_vals_outside(tlay, this%temp_ref_min,  this%temp_ref_max)) &
       error_msg = "gas_optics(): array tlay has values outside range"
+#endif
     if(error_msg  /= '') return
 
     if(present(col_dry)) then
       if(.not. extents_are(col_dry, ncol, nlay)) &
         error_msg = "gas_optics(): array col_dry has wrong size"
+#ifdef RRTMGP_EXPENSIVE_CHECKS
       if(any_vals_less_than(col_dry, 0._wp)) &
         error_msg = "gas_optics(): array col_dry has values outside range"
+#endif
       if(error_msg  /= '') return
     end if
 

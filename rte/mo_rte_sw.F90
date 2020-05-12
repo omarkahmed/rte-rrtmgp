@@ -88,28 +88,38 @@ contains
     !
     if(.not. extents_are(mu0, ncol)) &
       error_msg = "rte_sw: mu0 inconsistently sized"
+#ifdef RRTMGP_EXPENSIVE_CHECKS
     if(any_vals_outside(mu0, 0._wp, 1._wp)) &
       error_msg = "rte_sw: one or more mu0 <= 0 or > 1"
+#endif
 
     if(.not. extents_are(inc_flux, ncol, ngpt)) &
       error_msg = "rte_sw: inc_flux inconsistently sized"
+#ifdef RRTMGP_EXPENSIVE_CHECKS
     if(any_vals_less_than(inc_flux, 0._wp)) &
       error_msg = "rte_sw: one or more inc_flux < 0"
+#endif
     if(present(inc_flux_dif)) then
       if(.not. extents_are(inc_flux_dif, ncol, ngpt)) &
         error_msg = "rte_sw: inc_flux_dif inconsistently sized"
+#ifdef RRTMGP_EXPENSIVE_CHECKS
       if(any_vals_less_than(inc_flux_dif, 0._wp)) &
         error_msg = "rte_sw: one or more inc_flux_dif < 0"
+#endif
     end if
 
     if(.not. extents_are(sfc_alb_dir, nband, ncol)) &
       error_msg = "rte_sw: sfc_alb_dir inconsistently sized"
+#ifdef RRTMGP_EXPENSIVE_CHECKS
     if(any_vals_outside(sfc_alb_dir,  0._wp, 1._wp)) &
       error_msg = "rte_sw: sfc_alb_dir out of bounds [0,1]"
+#endif
     if(.not. extents_are(sfc_alb_dif, nband, ncol)) &
       error_msg = "rte_sw: sfc_alb_dif inconsistently sized"
+#ifdef RRTMGP_EXPENSIVE_CHECKS
     if(any_vals_outside(sfc_alb_dif,  0._wp, 1._wp)) &
       error_msg = "rte_sw: sfc_alb_dif out of bounds [0,1]"
+#endif
 
     if(len_trim(error_msg) > 0) then
       if(len_trim(atmos%get_name()) > 0) &

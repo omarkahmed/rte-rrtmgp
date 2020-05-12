@@ -238,8 +238,10 @@ contains
     err_message = ""
     if(size(band_lims_wvn,1) /= 2) &
       err_message = "optical_props%init(): band_lims_wvn 1st dim should be 2"
+#ifdef RRTMGP_EXPENSIVE_CHECKS
     if(any_vals_less_than(band_lims_wvn, 0._wp) ) &
       err_message = "optical_props%init(): band_lims_wvn has values <  0., respectively"
+#endif
     if(err_message /="") return
     if(present(band_lims_gpt)) then
       if(.not. extents_are(band_lims_gpt, 2, size(band_lims_wvn,2))) &
@@ -565,8 +567,10 @@ contains
       err_message = "validate: tau not allocated/initialized"
       return
     end if
+#ifdef RRTMGP_EXPENSIVE_CHECKS
     if(any_vals_less_than(this%tau, 0._wp)) &
       err_message = "validate: tau values out of range"
+#endif
     if(len_trim(err_message) > 0 .and. len_trim(this%get_name()) > 0) &
       err_message = trim(this%get_name()) // ': ' // trim(err_message)
 
@@ -595,13 +599,14 @@ contains
     !
     ! Valid values
     !
+#ifdef RRTMGP_EXPENSIVE_CHECKS
     if(any_vals_less_than(this%tau,  0._wp)) &
       err_message = "validate: tau values out of range"
     if(any_vals_outside  (this%ssa,  0._wp, 1._wp)) &
       err_message = "validate: ssa values out of range"
     if(any_vals_outside  (this%g  , -1._wp, 1._wp)) &
       err_message = "validate: g values out of range"
-
+#endif
     if(len_trim(err_message) > 0 .and. len_trim(this%get_name()) > 0) &
       err_message = trim(this%get_name()) // ': ' // trim(err_message)
 
@@ -632,6 +637,7 @@ contains
     !
     ! Valid values
     !
+#ifdef RRTMGP_EXPENSIVE_CHECKS
     if(any_vals_less_than(this%tau,  0._wp)) &
       err_message = "validate: tau values out of range"
     if(any_vals_outside  (this%ssa,  0._wp, 1._wp)) &
@@ -639,6 +645,7 @@ contains
     if(any_vals_outside  (this%p(1,:,:,:),  &
                                                                            -1._wp, 1._wp)) &
       err_message = "validate: p(1,:,:,:)  = g values out of range"
+#endif
 
     if(len_trim(err_message) > 0 .and. len_trim(this%get_name()) > 0) &
         err_message = trim(this%get_name()) // ': ' // trim(err_message)

@@ -366,34 +366,35 @@ program rte_rrtmgp_clouds
     call system_clock(finish, clock_rate)
     elapsed(iloop) = finish - start
   end do
-  !
+
   call system_clock(finish_all, clock_rate)
+  !
   !
   !$acc exit data delete(lwp, iwp, rel, rei)
   !$acc exit data delete(p_lay, p_lev, t_lay, t_lev)
 
-#ifdef _OPENACC
-  avg = sum( elapsed(merge(2,1,nloops>1):) ) / real(merge(nloops-1,nloops,nloops>1))
-
-  print *, "Execution times - min(s)        :", minval(elapsed) / real(clock_rate)
-  print *, "                - avg(s)        :", avg / real(clock_rate)
-  print *, "                - per column(ms):", avg / real(ncol) / (1.0e-3*clock_rate)
-#else
+! #ifdef _OPENACC
+!   avg = sum( elapsed(merge(2,1,nloops>1):) ) / real(merge(nloops-1,nloops,nloops>1))
+! 
+!   print *, "Execution times - min(s)        :", minval(elapsed) / real(clock_rate)
+!   print *, "                - avg(s)        :", avg / real(clock_rate)
+!   print *, "                - per column(ms):", avg / real(ncol) / (1.0e-3*clock_rate)
+! #else
   print *, "Execution times - total(s)      :", (finish_all-start_all) / real(clock_rate)
   print *, "                - per column(ms):", (finish_all-start_all) / real(ncol*nloops) / (1.0e-3*clock_rate)
-#endif
+! #endif
 
   call fluxes%print_norms()
 
-  if(is_lw) then
-    !$acc exit data copyout(flux_up, flux_dn)
-    if(write_fluxes) call write_lw_fluxes(input_file, flux_up, flux_dn)
-    !$acc exit data delete(t_sfc, emis_sfc)
-  else
-    !$acc exit data copyout(flux_up, flux_dn, flux_dir)
-    if(write_fluxes) call write_sw_fluxes(input_file, flux_up, flux_dn, flux_dir)
-    !$acc exit data delete(sfc_alb_dir, sfc_alb_dif, mu0)
-  end if
-  !$acc enter data create(lwp, iwp, rel, rei)
+  !  if(is_lw) then
+  !    !$acc exit data copyout(flux_up, flux_dn)
+  !    if(write_fluxes) call write_lw_fluxes(input_file, flux_up, flux_dn)
+  !    !$acc exit data delete(t_sfc, emis_sfc)
+  !  else
+  !    !$acc exit data copyout(flux_up, flux_dn, flux_dir)
+  !    if(write_fluxes) call write_sw_fluxes(input_file, flux_up, flux_dn, flux_dir)
+  !    !$acc exit data delete(sfc_alb_dir, sfc_alb_dif, mu0)
+  !  end if
+  !  !$acc enter data create(lwp, iwp, rel, rei)
 
 end program rte_rrtmgp_clouds

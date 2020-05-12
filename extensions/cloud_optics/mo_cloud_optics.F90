@@ -434,12 +434,14 @@ contains
     !
     ! Particle size, liquid/ice water paths
     !
+#ifdef RRTMGP_EXPENSIVE_CHECKS
     if(any_vals_outside(reliq, liqmsk, this%radliq_lwr, this%radliq_upr)) &
       error_msg = 'cloud optics: liquid effective radius is out of bounds'
     if(any_vals_outside(reice, icemsk, this%radice_lwr, this%radice_upr)) &
       error_msg = 'cloud optics: ice effective radius is out of bounds'
     if(any_vals_less_than(clwp, liqmsk, 0._wp) .or. any_vals_less_than(ciwp, icemsk, 0._wp)) &
       error_msg = 'cloud optics: negative clwp or ciwp where clouds are supposed to be'
+#endif
     if(error_msg == "") then
       !
       !
