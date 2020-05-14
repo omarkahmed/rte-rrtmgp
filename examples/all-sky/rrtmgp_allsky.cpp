@@ -16,8 +16,7 @@
 
 int main(int argc , char **argv) {
 
-  // yakl::init();
-  yakl::init(6.0*(size_t)1024*(size_t)1024*(size_t)1024);
+  yakl::init();
 
   {
 
