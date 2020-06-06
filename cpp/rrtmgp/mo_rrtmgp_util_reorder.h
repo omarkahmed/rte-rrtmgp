@@ -1,7 +1,7 @@
 
 #pragma once
 
-#include "const.h"
+#include "const_rrtmgpxx.h"
 #include "mo_rrtmgp_util_reorder_kernels.h"
 
 

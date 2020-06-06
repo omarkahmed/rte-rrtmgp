@@ -20,7 +20,7 @@
 
 #pragma once
 
-#include "const.h"
+#include "const_rrtmgpxx.h"
 #include "mo_optical_props.h"
 
 using yakl::COLON;

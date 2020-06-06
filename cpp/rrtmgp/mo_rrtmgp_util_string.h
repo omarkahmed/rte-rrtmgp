@@ -1,7 +1,7 @@
 
 #pragma once
 
-#include "const.h"
+#include "const_rrtmgpxx.h"
 
 
 inline std::string lower_case( std::string in ) {

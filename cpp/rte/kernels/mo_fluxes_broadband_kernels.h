@@ -1,7 +1,7 @@
 
 #pragma once
 
-#include "const.h"
+#include "const_rrtmgpxx.h"
 
 
 // Spectral reduction over all points

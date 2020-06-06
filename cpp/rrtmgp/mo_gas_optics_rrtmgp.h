@@ -1151,5 +1151,37 @@ public:
   }
 
 
+
+  finalize() {
+    press_ref                       = real1d  ();
+    press_ref_log                   = real1d  ();
+    temp_ref                        = real1d  ();
+    gas_names                       = string1d();
+    vmr_ref                         = real3d  ();
+    flavor                          = int2d   ();
+    gpoint_flavor                   = int2d   ();
+    kmajor                          = real4d  ();
+    minor_limits_gpt_lower          = int2d   ();
+    minor_limits_gpt_upper          = int2d   ();
+    minor_scales_with_density_lower = bool1d  ();
+    minor_scales_with_density_upper = bool1d  ();
+    scale_by_complement_lower       = bool1d  ();
+    scale_by_complement_upper       = bool1d  ();
+    idx_minor_lower                 = int1d   ();
+    idx_minor_upper                 = int1d   ();
+    idx_minor_scaling_lower         = int1d   ();
+    idx_minor_scaling_upper         = int1d   ();
+    kminor_start_lower              = int1d   ();
+    kminor_start_upper              = int1d   ();
+    kminor_lower                    = real3d  ();
+    kminor_upper                    = real3d  ();
+    krayl                           = real4d  ();
+    planck_frac                     = real4d  ();
+    totplnk                         = real2d  ();
+    solar_src                       = real1d  ();
+    is_key                          = bool1d  ();
+  }
+
+
 };
 
