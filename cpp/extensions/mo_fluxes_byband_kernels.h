@@ -14,13 +14,13 @@
 //
 
 // Spectral reduction over all points
-void sum_byband(int ncol, int nlev, int ngpt, int nbnd, int2d const &band_lims, real3d const &spectral_flux, real3d &byband_flux) {
+inline void sum_byband(int ncol, int nlev, int ngpt, int nbnd, int2d const &band_lims, real3d const &spectral_flux, real3d &byband_flux) {
   // do ibnd = 1, nbnd
   //   do ilev = 1, nlev
   //     do icol = 1, ncol
   parallel_for( Bounds<3>(nbnd,nlev,ncol) , YAKL_LAMBDA(int ibnd, int ilev, int icol) {
     byband_flux(icol, ilev, ibnd) =  spectral_flux(icol, ilev, band_lims(1, ibnd));
-    for (int igpt = band_lims(1,ibnd)+1 , igpt <= band_lims(2,ibnd) , igpt++) {
+    for (int igpt = band_lims(1,ibnd)+1 ; igpt <= band_lims(2,ibnd) ; igpt++) {
       byband_flux(icol, ilev, ibnd) = byband_flux(icol, ilev, ibnd) + spectral_flux(icol, ilev, igpt);
     }
   });
@@ -28,7 +28,7 @@ void sum_byband(int ncol, int nlev, int ngpt, int nbnd, int2d const &band_lims, 
 
 
 // Net flux: Spectral reduction over all points
-void net_byband(int ncol, int nlev, int ngpt, int nbnd, int2d const &band_lims, real3d const &spectral_flux_dn,
+inline void net_byband(int ncol, int nlev, int ngpt, int nbnd, int2d const &band_lims, real3d const &spectral_flux_dn,
                 real3d const &spectral_flux_up, real3d &byband_flux_net) {
   // do ibnd = 1, nbnd
   //   do ilev = 1, nlev
@@ -45,9 +45,9 @@ void net_byband(int ncol, int nlev, int ngpt, int nbnd, int2d const &band_lims, 
 }
 
 
-void net_byband(int ncol, int nlev, int nbnd, real3d const &byband_flux_dn, real3d const &byband_flux_up, real3d &byband_flux_net) {
+inline void net_byband(int ncol, int nlev, int nbnd, real3d const &byband_flux_dn, real3d const &byband_flux_up, real3d &byband_flux_net) {
   parallel_for( Bounds<3>(nbnd,nlev,ncol) , YAKL_LAMBDA (int ibnd, int ilev, int icol) {
-    byband_flux_net(icol,ilev,ibnd) = byband_flux_dn(icol,ilev,ibnd) - byband_flux_up(icol,ilev,ibnd)
+    byband_flux_net(icol,ilev,ibnd) = byband_flux_dn(icol,ilev,ibnd) - byband_flux_up(icol,ilev,ibnd);
   });
 }
 

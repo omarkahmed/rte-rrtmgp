@@ -44,22 +44,22 @@ public:
     }
     // Check sizes of output arrays
     if (allocated(this->bnd_flux_up)) {
-      if (size(this->band_flux_up,1) != ncol || size(this->band_flux_up,2) != nlev || size(this->band_flux_up,3) != nbnd) {
+      if (size(this->bnd_flux_up,1) != ncol || size(this->bnd_flux_up,2) != nlev || size(this->bnd_flux_up,3) != nbnd) {
         stoprun("reduce: bnd_flux_up array incorrectly sized (can't compute net flux either)");
       }
     }
     if (allocated(this->bnd_flux_dn)) {
-      if (size(this->band_flux_dn,1) != ncol || size(this->band_flux_dn,2) != nlev || size(this->band_flux_dn,3) != nbnd) {
+      if (size(this->bnd_flux_dn,1) != ncol || size(this->bnd_flux_dn,2) != nlev || size(this->bnd_flux_dn,3) != nbnd) {
         stoprun("reduce: bnd_flux_dn array incorrectly sized (can't compute net flux either)");
       }
     }
-    if (allocated(this->bnd_flux_dir)) {
-      if (size(this->band_flux_dir,1) != ncol || size(this->band_flux_dir,2) != nlev || size(this->band_flux_dir,3) != nbnd) {
+    if (allocated(this->bnd_flux_dn_dir)) {
+      if (size(this->bnd_flux_dn_dir,1) != ncol || size(this->bnd_flux_dn_dir,2) != nlev || size(this->bnd_flux_dn_dir,3) != nbnd) {
         stoprun("reduce: bnd_flux_dir array incorrectly sized (can't compute net flux either)");
       }
     }
     if (allocated(this->bnd_flux_net)) {
-      if (size(this->band_flux_net,1) != ncol || size(this->band_flux_net,2) != nlev || size(this->band_flux_net,3) != nbnd) {
+      if (size(this->bnd_flux_net,1) != ncol || size(this->bnd_flux_net,2) != nlev || size(this->bnd_flux_net,3) != nbnd) {
         stoprun("reduce: bnd_flux_net array incorrectly sized (can't compute net flux either)");
       }
     }

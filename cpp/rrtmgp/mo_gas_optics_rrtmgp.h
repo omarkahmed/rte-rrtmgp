@@ -1152,7 +1152,7 @@ public:
 
 
 
-  finalize() {
+  void finalize() {
     press_ref                       = real1d  ();
     press_ref_log                   = real1d  ();
     temp_ref                        = real1d  ();
