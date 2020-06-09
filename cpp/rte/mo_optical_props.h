@@ -31,6 +31,9 @@ public:
       if (anyLT(band_lims_wvn,0._wp)) { stoprun("optical_props::init(): band_lims_wvn has values <  0."); }
     #endif
     if (allocated(band_lims_gpt)) {
+      if (size(band_lims_gpt,1) != 2) {
+        stoprun("optical_props::init(): band_lims_gpt first dimension must be 2");
+      }
       if (size(band_lims_gpt,2) != size(band_lims_wvn,2)) {
         stoprun("optical_props::init(): band_lims_gpt size inconsistent with band_lims_wvn");
       }

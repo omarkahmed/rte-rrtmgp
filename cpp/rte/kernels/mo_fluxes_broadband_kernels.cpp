@@ -47,8 +47,6 @@ void net_broadband(int ncol, int nlev, real2d const &flux_dn, real2d const &flux
   parallel_for( Bounds<2>(nlev,ncol) , YAKL_LAMBDA (int ilev, int icol) {
      broadband_flux_net(icol,ilev) = flux_dn(icol,ilev) - flux_up(icol,ilev);
   });
-  std::cout << "WARNING: THIS ISN'T TESTED!\n";
-  std::cout << __FILE__ << ": " << __LINE__ << std::endl;
 }
 
 

@@ -185,7 +185,6 @@ void increment_2stream_by_2stream(int ncol, int nlay, int ngpt, real3d &tau1, re
       tau1(icol,ilay,igpt) = tau12;
     }
   });
-  std::cout << "WARNING: THIS ISN'T TESTED: " << __FILE__ << ": " << __LINE__ << "\n";
 }
 
 
