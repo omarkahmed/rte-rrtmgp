@@ -29,6 +29,14 @@ public:
   real2d sfc_source;
 
 
+  ~SourceFuncLW() {
+    lay_source     = real3d();
+    lev_source_inc = real3d();
+    lev_source_dec = real3d();
+    sfc_source     = real2d();
+  }
+
+
   bool is_allocated() const  { return this->is_initialized() && allocated(this->sfc_source); }
 
 
@@ -90,6 +98,11 @@ public:
 class SourceFuncSW : public OpticalProps {
 public:
   real2d toa_source;
+
+
+  ~SourceFuncSW() {
+    toa_source = real2d();
+  }
 
 
   bool is_allocated() const { return this->is_initialized() && allocated(this->toa_source); }

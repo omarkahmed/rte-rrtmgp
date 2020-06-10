@@ -30,6 +30,14 @@ public:
   real3d bnd_flux_dn_dir; // Direct flux down
 
 
+  ~FluxesByband() {
+    bnd_flux_up     = real3d();    
+    bnd_flux_dn     = real3d();    
+    bnd_flux_net    = real3d();   
+    bnd_flux_dn_dir = real3d();
+  }
+
+
   template <class T>
   void reduce(real3d const &gpt_flux_up, real3d const &gpt_flux_dn, T const &spectral_disc, bool top_at_1, real3d const &gpt_flux_dn_dir=real3d()) {
     int ncol = size(gpt_flux_up, 1);

@@ -30,6 +30,14 @@ public:
   real2d flux_dn_dir;
 
 
+  ~FluxesBroadband() {
+    flux_up     = real2d();
+    flux_dn     = real2d();
+    flux_net    = real2d();
+    flux_dn_dir = real2d();
+  }
+
+
   void reduce(real3d const &gpt_flux_up, const real3d &gpt_flux_dn, OpticalProps const &spectral_disc,
               bool top_at_1, real3d const &gpt_flux_dn_dir=real3d()) {
     int ncol = size(gpt_flux_up,1);

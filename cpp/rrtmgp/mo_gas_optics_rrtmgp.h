@@ -127,6 +127,11 @@ public:
   bool1d is_key;
 
 
+  ~GasOpticsRRTMGP() {
+    finalize();
+  }
+
+
   // Everything except GasConcs is on the host by default, and the available_gases.gas_name is on the host as well
   // Things will be copied to the GPU outside of this routine and stored into class variables
   void reduce_minor_arrays(GasConcs   const &available_gases, 

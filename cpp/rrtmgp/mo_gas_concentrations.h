@@ -56,6 +56,32 @@ public:
   }
 
 
+  // Initialize gas names only without allocating concs
+  void init(string1d const &gas_names) {
+    this->reset();
+    this->ngas = size(gas_names,1);
+
+    // Transform gas names to lower case, check for empty strings, check for duplicates
+    for (int i=1; i<=ngas; i++) {
+      gas_names(i) = lower_case( gas_names(i) );
+      // Empty string
+      if (gas_names(i) == "") { stoprun("ERROR: GasConcs::init(): must provide non-empty gas names"); }
+      // Duplicate gas name
+      for (int j=i+1; j<=ngas; j++) {
+        if ( gas_names(i) == gas_names(j) ) { stoprun("GasConcs::init(): duplicate gas names aren't allowed"); }
+      }
+    }
+    
+    // Allocate
+    this->gas_name = string1d("gas_name",ngas);
+
+    // Assign gas names
+    for (int i=1; i<=ngas; i++) {
+      this->gas_name(i) = gas_names(i);
+    }
+  }
+
+
   void init(string1d const &gas_names , int ncol , int nlay) {
     this->reset();
     this->ngas = size(gas_names,1);

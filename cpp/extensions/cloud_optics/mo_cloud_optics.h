@@ -79,6 +79,29 @@ public:
   }
 
 
+  
+  ~CloudOptics() {
+    real2d lut_extliq         = real2d();
+    real2d lut_ssaliq         = real2d();
+    real2d lut_asyliq         = real2d();
+    real3d lut_extice         = real3d();
+    real3d lut_ssaice         = real3d();
+    real3d lut_asyice         = real3d();
+    real3d pade_extliq        = real3d();
+    real3d pade_ssaliq        = real3d();
+    real3d pade_asyliq        = real3d();
+    real4d pade_extice        = real4d();
+    real4d pade_ssaice        = real4d();
+    real4d pade_asyice        = real4d();
+    real1d pade_sizreg_extliq = real1d();
+    real1d pade_sizreg_ssaliq = real1d();
+    real1d pade_sizreg_asyliq = real1d();
+    real1d pade_sizreg_extice = real1d();
+    real1d pade_sizreg_ssaice = real1d();
+    real1d pade_sizreg_asyice = real1d();
+  }
+
+
 
   // Routines to load data needed for cloud optics calculations. Two routines: one to load
   //    lookup-tables and one for coefficients for Pade approximates

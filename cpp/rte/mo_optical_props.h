@@ -3,6 +3,7 @@
 
 #include "const_rrtmgpxx.h"
 #include "mo_optical_props_kernels.h"
+#include "mpi.h"
 
 using yakl::fortran::anyLT;
 using yakl::fortran::anyGT;
@@ -20,6 +21,13 @@ public:
   int    ngpt;
   real2d band_lims_wvn;  // (upper and lower wavenumber by band) = band_lims_wvn(2,band)
   std::string name;
+
+
+  ~OpticalProps() {
+    band2gpt      = int2d ();
+    gpt2band      = int1d ();
+    band_lims_wvn = real2d();
+  }
 
 
   // Base class: Initialization
@@ -40,11 +48,18 @@ public:
       #ifdef RRTMGP_EXPENSIVE_CHECKS
         if (anyLT(band_lims_gpt,1) ) { stoprun("optical_props::init(): band_lims_gpt has values < 1"); }
       #endif
+      /***********************************************************
+       * There's a problem with "invalid device function" here
+       * when I compile this inside E3SM
+       */
       // for (int j=1; j <= size(band_lims_gpt,2); j++) {
       //   for (int i=1; i <= size(band_lims_gpt,1); i++) {
-      parallel_for( Bounds<2>(size(band_lims_gpt,2),size(band_lims_gpt,1)) , YAKL_LAMBDA (int j, int i) {
-        band_lims_gpt_lcl(i,j) = band_lims_gpt(i,j);
+      parallel_for( Bounds<2>(size(band_lims_gpt,2),size(band_lims_gpt,1)) , [=] __host__ __device__ (int j, int i) {
+        band_lims_gpt_lcl(i,j) = 1; //band_lims_gpt(i,j);
       });
+      std::cout << "DEBUG: GOT HERE" << std::endl;
+      int ierr = MPI_Finalize();
+      exit(0);
     } else {
       // Assume that values are defined by band, one g-point per band
       // for (int iband = 1; iband <= size(band_lims_wvn, 2); iband++) {
@@ -219,6 +234,10 @@ class OpticalPropsArry : public OpticalProps {
 public:
   real3d tau; // optical depth (ncol, nlay, ngpt)
 
+  ~OpticalPropsArry() {
+    tau = real3d();
+  }
+
   YAKL_INLINE int get_ncol() const { if (allocated(tau)) { return size(this->tau,1); } else { return 0; } }
   YAKL_INLINE int get_nlay() const { if (allocated(tau)) { return size(this->tau,2); } else { return 0; } }
 };
@@ -303,6 +322,12 @@ class OpticalProps2str : public OpticalPropsArry {
 public:
   real3d ssa; // single-scattering albedo (ncol, nlay, ngpt)
   real3d g;   // asymmetry parameter (ncol, nlay, ngpt)
+
+
+  ~OpticalProps2str() {
+    ssa = real3d();
+    g   = real3d();
+  }
 
 
   void validate() const {
