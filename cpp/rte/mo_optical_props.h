@@ -54,12 +54,12 @@ public:
        */
       // for (int j=1; j <= size(band_lims_gpt,2); j++) {
       //   for (int i=1; i <= size(band_lims_gpt,1); i++) {
-      parallel_for( Bounds<2>(size(band_lims_gpt,2),size(band_lims_gpt,1)) , [=] __host__ __device__ (int j, int i) {
+      parallel_for( Bounds<2>(size(band_lims_gpt,2),size(band_lims_gpt,1)) , YAKL_LAMBDA (int j, int i) {
         band_lims_gpt_lcl(i,j) = 1; //band_lims_gpt(i,j);
       });
-      std::cout << "DEBUG: GOT HERE" << std::endl;
-      int ierr = MPI_Finalize();
-      exit(0);
+      // std::cout << "DEBUG: GOT HERE" << std::endl;
+      // int ierr = MPI_Finalize();
+      // exit(0);
     } else {
       // Assume that values are defined by band, one g-point per band
       // for (int iband = 1; iband <= size(band_lims_wvn, 2); iband++) {
