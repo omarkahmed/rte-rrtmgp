@@ -2,10 +2,9 @@
 #include "YAKL.h"
 
 using namespace yakl;
-namespace rrtmgp {
+namespace simple_netcdf {
 
-    class MySimpleNetCDF {
-
+    class SimpleNetCDF {
 
         protected:
 
@@ -14,10 +13,10 @@ namespace rrtmgp {
         public:
 
             // Constructor
-            MySimpleNetCDF() {};
+            SimpleNetCDF() {};
 
             // Destructor
-            ~MySimpleNetCDF() {
+            ~SimpleNetCDF() {
                 //close();
             };
 
@@ -212,6 +211,7 @@ namespace rrtmgp {
                 size_t dimSize;
                 int idim;
                 for (int i = 0; i < dimNames.size(); i++) {
+                    // If style is Fortran, dimension ordering is reversed
                     if (myStyle == styleC) {
                         idim = i;
                     } else {
@@ -239,6 +239,17 @@ namespace rrtmgp {
                 putVar(arr.data(), varName);
             }
 
+            template <class T> void write(T arr, std::string varName) {
+                // If variable does not exist, try to add it
+                if (!varExists(varName)) {
+                    int dimids[1] = {0};
+                    int varid;
+                    addVar(varName, getType<T>(), 0, dimids, &varid);
+                }
+                // Write to file
+                putVar(&arr, varName);
+            }
+
             // Determine nc_type corresponding to intrinsic type
             template <class T> nc_type getType() const {
                      if ( std::is_same<T,          char>::value ) { return NC_CHAR;   }
@@ -256,6 +267,6 @@ namespace rrtmgp {
                 return -1;
             }
 
-    };
+    };  // class SimpleNetCDF
 
-}
+} // namespace simple_netcdf
