@@ -156,6 +156,18 @@ namespace simple_netcdf {
                 }
             }
 
+            size_t getDimSize(std::string dimName) {
+                // Get dimension ID
+                int dimid;
+                handle_error(nc_inq_dimid(ncid, dimName.c_str(), &dimid));
+
+                // Get dimension size
+                size_t dimSize;
+                handle_error(nc_inq_dimlen(ncid, dimid, &dimSize));
+
+                return dimSize;
+            }
+
             void addDim(std::string dimName, int dimSize, int *dimid) {
                 // Put file into define mode
                 int ncerr = nc_redef(ncid);
