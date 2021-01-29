@@ -61,17 +61,17 @@ namespace rrtmgp {
 
                 // Get variable ID
                 int varid;
-                handle_error(nc_inq_varid(ncid, varName.c_str(), &varid));
+                handle_error(nc_inq_varid(ncid, varName.c_str(), &varid), __FILE__, __LINE__);
 
                 // Get variable dimension sizes
                 int ndims;
                 int dimids[NC_MAX_VAR_DIMS];
                 nc_type vtype;
-                handle_error(nc_inq_var(ncid, varid, NULL, &vtype, &ndims, dimids, NULL));
+                handle_error(nc_inq_var(ncid, varid, NULL, &vtype, &ndims, dimids, NULL), __FILE__, __LINE__);
                 std::vector<int> dimSizes(ndims);
                 size_t dimsize;
                 for (int i = 0; i < ndims; i++) {
-                    handle_error(nc_inq_dimlen(ncid, dimids[i], &dimsize)); 
+                    handle_error(nc_inq_dimlen(ncid, dimids[i], &dimsize), __FILE__, __LINE__); 
                     dimSizes[i] = dimsize;
                 }
 
@@ -89,7 +89,7 @@ namespace rrtmgp {
                     if (std::is_same<T,bool>::value) {
                         // Create boolean array from integer arrays
                         Array<int,rank,memHost,myStyle> tmp("tmp",dimSizes);
-                        handle_error(nc_get_var(ncid, varid, tmp.data()));
+                        handle_error(nc_get_var(ncid, varid, tmp.data()), __FILE__, __LINE__);
                         for (int i=0; i < arr.totElems(); i++) { arrHost.myData[i] = tmp.myData[i] == 1; }
                     } else {
                         // Need to be careful with floats; nc_get_var is overloaded on type, but we need
@@ -100,10 +100,10 @@ namespace rrtmgp {
                         // calling nc_get_var directly does not?
                         if (vtype == NC_FLOAT) {
                             Array<float,rank,memHost,myStyle> tmp("tmp",dimSizes);
-                            handle_error(nc_get_var(ncid, varid, tmp.data()));
+                            handle_error(nc_get_var(ncid, varid, tmp.data()), __FILE__, __LINE__);
                             for (int i=0; i < arr.totElems(); i++) { arrHost.myData[i] = tmp.myData[i]; }
                         } else {
-                            handle_error(nc_get_var(ncid, varid, arrHost.data()));
+                            handle_error(nc_get_var(ncid, varid, arrHost.data()), __FILE__, __LINE__);
                         }
                     }
                     arrHost.deep_copy_to(arr);
@@ -111,15 +111,15 @@ namespace rrtmgp {
                     if (std::is_same<T,bool>::value) {
                         // Create boolean array from integer arrays
                         Array<int,rank,memHost,myStyle> tmp("tmp",dimSizes);
-                        handle_error(nc_get_var(ncid, varid, tmp.data()));
+                        handle_error(nc_get_var(ncid, varid, tmp.data()), __FILE__, __LINE__);
                         for (int i=0; i < arr.totElems(); i++) { arr.myData[i] = tmp.myData[i] == 1; }
                     } else {
                         if (vtype == NC_FLOAT) {
                             Array<float,rank,memHost,myStyle> tmp("tmp",dimSizes);
-                            handle_error(nc_get_var(ncid, varid, tmp.data()));
+                            handle_error(nc_get_var(ncid, varid, tmp.data()), __FILE__, __LINE__);
                             for (int i=0; i < arr.totElems(); i++) { arr.myData[i] = tmp.myData[i]; }
                         } else {
-                            handle_error(nc_get_var(ncid, varid, arr.data()));
+                            handle_error(nc_get_var(ncid, varid, arr.data()), __FILE__, __LINE__);
                         }
                     }
                 }
@@ -130,10 +130,10 @@ namespace rrtmgp {
             template <class T> void read(T &arr , std::string varName) {
                 // Get variable ID
                 int varid;
-                handle_error(nc_inq_varid(ncid, varName.c_str(), &varid));
+                handle_error(nc_inq_varid(ncid, varName.c_str(), &varid), __FILE__, __LINE__);
 
                 // Read data
-                handle_error(nc_get_var(ncid, varid, &arr));
+                handle_error(nc_get_var(ncid, varid, &arr), __FILE__, __LINE__);
             }
 
             // Check if variable exists in file
@@ -157,19 +157,47 @@ namespace rrtmgp {
                 }
             }
 
-            void addDim(std::string dimName, int dimSize) {
+            void addDim(std::string dimName, int dimSize, int *dimid) {
                 // Put file into define mode
                 int ncerr = nc_redef(ncid);
                 if ((ncerr != NC_NOERR) and (ncerr != NC_EINDEFINE)) {
-                    handle_error(ncerr);
+                    handle_error(ncerr, __FILE__, __LINE__);
                 }
 
                 // Define dimension
-                int dimid;
-                handle_error(nc_def_dim(ncid, dimName.c_str(), dimSize, &dimid));
+                handle_error(nc_def_dim(ncid, dimName.c_str(), dimSize, dimid), __FILE__, __LINE__);
 
                 // End define mode
-                handle_error(nc_enddef(ncid));
+                handle_error(nc_enddef(ncid), __FILE__, __LINE__);
+            }
+
+            void addVar(std::string varName, nc_type varType, int ndims, int dimids[], int *varid) {
+                // Put file into define mode
+                int ncerr = nc_redef(ncid);
+                if ((ncerr != NC_NOERR) and (ncerr != NC_EINDEFINE)) {
+                    handle_error(ncerr, __FILE__, __LINE__);
+                }
+
+                // Define variable
+                handle_error(nc_def_var(ncid, varName.c_str(), varType, ndims, dimids, varid), __FILE__, __LINE__);
+
+                // End define mode
+                handle_error(nc_enddef(ncid), __FILE__, __LINE__);
+            }
+
+            template <class T> void putVar(T const &arr, std::string varName) {
+                // Make sure file is not in define mode
+                int ncerr = nc_enddef(ncid);
+                if ((ncerr != NC_NOERR) and (ncerr != NC_ENOTINDEFINE)) {
+                    handle_error(ncerr, __FILE__, __LINE__);
+                }
+
+                // Get variable Id
+                int varid;
+                handle_error(nc_inq_varid(ncid, varName.c_str(), &varid), __FILE__, __LINE__);
+
+                // Write variable data
+                handle_error(nc_put_var(ncid, varid, arr), __FILE__, __LINE__);
             }
 
             template <class T, int rank, int myMem, int myStyle> 
@@ -178,18 +206,56 @@ namespace rrtmgp {
                 // Make sure length of dimension names is equal to rank of array
                 if (rank != dimNames.size()) { yakl_throw("dimNames.size() != Array rank"); }
 
-                // Define dimensions if they do not exist
+                // Get dimension sizes
+                // Define dimensions if they do not exist and get dimension IDs
+                int dimids[rank];
+                size_t dimSize;
+                int idim;
                 for (int i = 0; i < dimNames.size(); i++) {
-                    if (dimExists(dimNames[i])) {
-                        // check that size is correct
+                    if (myStyle == styleC) {
+                        idim = i;
                     } else {
-                        addDim(dimNames[i], arr.dimension[i]);
+                        idim = rank - 1 - i;
+                    }
+                    int ncerr = nc_inq_dimid(ncid, dimNames[i].c_str(), &dimids[idim]);
+                    if (ncerr == NC_NOERR) {
+                        // check that size is correct
+                        handle_error(nc_inq_dimlen(ncid, dimids[idim], &dimSize), __FILE__, __LINE__);
+                        if (dimSize != arr.dimension[i]) {
+                            yakl_throw("dimSize != arr.dimension[i]");
+                        }
+                    } else {
+                        addDim(dimNames[i], arr.dimension[i], &dimids[idim]);
                     }
                 }
 
+                // Add variable if it does not exist
+                if (!varExists(varName)) {
+                    int varid;
+                    addVar(varName, getType<T>(), rank, dimids, &varid);
+                }
+
                 // Write data to file
-                addVar(arr, varName);
+                putVar(arr.data(), varName);
             }
+
+            // Determine nc_type corresponding to intrinsic type
+            template <class T> nc_type getType() const {
+                     if ( std::is_same<T,          char>::value ) { return NC_CHAR;   }
+                else if ( std::is_same<T,unsigned  char>::value ) { return NC_UBYTE;  }
+                else if ( std::is_same<T,         short>::value ) { return NC_SHORT;  }
+                else if ( std::is_same<T,unsigned short>::value ) { return NC_USHORT; }
+                else if ( std::is_same<T,           int>::value ) { return NC_INT;    }
+                else if ( std::is_same<T,unsigned   int>::value ) { return NC_UINT;   }
+                else if ( std::is_same<T,          long>::value ) { return NC_INT64;  }
+                else if ( std::is_same<T,unsigned  long>::value ) { return NC_UINT64; }
+                else if ( std::is_same<T,         float>::value ) { return NC_FLOAT;  }
+                else if ( std::is_same<T,        double>::value ) { return NC_DOUBLE; }
+                else if ( std::is_same<T,std::string   >::value ) { return NC_STRING; }
+                else { yakl_throw("Invalid type"); }
+                return -1;
+            }
+
     };
 
 }
