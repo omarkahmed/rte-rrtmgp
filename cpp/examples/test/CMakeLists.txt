@@ -1,0 +1,17 @@
+cmake_minimum_required(VERSION 3.0)
+project(test_simple_netcdf)
+enable_testing()
+
+set(CPP_SRC test_simple_netcdf.cpp compare_simple_netcdf.cpp)
+add_executable(test_simple_netcdf test_simple_netcdf.cpp)
+set(coefficients ${CMAKE_CURRENT_SOURCE_DIR}/../../../rrtmgp/data/rrtmgp-data-sw-g224-2018-12-04.nc)
+add_test(test_simple_netcdf test_simple_netcdf ${coefficients})
+add_subdirectory(${YAKL_HOME} ./yakl)
+target_link_libraries(test_simple_netcdf yakl ${NCFLAGS})
+target_compile_features(test_simple_netcdf PUBLIC cxx_std_14)
+
+target_include_directories(test_simple_netcdf PUBLIC ${YAKL_HOME})
+target_include_directories(test_simple_netcdf PUBLIC ${CMAKE_CURRENT_BINARY_DIR}/yakl)
+target_include_directories(test_simple_netcdf PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/../)
+target_include_directories(test_simple_netcdf PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/../../)
+set_source_files_properties( ${CPP_SRC} PROPERTIES COMPILE_FLAGS "${YAKL_CXX_FLAGS} ${CXX_FLAGS}")
