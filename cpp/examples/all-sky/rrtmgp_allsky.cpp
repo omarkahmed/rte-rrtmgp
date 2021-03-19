@@ -105,8 +105,8 @@ int main(int argc , char **argv) {
 
       //  Boundary conditions depending on whether the k-distribution being supplied
       real2d toa_flux   ("toa_flux"   ,ncol,ngpt);
-      real2d sfc_alb_dir("sfc_alb_dir",nbnd,ncol);
-      real2d sfc_alb_dif("sfc_alb_dif",nbnd,ncol);
+      real2d sfc_alb_dir("sfc_alb_dir",ncol,nbnd);
+      real2d sfc_alb_dif("sfc_alb_dif",ncol,nbnd);
       real1d mu0        ("mu0"        ,ncol);
       // Ocean-ish values for no particular reason
       memset( sfc_alb_dir , 0.06_wp );

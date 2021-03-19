@@ -73,11 +73,11 @@ void rte_sw(OpticalProps2str const &atmos, bool top_at_1, real1d const &mu0, rea
     #endif
   }
 
-  if (size(sfc_alb_dir,1) != nband || size(sfc_alb_dir,2) != ncol) { stoprun("rte_sw: sfc_alb_dir inconsistently sized"); }
+  if (size(sfc_alb_dir,2) != nband || size(sfc_alb_dir,1) != ncol) { stoprun("rte_sw: sfc_alb_dir inconsistently sized"); }
   #ifdef RRTMGP_EXPENSIVE_CHECKS
     if (anyLT(sfc_alb_dir,0._wp) || anyGT(sfc_alb_dir,1._wp)) { stoprun("rte_sw: sfc_alb_dir out of bounds [0,1]"); }
   #endif
-  if (size(sfc_alb_dif,1) != nband || size(sfc_alb_dif,2) != ncol) { stoprun("rte_sw: sfc_alb_dif inconsistently sized"); }
+  if (size(sfc_alb_dif,2) != nband || size(sfc_alb_dif,1) != ncol) { stoprun("rte_sw: sfc_alb_dif inconsistently sized"); }
   #ifdef RRTMGP_EXPENSIVE_CHECKS
     if (anyLT(sfc_alb_dif,0._wp) || anyGT(sfc_alb_dif,1._wp)) { stoprun("rte_sw: sfc_alb_dif out of bounds [0,1]"); }
   #endif
@@ -89,8 +89,8 @@ void rte_sw(OpticalProps2str const &atmos, bool top_at_1, real1d const &mu0, rea
   sfc_alb_dif_gpt = real2d("sfc_alb_dif_gpt",ncol, ngpt);
   // Lower boundary condition -- expand surface albedos by band to gpoints
   //   and switch dimension ordering
-  expand_and_transpose(atmos, sfc_alb_dir, sfc_alb_dir_gpt);
-  expand_and_transpose(atmos, sfc_alb_dif, sfc_alb_dif_gpt);
+  expand(atmos, sfc_alb_dir, sfc_alb_dir_gpt);
+  expand(atmos, sfc_alb_dif, sfc_alb_dif_gpt);
 
   // Compute the radiative transfer...
   // Apply boundary conditions

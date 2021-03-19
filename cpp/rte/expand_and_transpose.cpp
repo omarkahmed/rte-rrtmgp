@@ -16,4 +16,14 @@ void expand_and_transpose(OpticalProps const &ops, real2d const &arr_in, real2d 
   });
 }
 
-
+void expand(OpticalProps const &ops, real2d const &arr_in, real2d &arr_out) {
+    int ncol  = size(arr_in, 1);
+    int nband = ops.get_nband();
+    int ngpt  = ops.get_ngpt();
+    int2d limits = ops.get_band_lims_gpoint();
+    parallel_for(Bounds<2>(nband,ncol), YAKL_LAMBDA (int iband, int icol) {
+        for (int igpt=limits(1,iband); igpt <= limits(2,iband); igpt++) {
+            arr_out(icol,igpt) = arr_in(icol,iband);
+        }
+    });
+}
