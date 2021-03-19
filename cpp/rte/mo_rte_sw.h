@@ -88,7 +88,6 @@ void rte_sw(OpticalProps2str const &atmos, bool top_at_1, real1d const &mu0, rea
   sfc_alb_dir_gpt = real2d("sfc_alb_dir_gpt",ncol, ngpt);
   sfc_alb_dif_gpt = real2d("sfc_alb_dif_gpt",ncol, ngpt);
   // Lower boundary condition -- expand surface albedos by band to gpoints
-  //   and switch dimension ordering
   expand(atmos, sfc_alb_dir, sfc_alb_dir_gpt);
   expand(atmos, sfc_alb_dif, sfc_alb_dif_gpt);
 

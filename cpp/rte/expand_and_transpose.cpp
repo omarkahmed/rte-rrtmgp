@@ -16,6 +16,7 @@ void expand_and_transpose(OpticalProps const &ops, real2d const &arr_in, real2d 
   });
 }
 
+// Expand from band to g-point dimension, do NOT transpose dimensions
 void expand(OpticalProps const &ops, real2d const &arr_in, real2d &arr_out) {
     int ncol  = size(arr_in, 1);
     int nband = ops.get_nband();
