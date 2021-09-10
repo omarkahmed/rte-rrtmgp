@@ -29,6 +29,7 @@
 ! -------------------------------------------------------------------------------------------------
 module mo_rte_sw
   use mo_rte_kind,      only: wp, wl
+  use mo_rte_config,    only: check_extents, check_values
   use mo_rte_util_array,only: any_vals_less_than, any_vals_outside, extents_are
   use mo_optical_props, only: ty_optical_props, &
                               ty_optical_props_arry, ty_optical_props_1scl, ty_optical_props_2str, ty_optical_props_nstr
@@ -62,7 +63,6 @@ contains
     ! Local variables
     !
     integer :: ncol, nlay, ngpt, nband
-    integer :: icol
 
     real(wp), dimension(:,:,:), allocatable :: gpt_flux_up, gpt_flux_dn, gpt_flux_dir
     real(wp), dimension(:,:),   allocatable :: sfc_alb_dir_gpt, sfc_alb_dif_gpt
@@ -84,32 +84,41 @@ contains
     end if
 
     !
-    ! Sizes and values of input arrays
+    ! Sizes of input arrays
     !
-    if(.not. extents_are(mu0, ncol)) &
-      error_msg = "rte_sw: mu0 inconsistently sized"
-    if(any_vals_outside(mu0, 0._wp, 1._wp)) &
-      error_msg = "rte_sw: one or more mu0 <= 0 or > 1"
-
-    if(.not. extents_are(inc_flux, ncol, ngpt)) &
-      error_msg = "rte_sw: inc_flux inconsistently sized"
-    if(any_vals_less_than(inc_flux, 0._wp)) &
-      error_msg = "rte_sw: one or more inc_flux < 0"
-    if(present(inc_flux_dif)) then
-      if(.not. extents_are(inc_flux_dif, ncol, ngpt)) &
-        error_msg = "rte_sw: inc_flux_dif inconsistently sized"
-      if(any_vals_less_than(inc_flux_dif, 0._wp)) &
-        error_msg = "rte_sw: one or more inc_flux_dif < 0"
+    if(check_extents) then
+      if(.not. extents_are(mu0, ncol)) &
+        error_msg = "rte_sw: mu0 inconsistently sized"
+      if(.not. extents_are(inc_flux, ncol, ngpt)) &
+        error_msg = "rte_sw: inc_flux inconsistently sized"
+      if(.not. extents_are(sfc_alb_dir, nband, ncol)) &
+        error_msg = "rte_sw: sfc_alb_dir inconsistently sized"
+      if(.not. extents_are(sfc_alb_dif, nband, ncol)) &
+        error_msg = "rte_sw: sfc_alb_dif inconsistently sized"
+      if(present(inc_flux_dif)) then
+        if(.not. extents_are(inc_flux_dif, ncol, ngpt)) &
+          error_msg = "rte_sw: inc_flux_dif inconsistently sized"
+      end if
     end if
 
-    if(.not. extents_are(sfc_alb_dir, nband, ncol)) &
-      error_msg = "rte_sw: sfc_alb_dir inconsistently sized"
-    if(any_vals_outside(sfc_alb_dir,  0._wp, 1._wp)) &
-      error_msg = "rte_sw: sfc_alb_dir out of bounds [0,1]"
-    if(.not. extents_are(sfc_alb_dif, nband, ncol)) &
-      error_msg = "rte_sw: sfc_alb_dif inconsistently sized"
-    if(any_vals_outside(sfc_alb_dif,  0._wp, 1._wp)) &
-      error_msg = "rte_sw: sfc_alb_dif out of bounds [0,1]"
+    !
+    ! Values of input arrays 
+    !
+    if(check_values) then
+      if(any_vals_outside(mu0, 0._wp, 1._wp)) &
+        error_msg = "rte_sw: one or more mu0 <= 0 or > 1"
+      if(any_vals_less_than(inc_flux, 0._wp)) &
+        error_msg = "rte_sw: one or more inc_flux < 0"
+      if(any_vals_outside(sfc_alb_dir,  0._wp, 1._wp)) &
+        error_msg = "rte_sw: sfc_alb_dir out of bounds [0,1]"
+      if(any_vals_outside(sfc_alb_dif,  0._wp, 1._wp)) &
+        error_msg = "rte_sw: sfc_alb_dif out of bounds [0,1]"
+      if(present(inc_flux_dif)) then
+        if(any_vals_less_than(inc_flux_dif, 0._wp)) &
+          error_msg = "rte_sw: one or more inc_flux_dif < 0"
+      end if
+    end if
+
 
     if(len_trim(error_msg) > 0) then
       if(len_trim(atmos%get_name()) > 0) &
@@ -125,6 +134,7 @@ contains
     !   and switch dimension ordering
 
     !$acc enter data create(sfc_alb_dir_gpt, sfc_alb_dif_gpt)
+    !$omp target enter data map(alloc:sfc_alb_dir_gpt, sfc_alb_dif_gpt)
     call expand_and_transpose(atmos, sfc_alb_dir, sfc_alb_dir_gpt)
     call expand_and_transpose(atmos, sfc_alb_dif, sfc_alb_dif_gpt)
     ! ------------------------------------------------------------------------------------
@@ -137,15 +147,21 @@ contains
     !   direct and diffuse to represent the total, consistent with the LW
     !
     !$acc enter data copyin(mu0)
+    !$omp target enter data map(to:mu0)
     !$acc enter data create(gpt_flux_up, gpt_flux_dn, gpt_flux_dir)
+    !$omp target enter data map(alloc:gpt_flux_up, gpt_flux_dn, gpt_flux_dir)
 
     !$acc enter data copyin(inc_flux)
+    !$omp target enter data map(to:inc_flux)
     call apply_BC(ncol, nlay, ngpt, logical(top_at_1, wl),   inc_flux, mu0, gpt_flux_dir)
     !$acc exit data delete(inc_flux)
+    !$omp target exit data map(release:inc_flux)
     if(present(inc_flux_dif)) then
       !$acc enter data copyin(inc_flux_dif)
+      !$omp target enter data map(to:inc_flux_dif)
       call apply_BC(ncol, nlay, ngpt, logical(top_at_1, wl), inc_flux_dif,  gpt_flux_dn )
       !$acc exit data delete(inc_flux_dif)
+      !$omp target exit data map(release:inc_flux_dif)
     else
       call apply_BC(ncol, nlay, ngpt, logical(top_at_1, wl),                gpt_flux_dn )
     end if
@@ -156,6 +172,7 @@ contains
         ! Direct beam only
         !
         !$acc enter data copyin(atmos, atmos%tau)
+        !$omp target enter data map(to:atmos%tau)
         error_msg =  atmos%validate()
         if(len_trim(error_msg) > 0) return
         call sw_solver_noscat(ncol, nlay, ngpt, logical(top_at_1, wl), &
@@ -167,11 +184,13 @@ contains
         !gpt_flux_up = 0._wp
         !gpt_flux_dn = 0._wp
         !$acc exit data delete(atmos%tau, atmos)
+        !$omp target exit data map(release:atmos%tau)
       class is (ty_optical_props_2str)
         !
         ! two-stream calculation with scattering
         !
         !$acc enter data copyin(atmos, atmos%tau, atmos%ssa, atmos%g)
+        !$omp target enter data map(to:atmos%tau, atmos%ssa, atmos%g)
         error_msg =  atmos%validate()
         if(len_trim(error_msg) > 0) return
         call sw_solver_2stream(ncol, nlay, ngpt, logical(top_at_1, wl), &
@@ -179,7 +198,9 @@ contains
                                sfc_alb_dir_gpt, sfc_alb_dif_gpt,        &
                                gpt_flux_up, gpt_flux_dn, gpt_flux_dir)
         !$acc exit data delete(atmos%tau, atmos%ssa, atmos%g, atmos)
+        !$omp target exit data map(release:atmos%tau, atmos%ssa, atmos%g)
         !$acc exit data delete(sfc_alb_dir_gpt, sfc_alb_dif_gpt)
+        !$omp target exit data map(release:sfc_alb_dir_gpt, sfc_alb_dif_gpt)
       class is (ty_optical_props_nstr)
         !
         ! n-stream calculation
@@ -198,7 +219,9 @@ contains
     !
     error_msg = fluxes%reduce(gpt_flux_up, gpt_flux_dn, atmos, top_at_1, gpt_flux_dir)
     !$acc exit data delete(mu0)
+    !$omp target exit data map(release:mu0)
     !$acc exit data delete(gpt_flux_up, gpt_flux_dn, gpt_flux_dir)
+    !$omp target exit data map(release:gpt_flux_up, gpt_flux_dn, gpt_flux_dir)
   end function rte_sw
   !--------------------------------------------------------------------------------------------------------------------
   !
@@ -218,6 +241,7 @@ contains
     ngpt  = ops%get_ngpt()
     limits = ops%get_band_lims_gpoint()
     !$acc parallel loop collapse(2) copyin(arr_in, limits)
+    !$omp target teams distribute parallel do simd collapse(2) map(to:arr_in, limits)
     do iband = 1, nband
       do icol = 1, ncol
         do igpt = limits(1, iband), limits(2, iband)
