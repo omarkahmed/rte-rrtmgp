@@ -4,8 +4,6 @@
 #include "rrtmgp_const.h"
 #include "mo_optical_props_kernels.h"
 
-using yakl::intrinsics::anyLT;
-using yakl::intrinsics::anyGT;
 using yakl::intrinsics::allocated;
 using yakl::intrinsics::maxval;
 using yakl::intrinsics::epsilon;
@@ -28,14 +26,14 @@ public:
     int2d band_lims_gpt_lcl("band_lims_gpt_lcl",2,size(band_lims_wvn,2));
     if (size(band_lims_wvn,1) != 2) { stoprun("optical_props::init(): band_lims_wvn 1st dim should be 2"); }
     #ifdef RRTMGP_EXPENSIVE_CHECKS
-      if (anyLT(band_lims_wvn,0._wp)) { stoprun("optical_props::init(): band_lims_wvn has values <  0."); }
+      if (any(band_lims_wvn < 0._wp)) { stoprun("optical_props::init(): band_lims_wvn has values <  0."); }
     #endif
     if (allocated(band_lims_gpt)) {
       if (size(band_lims_gpt,2) != size(band_lims_wvn,2)) {
         stoprun("optical_props::init(): band_lims_gpt size inconsistent with band_lims_wvn");
       }
       #ifdef RRTMGP_EXPENSIVE_CHECKS
-        if (anyLT(band_lims_gpt,1) ) { stoprun("optical_props::init(): band_lims_gpt has values < 1"); }
+        if (any(band_lims_gpt < 1) ) { stoprun("optical_props::init(): band_lims_gpt has values < 1"); }
       #endif
       // for (int j=1; j <= size(band_lims_gpt,2); j++) {
       //   for (int i=1; i <= size(band_lims_gpt,1); i++) {
@@ -262,7 +260,7 @@ public:
   void validate() const {
     if (! allocated(this->tau)) { stoprun("validate: tau not allocated/initialized"); }
     #ifdef RRTMGP_EXPENSIVE_CHECKS
-      if (anyLT(this->tau,0._wp)) { stoprun("validate: tau values out of range"); }
+      if (any(this->tau < 0._wp)) { stoprun("validate: tau values out of range"); }
     #endif
   }
 
@@ -343,9 +341,9 @@ public:
       stoprun("validate: arrays not sized consistently");
     }
     #ifdef RRTMGP_EXPENSIVE_CHECKS
-      if (anyLT(this->tau, 0._wp)                          ) { stoprun("validate: tau values out of range"); }
-      if (anyLT(this->ssa, 0._wp) || anyGT(this->ssa,1._wp)) { stoprun("validate: ssa values out of range"); }
-      if (anyLT(this->g  ,-1._wp) || anyGT(this->g  ,1._wp)) { stoprun("validate: g   values out of range"); }
+      if (any(this->tau < 0._wp)                          ) { stoprun("validate: tau values out of range"); }
+      if (any(this->ssa < 0._wp) || any(this->ssa > 1._wp)) { stoprun("validate: ssa values out of range"); }
+      if (any(this->g  < -1._wp) || any(this->g   > 1._wp)) { stoprun("validate: g   values out of range"); }
     #endif
   }
 
@@ -360,7 +358,7 @@ public:
         stoprun("delta_scale: dimension of 'forward' don't match optical properties arrays");
       }
       #ifdef RRTMGP_EXPENSIVE_CHECKS
-        if (anyLT(forward,0._wp) || anyGT(forward,1._wp)) { stoprun("delta_scale: values of 'forward' out of bounds [0,1]"); }
+        if (any(forward < 0._wp) || any(forward > 1._wp)) { stoprun("delta_scale: values of 'forward' out of bounds [0,1]"); }
       #endif
       delta_scale_2str_kernel(ncol, nlay, ngpt, this->tau, this->ssa, this->g, forward);
     } else {
