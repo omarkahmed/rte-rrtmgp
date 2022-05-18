@@ -62,9 +62,9 @@ void delta_scale_2str_kernel(int ncol, int nlay, int ngpt, real3d &tau, real3d &
     if (tau(icol,ilay,igpt) > eps) {
       real f  = g  (icol,ilay,igpt) * g  (icol,ilay,igpt);
       real wf = ssa(icol,ilay,igpt) * f;
-      tau(icol,ilay,igpt) = (1._wp - wf) * tau(icol,ilay,igpt);
-      ssa(icol,ilay,igpt) = (ssa(icol,ilay,igpt) - wf) / (1.0_wp - wf);
-      g  (icol,ilay,igpt) = (g  (icol,ilay,igpt) -  f) / (1.0_wp -  f);
+      tau(icol,ilay,igpt) = (1. - wf) * tau(icol,ilay,igpt);
+      ssa(icol,ilay,igpt) = (ssa(icol,ilay,igpt) - wf) / (1.0 - wf);
+      g  (icol,ilay,igpt) = (g  (icol,ilay,igpt) -  f) / (1.0 -  f);
     }
   });
 }
@@ -83,9 +83,9 @@ void delta_scale_2str_kernel(int ncol, int nlay, int ngpt, real3d &tau, real3d &
   parallel_for( Bounds<3>(ngpt,nlay,ncol) , YAKL_LAMBDA (int igpt, int ilay, int icol) {
     if (tau(icol,ilay,igpt) > eps) {
       real wf = ssa(icol,ilay,igpt) * f(icol,ilay,igpt);
-      tau(icol,ilay,igpt) = (1._wp - wf) * tau(icol,ilay,igpt);
-      ssa(icol,ilay,igpt) = (ssa(icol,ilay,igpt) - wf) /  (1.0_wp - wf);
-      g  (icol,ilay,igpt) = (g  (icol,ilay,igpt) - f(icol,ilay,igpt)) / (1._wp - f(icol,ilay,igpt));
+      tau(icol,ilay,igpt) = (1. - wf) * tau(icol,ilay,igpt);
+      ssa(icol,ilay,igpt) = (ssa(icol,ilay,igpt) - wf) /  (1.0 - wf);
+      g  (icol,ilay,igpt) = (g  (icol,ilay,igpt) - f(icol,ilay,igpt)) / (1. - f(icol,ilay,igpt));
     }
   });
   std::cout << "WARNING: THIS ISN'T TESTED: " << __FILE__ << ": " << __LINE__ << "\n";
@@ -123,7 +123,7 @@ void increment_1scalar_by_2stream(int ncol, int nlay, int ngpt, real3d &tau1, re
   //   do ilay = 1, nlay
   //     do icol = 1, ncol
   parallel_for( Bounds<3>(ngpt,nlay,ncol) , YAKL_LAMBDA (int igpt, int ilay, int icol) {
-    tau1(icol,ilay,igpt) = tau1(icol,ilay,igpt) + tau2(icol,ilay,igpt) * (1._wp - ssa2(icol,ilay,igpt));
+    tau1(icol,ilay,igpt) = tau1(icol,ilay,igpt) + tau2(icol,ilay,igpt) * (1. - ssa2(icol,ilay,igpt));
   });
   std::cout << "WARNING: THIS ISN'T TESTED: " << __FILE__ << ": " << __LINE__ << "\n";
 }
@@ -136,7 +136,7 @@ void increment_1scalar_by_nstream(int ncol, int nlay, int ngpt, real3d &tau1, re
   //   do ilay = 1, nlay
   //     do icol = 1, ncol
   parallel_for( Bounds<3>(ngpt,nlay,ncol) , YAKL_LAMBDA (int igpt, int ilay, int icol) {
-    tau1(icol,ilay,igpt) = tau1(icol,ilay,igpt) + tau2(icol,ilay,igpt) * (1._wp - ssa2(icol,ilay,igpt));
+    tau1(icol,ilay,igpt) = tau1(icol,ilay,igpt) + tau2(icol,ilay,igpt) * (1. - ssa2(icol,ilay,igpt));
   });
   std::cout << "WARNING: THIS ISN'T TESTED: " << __FILE__ << ": " << __LINE__ << "\n";
 }
@@ -303,7 +303,7 @@ void inc_1scalar_by_2stream_bybnd(int ncol, int nlay, int ngpt, real3d &tau1, re
   parallel_for( Bounds<3>(ngpt,nlay,ncol) , YAKL_LAMBDA (int igpt, int ilay, int icol) {
     for (int ibnd=1; ibnd<=nbnd; ibnd++) {
       if (igpt >= gpt_lims(1, ibnd) && igpt <= gpt_lims(2, ibnd) ) {
-        tau1(icol,ilay,igpt) = tau1(icol,ilay,igpt) + tau2(icol,ilay,ibnd) * (1._wp - ssa2(icol,ilay,ibnd));
+        tau1(icol,ilay,igpt) = tau1(icol,ilay,igpt) + tau2(icol,ilay,ibnd) * (1. - ssa2(icol,ilay,ibnd));
       }
     }
   });
@@ -321,7 +321,7 @@ void inc_1scalar_by_nstream_bybnd(int ncol, int nlay, int ngpt, real3d &tau1, re
   parallel_for( Bounds<3>(ngpt,nlay,ncol) , YAKL_LAMBDA (int igpt, int ilay, int icol) {
     for (int ibnd=1; ibnd<=nbnd; ibnd++) {
       if (igpt >= gpt_lims(1, ibnd) && igpt <= gpt_lims(2, ibnd) ) {
-        tau1(icol,ilay,igpt) = tau1(icol,ilay,igpt) + tau2(icol,ilay,ibnd) * (1._wp - ssa2(icol,ilay,ibnd));
+        tau1(icol,ilay,igpt) = tau1(icol,ilay,igpt) + tau2(icol,ilay,ibnd) * (1. - ssa2(icol,ilay,ibnd));
       }
     }
   });
@@ -502,7 +502,7 @@ void extract_subset_absorption_tau(int ncol, int nlay, int ngpt, real3d const &t
   //   do ilay = 1, nlay
   //     do icol = colS, colE
   parallel_for( Bounds<3>(ngpt,nlay,{colS,colE}) , YAKL_LAMBDA (int igpt, int ilay, int icol) {
-    tau_out(icol-colS+1, ilay, igpt) = tau_in(icol, ilay, igpt) * (1._wp - ssa_in(icol, ilay, igpt));
+    tau_out(icol-colS+1, ilay, igpt) = tau_in(icol, ilay, igpt) * (1. - ssa_in(icol, ilay, igpt));
   });
   std::cout << "WARNING: THIS ISN'T TESTED: " << __FILE__ << ": " << __LINE__ << "\n";
 }

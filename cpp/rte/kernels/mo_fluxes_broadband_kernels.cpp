@@ -5,7 +5,7 @@ void sum_broadband(int ncol, int nlev, int ngpt, real3d const &spectral_flux, re
   // do ilev = 1, nlev
   //   do icol = 1, ncol
   parallel_for( Bounds<2>(nlev,ncol) , YAKL_LAMBDA (int ilev, int icol) {
-    real bb_flux_s = 0.0_wp;
+    real bb_flux_s = 0.0;
     for (int igpt=1; igpt<=ngpt; igpt++) {
       bb_flux_s += spectral_flux(icol, ilev, igpt);
     }

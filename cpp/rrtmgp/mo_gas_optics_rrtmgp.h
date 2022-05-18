@@ -920,7 +920,7 @@ public:
     if (allocated(col_dry)) {
       if (size(col_dry,1) != ncol || size(col_dry,2) != nlay) { stoprun("gas_optics(): array col_dry has wrong size"); }
       #ifdef RRTMGP_EXPENSIVE_CHECKS
-        if (anyLT(col_dry,0._wp)) { stoprun("gas_optics(): array col_dry has values outside range"); }
+        if (anyLT(col_dry,0.)) { stoprun("gas_optics(): array col_dry has values outside range"); }
       #endif
     }
 
@@ -968,7 +968,7 @@ public:
       col_gas(icol,ilay,igas) = vmr(icol,ilay,igas) * col_dry_wk(icol,ilay);
     });
     // ---- calculate gas optical depths ----
-    memset(tau , 0._wp);
+    memset(tau , 0.);
 
     interpolation(ncol, nlay, ngas, nflav, neta, npres, ntemp, this->flavor, this->press_ref_log, this->temp_ref,
                   this->press_ref_log_delta, this->temp_ref_min, this->temp_ref_delta, this->press_ref_trop_log,
@@ -1054,8 +1054,8 @@ public:
   // computes column amounts of dry air using hydrostatic equation
   real2d get_col_dry(real2d const &vmr_h2o, real2d const &plev, real1d const &latitude=real1d()) {
     // first and second term of Helmert formula
-    real constexpr helmert1 = 9.80665_wp;
-    real constexpr helmert2 = 0.02586_wp;
+    real constexpr helmert1 = 9.80665;
+    real constexpr helmert2 = 0.02586;
     int ncol = size(plev,1);
     int nlev = size(plev,2);
     real1d g0("g0",size(plev,1));
@@ -1063,7 +1063,7 @@ public:
       // A purely OpenACC implementation would probably compute g0 within the kernel below
       // do icol = 1, ncol
       parallel_for( Bounds<1>(ncol) , YAKL_LAMBDA (int icol) {
-        g0(icol) = helmert1 - helmert2 * cos(2.0_wp * M_PI * latitude(icol) / 180.0_wp); // acceleration due to gravity [m/s^2]
+        g0(icol) = helmert1 - helmert2 * cos(2.0 * M_PI * latitude(icol) / 180.0); // acceleration due to gravity [m/s^2]
       });
     } else {
       // do icol = 1, ncol
@@ -1080,9 +1080,9 @@ public:
     parallel_for( Bounds<2>(nlev-1,ncol) , YAKL_LAMBDA (int ilev , int icol) {
       real delta_plev = abs(plev(icol,ilev) - plev(icol,ilev+1));
       // Get average mass of moist air per mole of moist air
-      real fact = 1._wp / (1.+vmr_h2o(icol,ilev));
+      real fact = 1. / (1.+vmr_h2o(icol,ilev));
       real m_air = (m_dry + m_h2o * vmr_h2o(icol,ilev)) * fact;
-      col_dry(icol,ilev) = 10._wp * delta_plev * avogad * fact/(1000._wp*m_air*100._wp*g0(icol));
+      col_dry(icol,ilev) = 10. * delta_plev * avogad * fact/(1000.*m_air*100.*g0(icol));
     });
     return col_dry;
   }

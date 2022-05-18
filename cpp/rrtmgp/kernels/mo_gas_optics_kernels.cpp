@@ -26,7 +26,7 @@ void interpolation(int ncol, int nlay, int ngas, int nflav, int neta, int npres,
     ftemp(icol,ilay) = (tlay(icol,ilay) - temp_ref(jtemp(icol,ilay))) / temp_ref_delta;
 
     // index and factor for pressure interpolation
-    real locpress = 1._wp + (log(play(icol,ilay)) - press_ref_log(1)) / press_ref_log_delta;
+    real locpress = 1. + (log(play(icol,ilay)) - press_ref_log(1)) / press_ref_log_delta;
     jpress(icol,ilay) = min(npres-1, max(1, (int)(locpress)));
     fpress(icol,ilay) = locpress - (real)(jpress(icol,ilay));
 
@@ -52,18 +52,18 @@ void interpolation(int ncol, int nlay, int ngas, int nflav, int neta, int npres,
     real ratio_eta_half = vmr_ref(itropo,igases(1),(jtemp(icol,ilay)+itemp-1)) / 
                           vmr_ref(itropo,igases(2),(jtemp(icol,ilay)+itemp-1));
     col_mix(itemp,iflav,icol,ilay) = col_gas(icol,ilay,igases(1)) + ratio_eta_half * col_gas(icol,ilay,igases(2));
-    real eta = merge(col_gas(icol,ilay,igases(1)) / col_mix(itemp,iflav,icol,ilay), 0.5_wp, 
-                     col_mix(itemp,iflav,icol,ilay) > 2._wp * tiny);
-    real loceta = eta * (neta-1.0_wp);
+    real eta = merge(col_gas(icol,ilay,igases(1)) / col_mix(itemp,iflav,icol,ilay), 0.5, 
+                     col_mix(itemp,iflav,icol,ilay) > 2. * tiny);
+    real loceta = eta * (neta-1.0);
     jeta(itemp,iflav,icol,ilay) = min((int)(loceta)+1, neta-1);
-    real feta = fmod(loceta, 1.0_wp);
+    real feta = fmod(loceta, 1.0);
     // compute interpolation fractions needed for minor species
-    real ftemp_term = ((2.0_wp - itemp) + (2.0_wp * itemp - 3.0_wp ) * ftemp(icol,ilay));
-    fminor(1,itemp,iflav,icol,ilay) = (1._wp - feta) * ftemp_term;
+    real ftemp_term = ((2.0 - itemp) + (2.0 * itemp - 3.0 ) * ftemp(icol,ilay));
+    fminor(1,itemp,iflav,icol,ilay) = (1. - feta) * ftemp_term;
     fminor(2,itemp,iflav,icol,ilay) =          feta  * ftemp_term;
     // compute interpolation fractions needed for major species
-    fmajor(1,1,itemp,iflav,icol,ilay) = (1._wp - fpress(icol,ilay)) * fminor(1,itemp,iflav,icol,ilay);
-    fmajor(2,1,itemp,iflav,icol,ilay) = (1._wp - fpress(icol,ilay)) * fminor(2,itemp,iflav,icol,ilay);
+    fmajor(1,1,itemp,iflav,icol,ilay) = (1. - fpress(icol,ilay)) * fminor(1,itemp,iflav,icol,ilay);
+    fmajor(2,1,itemp,iflav,icol,ilay) = (1. - fpress(icol,ilay)) * fminor(2,itemp,iflav,icol,ilay);
     fmajor(1,2,itemp,iflav,icol,ilay) =          fpress(icol,ilay)  * fminor(1,itemp,iflav,icol,ilay);
     fmajor(2,2,itemp,iflav,icol,ilay) =          fpress(icol,ilay)  * fminor(2,itemp,iflav,icol,ilay);
   });
@@ -92,11 +92,11 @@ void combine_and_reorder_2str(int ncol, int nlay, int ngpt, real3d const &tau_ab
     if ( icol <= ncol && igpt <= ngpt ) {
       real t = tau_abs(igpt,ilay,icol) + tau_rayleigh(igpt,ilay,icol);
       tau(icol,ilay,igpt) = t;
-      g  (icol,ilay,igpt) = 0._wp;
-      if(t > 2._wp * tiny) {
+      g  (icol,ilay,igpt) = 0.;
+      if(t > 2. * tiny) {
         ssa(icol,ilay,igpt) = tau_rayleigh(igpt,ilay,icol) / t;
       } else {
-        ssa(icol,ilay,igpt) = 0._wp;
+        ssa(icol,ilay,igpt) = 0.;
       }
     }
   });
@@ -114,7 +114,7 @@ void compute_Planck_source(int ncol, int nlay, int nbnd, int ngpt, int nflav, in
   real3d pfrac          ("pfrac"          ,ngpt,nlay,ncol);
   real3d planck_function("planck_function",nbnd,nlay+1,ncol);
   real1d one            ("one"            ,2);
-  memset(one,1._wp);
+  memset(one,1.);
 
   // Calculation of fraction of band's Planck irradiance associated with each g-point
   // for (int icol=1; icol<=ncol; icol++) {
@@ -259,11 +259,11 @@ void gas_optical_depths_minor(int max_gpt_diff, int ncol, int nlay, int ngpt, in
 
           if (idx_minor_scaling(imnr) > 0) {  // there is a second gas that affects this gas's absorption
             real mycol_gas_imnr = col_gas(icol,ilay,idx_minor_scaling(imnr));
-            real vmr_fact = 1._wp / mycol_gas_0;
-            real dry_fact = 1._wp / (1._wp + mycol_gas_h2o * vmr_fact);
+            real vmr_fact = 1. / mycol_gas_0;
+            real dry_fact = 1. / (1. + mycol_gas_h2o * vmr_fact);
             // scale by density of special gas
             if (scale_by_complement(imnr)) { // scale by densities of all gases but the special one
-              scaling = scaling * (1._wp - mycol_gas_imnr * vmr_fact * dry_fact);
+              scaling = scaling * (1. - mycol_gas_imnr * vmr_fact * dry_fact);
             } else {
               scaling = scaling *          mycol_gas_imnr * vmr_fact * dry_fact;
             }
@@ -285,7 +285,7 @@ void gas_optical_depths_minor(int max_gpt_diff, int ncol, int nlay, int ngpt, in
           // What is the starting point in the stored array of minor absorption coefficients?
           int minor_start = kminor_start(imnr);
 
-          real tau_minor = 0._wp;
+          real tau_minor = 0.;
           int iflav = gpt_flv(idx_tropo,igpt); // eta interpolation depends on flavor
           int minor_loc = minor_start + (igpt - gptS); // add offset to starting point
           real kminor_loc = interpolate2D(fminor.slice<2>(COLON,COLON,iflav,icol,ilay), kminor, minor_loc,  
@@ -462,7 +462,7 @@ void combine_and_reorder_nstr(int ncol, int nlay, int ngpt, int nmom, real3d &ta
   parallel_for( Bounds<3>(ncol,nlay,ngpt) , YAKL_LAMBDA (int icol, int ilay, int igpt) {
     real t = tau_abs(igpt,ilay,icol) + tau_rayleigh(igpt,ilay,icol);
     tau(icol,ilay,igpt) = t;
-    if (t > 2._wp * tiny) {
+    if (t > 2. * tiny) {
       ssa(icol,ilay,igpt) = tau_rayleigh(igpt,ilay,icol) / t;
     } else {
       ssa(icol,ilay,igpt) = 0;

@@ -26,7 +26,7 @@ public:
     int2d band_lims_gpt_lcl("band_lims_gpt_lcl",2,size(band_lims_wvn,2));
     if (size(band_lims_wvn,1) != 2) { stoprun("optical_props::init(): band_lims_wvn 1st dim should be 2"); }
     #ifdef RRTMGP_EXPENSIVE_CHECKS
-      if (any(band_lims_wvn < 0._wp)) { stoprun("optical_props::init(): band_lims_wvn has values <  0."); }
+      if (any(band_lims_wvn < 0.)) { stoprun("optical_props::init(): band_lims_wvn has values <  0."); }
     #endif
     if (allocated(band_lims_gpt)) {
       if (size(band_lims_gpt,2) != size(band_lims_wvn,2)) {
@@ -146,9 +146,9 @@ public:
     auto &this_band_lims_wvn = this->band_lims_wvn;
     parallel_for( Bounds<2>( size(band_lims_wvn,2) , size(band_lims_wvn,1) ) , YAKL_LAMBDA (int j, int i) {
       if (this->is_initialized()) {
-        ret(i,j) = 1._wp / this_band_lims_wvn(i,j);
+        ret(i,j) = 1. / this_band_lims_wvn(i,j);
       } else {
-        ret(i,j) = 0._wp;
+        ret(i,j) = 0.;
       }
     });
     return ret;
@@ -260,7 +260,7 @@ public:
   void validate() const {
     if (! allocated(this->tau)) { stoprun("validate: tau not allocated/initialized"); }
     #ifdef RRTMGP_EXPENSIVE_CHECKS
-      if (any(this->tau < 0._wp)) { stoprun("validate: tau values out of range"); }
+      if (any(this->tau < 0.)) { stoprun("validate: tau values out of range"); }
     #endif
   }
 
@@ -272,7 +272,7 @@ public:
     if (! this->is_initialized()) { stoprun("OpticalProps1scl::alloc_1scl: spectral discretization hasn't been provided"); }
     if (ncol <= 0 || nlay <= 0) { stoprun("OpticalProps1scl::alloc_1scl: must provide > 0 extents for ncol, nlay"); }
     this->tau = real3d("tau",ncol,nlay,this->get_ngpt());
-    memset(tau,0._wp);
+    memset(tau,0.);
   }
 
 
@@ -341,9 +341,9 @@ public:
       stoprun("validate: arrays not sized consistently");
     }
     #ifdef RRTMGP_EXPENSIVE_CHECKS
-      if (any(this->tau < 0._wp)                          ) { stoprun("validate: tau values out of range"); }
-      if (any(this->ssa < 0._wp) || any(this->ssa > 1._wp)) { stoprun("validate: ssa values out of range"); }
-      if (any(this->g  < -1._wp) || any(this->g   > 1._wp)) { stoprun("validate: g   values out of range"); }
+      if (any(this->tau < 0.)                          ) { stoprun("validate: tau values out of range"); }
+      if (any(this->ssa < 0.) || any(this->ssa > 1.)) { stoprun("validate: ssa values out of range"); }
+      if (any(this->g  < -1.) || any(this->g   > 1.)) { stoprun("validate: g   values out of range"); }
     #endif
   }
 
@@ -358,7 +358,7 @@ public:
         stoprun("delta_scale: dimension of 'forward' don't match optical properties arrays");
       }
       #ifdef RRTMGP_EXPENSIVE_CHECKS
-        if (any(forward < 0._wp) || any(forward > 1._wp)) { stoprun("delta_scale: values of 'forward' out of bounds [0,1]"); }
+        if (any(forward < 0.) || any(forward > 1.)) { stoprun("delta_scale: values of 'forward' out of bounds [0,1]"); }
       #endif
       delta_scale_2str_kernel(ncol, nlay, ngpt, this->tau, this->ssa, this->g, forward);
     } else {
@@ -373,9 +373,9 @@ public:
     this->tau = real3d("tau",ncol,nlay,this->get_ngpt());
     this->ssa = real3d("ssa",ncol,nlay,this->get_ngpt());
     this->g   = real3d("g  ",ncol,nlay,this->get_ngpt());
-    memset(tau,0._wp);
-    memset(ssa,0._wp);
-    memset(g  ,0._wp);
+    memset(tau,0.);
+    memset(ssa,0.);
+    memset(g  ,0.);
   }
 
 
