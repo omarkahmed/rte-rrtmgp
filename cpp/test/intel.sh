@@ -8,7 +8,7 @@ export CXXFLAGS="-fsycl -sycl-target=spirv64_gen"
 export NCINCLUDE="`$HOME/e3sm-libs/oneapi-ifort/packages/netcdf-serial/bin/nc-config --includedir`"
 export NCFLAGS="`$HOME/e3sm-libs/oneapi-ifort/packages/netcdf-serial/bin/nc-config --libs`"
 export CC=icx
-#export CXX=dpcpp
 export CXX=icpx
+#export CXX=dpcpp
 export FC=ifx
 export YAKLHOME="$HOME/e3sm-comps/YAKL"
